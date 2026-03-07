@@ -1,0 +1,767 @@
+Patient_ID,observation_source_value,HPO_code,Verbatim
+MGA.014,Transient anosmia,HP:0030447,
+MGA.014,Cough,HP:0012735,
+MGA.014,Thoracic pain,HP:0032408,
+MGA.014,Chest pain,HP:0100749,
+MGA.014,Exertional dyspnea,HP:0002875,effort exhaustion
+MGA.014,Fatigue,HP:0012378,tiredness
+MGA.014,Memory impairment,HP:0002354,memory problem
+MGA.014,Depressed mood,HP:0000716,depressive feelings
+MGA.014,Vestibular dysfunction,HP:0001751,
+MGA.014,nausea,HP:0002018,
+MGA.022,Difficulty climbing stairs,HP:0003551,unable to climb stairs
+MGA.022,Dyspnea,HP:0002094,shortness of breath
+MGA.022,Chest tightness,HP:0031030,
+MGA.022,Tremor,HP:0001337,inner tremor
+MGA.022,Palpitations,HP:0001962,
+MGA.022,Syncope,HP:0001279,fainting
+MGA.022,Fatigue,HP:0012378,unexpected fatigue
+MGA.022,Exercise intolerance,HP:0003546,unable to continue athletic training
+MGA.022,Discomfort,HP:0035415,
+MGA.022,Vertigo,HP:0002321,
+MGA.022,Abdominal pain,HP:0002027,still abdominal pain
+MGA.032,Chronic cough,HP:0012735,still coughs
+MGA.032,Chronic expectoration,HP:0002793,has to expectorate
+MGA.032,Nasal congestion,HP:0031417,blocked nose
+MGA.032,Abdominal pain,HP:0002027,belly pain
+MGA.032,Chest pain,HP:0100749,chest pain twice a week
+MGA.032,Bereavement-related stress,HP:0035416,experienced grandmother's death
+MGA.032,Aggression,HP:0000718,very withdrawn and aggressive
+MGA.032,Irritability,HP:0000737,more irritated and aggressive
+MGA.032,Social withdrawal,HP:0000737,keeps away from his friends
+MGA.032,Emotional detachment,HP:0035415,withdrawal
+MGA.032,Forgetfulness,HP:0002364,
+MGA.032,looks for phone after a minute],,
+MGA.032,Memory impairment,HP:0002354,memory is different
+MGA.032,Impaired concentration,HP:0100543,difficulty concentrating
+MGA.032,Word substitution errors,HP:0031005,makes mistakes in his sentences
+MGA.032,Anomia,HP:0031002,loss of the word
+MGA.032,Difficulty comprehending words,HP:0034124,forgets comprehension of words
+MGA.032,Dysorthography,HP:0031345,forgets spelling of certain words
+MGA.032,Thought blocking,HP:0000738,loses thread of ideas in sentences
+MGA.032,Learning difficulty,HP:0001328,forgets answer prepared for teacher's question
+MGA.032,Post-COVID anosmia,HP:0030447,smell affected after COVID
+MGA.032,Exercise intolerance,HP:0003546,"difficulty doing laps, push-ups"
+MGA.032,Emotional instability,HP:0010862,"dresses in black, emotional changes"
+MGA.032,Apathy,HP:0000741,doesn't want to go to school
+MGA.032,Strange dreams,HP:0002369,weird dreams not experienced before
+MGA.061,Fatigue,HP:0012378,feels too tired
+MGA.061,Hypersomnia,HP:0002363,"falls asleep at school, compulsory naps"
+MGA.061,Dyspnea on exertion,HP:0002875,quickly short of breath but no more than before
+MGA.061,Nausea,HP:0002018,recently
+MGA.061,Dizziness,HP:0002321,
+MGA.061,Motion sickness,HP:0003143,recurrence of travel sickness
+MGA.061,Balance disturbance,HP:0010865,feeling of disturbed balance
+MGA.061,Dyspnea,HP:0002094,shortness of breath described as weight on chest
+MGA.061,Physical exhaustion,HP:0004395,had to get off bike due to exhaustion
+MGA.061,Shortened menstrual period,HP:0000814,4 days only
+MGA.087,Academic performance decline,HP:0035453,
+MGA.087,Anxiety,HP:0000739,
+MGA.087,Memory lapse,HP:0002364,
+MGA.087,Dyspnea on exertion,HP:0002875,
+MGA.087,Tachycardia,HP:0001649,
+MGA.087,Weight gain,HP:0004324,
+MGA.087,Fatigue,HP:0012378,
+MGA.087,Post-exertional malaise,HP:0030973,
+MGA.087,Cognitive impairment,HP:0100543,
+MGA.087,Impaired concentration,HP:0100199,
+MGA.087,Short-term memory impairment,HP:0002354,
+MGA.087,Bradyphrenia,HP:0031843,
+MGA.087,Executive dysfunction,HP:0031847,
+MGA.087,Dyspnea on exertion,HP:0002875,
+MGA.087,Tachycardia,HP:0001649,
+MGA.087,Weight gain,HP:0004324,
+MGA.087,Anxiety,HP:0000739,
+MGA.087,Myalgia,HP:0003326,
+MGA.087,Arthralgia,HP:0002829,
+MGA.087,Vertigo,HP:0002321,
+MGA.087,Anosmia,HP:0000458,
+MGA.087,Ageusia,HP:0041051,
+MGA.087,Headache,HP:0002315,
+MGA.087,Nausea,HP:0002018,
+MGA.087,Tinnitus,HP:0000360,
+MGA.087,Language impairment,HP:0000750,
+MGA.087,Attention deficit,HP:0007018,
+MGA.087,Memory impairment,HP:0002354,
+MGA.087,Tremor,HP:0001337,
+MGA.087,Exercise intolerance,HP:0003546,
+MGA.087,Hyperventilation,HP:0001943,
+MGA.087,Fever-like episodes,HP:0025142,
+MGA.133,Loss of taste,HP:0010296,
+MGA.133,Loss of smell,HP:0010117,
+MGA.133,Headache,HP:0002315,
+MGA.133,Abdominal pain,HP:0002027,
+MGA.133,Brain fog,HP:0025283,
+MGA.133,Fatigue,HP:0012378,
+MGA.133,Muscle atrophy,HP:0003202,
+MGA.133,Impaired ambulation,HP:0002505,
+MGA.133,Paresthesia,HP:0003401,
+MGA.133,Hyperesthesia,HP:0000791,
+MGA.133,Anosmia,HP:0010117,
+MGA.133,Dysgeusia,HP:0100806,
+MGA.133,Memory impairment,HP:0002354,
+MGA.133,Concentration difficulty,HP:0000736,
+MGA.133,Post-COVID chilblain,HP:0034115,
+MGA.133,Dyspnea,HP:0002094,
+MGA.133,Gastroparesis,HP:0002577,
+MGA.192,Fatigability,HP:0012378,
+MGA.192,Mental clouding,HP:0025321,
+MGA.192,Paresthesia,HP:0003401,
+MGA.192,Memory impairment,HP:0002354,
+MGA.192,Anorexia,HP:0004394,
+MGA.192,Abnormal thermosensation,HP:0010729,
+MGA.192,Chest pain,HP:0100749,
+MGA.192,Myalgia,HP:0003326,
+MGA.192,Leg discomfort,HP:0007387,
+MGA.192,Nausea,HP:0002018,
+MGA.192,Cutaneous rash,HP:0000988,
+MGA.192,Alopecia,HP:0001596,
+MGA.192,Photophobia,HP:0000613,
+MGA.192,Phonophobia,HP:0025195,
+MGA.192,Headache,HP:0002315,
+MGA.192,Anomia,HP:0002451,
+MGA.192,Tremor,HP:0001337,
+MGA.192,Impaired balance,HP:0011446,
+MGA.192,Shivering,HP:0025149,
+MGA.192,Mood swings,HP:0000720,
+MGA.192,Sweating,HP:0000977,
+MGA.192,Somnolence,HP:0011097,
+MGA.192,Hot flushes,HP:0004333,
+MGA.192,Tachycardia,HP:0001649,
+MGA.192,Cold intolerance,HP:0002045,
+MGA.192,Depressed mood,HP:0000716,
+MGA.192,Leg paralysis,HP:0002373,
+MGA.192,Arm paralysis,HP:0002120,
+MGA.192,Aphasia,HP:0002381,
+MGA.192,Urticaria,HP:0001025,
+MGA.192,Dizziness,HP:0002321,
+MGA.192,Leg pain,HP:0002828,
+MGA.192,Abdominal pain,HP:0002027,
+MGA.192,Arm pain,HP:0004959,
+MGA.192,Cognitive impairment,HP:0100543,
+MGA.192,Panic attacks,HP:0000739,
+MGA.192,Insomnia,HP:0100785,
+MGA.203,Vertigo (instability),HP:0002321,
+MGA.203,Fatigue,HP:0012378,
+MGA.203,Gait difficulty,HP:0001288,
+MGA.203,Tachycardia,HP:0001649,
+MGA.203,Chest pain,HP:0100749,
+MGA.203,Orthostatic hypotension,HP:0012720,
+MGA.203,Obstructive rhinitis,HP:0002093,
+MGA.203,Nausea,HP:0002018,
+MGA.203,Loss of appetite,HP:0004393,
+MGA.203,Severe weight loss,HP:0001824,
+MGA.203,Abdominal pain,HP:0002027,
+MGA.203,Dysphagia,HP:0002015,
+MGA.203,Gastrointestinal dysmotility,HP:0011124,
+MGA.203,Gastroparesis,HP:0002577,
+MGA.203,Malnutrition,HP:0004395,
+MGA.203,Low BMI (BMI 16.4),HP:0012893,
+MGA.203,Deep vein thrombosis (brachial vein),HP:0002625,
+MGA.203,Loss of bladder sensation,HP:0002839,
+MGA.203,Urinary incontinence sensation,HP:0000020,
+MGA.203,Chronic abdominal pain,HP:0011458,
+MGA.203,Pain improvement with ketamine-lidocaine infusion,HP:0410302,
+MGA.203,Postural orthostatic tachycardia syndrome (PoTS),HP:0031274,
+MGA.210,Abdominal pain,HP:0012539,
+MGA.210,Headache,HP:0002315,
+MGA.210,Dizziness,HP:0002321,
+MGA.210,Fatigue,HP:0012378,
+MGA.210,Thermoregulatory dysfunction,HP:0004370,
+MGA.210,Sleep disturbance,HP:0031173,
+MGA.210,Joint pain,HP:0002829,
+MGA.210,Redness of the skin,HP:0001014,
+MGA.210,Stool irregularity,HP:0012590,
+MGA.210,Reduced physical activity,HP:0033677,
+MGA.210,Learning difficulties,HP:0001328,
+MGA.294,Headache,HP:0002315,Céphalées Mal de tête
+MGA.294,Brain fog,HP:0011446,Brouillard mental Difficultés de concentration
+MGA.294,Memory impairment,HP:0002354,Troubles de la mémoire
+MGA.294,Fatigue,HP:0012378,Fatigue
+MGA.294,Chills with or without fever,HP:0001945,Frissons avec ou sans fièvre
+MGA.294,Drowsiness,HP:0001262,Somnolence
+MGA.294,Myalgia,HP:0003326,Courbatures Douleurs musculaires
+MGA.294,Dyspnea,HP:0002094,Dyspnée (gêne respiratoire)
+MGA.294,Tachycardia Arrhythmia Palpitations,HP:0001649,Tachycardie Arythmie palpitations
+MGA.294,Hearing loss,HP:0000407,Hypoacousie (baisse de l'audition)
+MGA.294,Blood pressure abnormalities,HP:0002615,Anomalies de la tension artérielle
+MGA.301,Severe fatigue,HP:0012378,"Fatigue chronique et persistante, non soulagée par le repos"
+MGA.301,Dyspnea on exertion,HP:0002090,Essoufflement rapide après une activité physique légère
+MGA.301,Impaired attention,HP:0000739,"Difficultés de concentration, nécessitant davantage de temps pour comprendre"
+MGA.301,Memory impairment,HP:0002354,Difficultés à retenir les informations après lecture
+MGA.301,Working memory impairment,HP:0001927,"Troubles de mémoire de travail, comme oublier des courses ou des mots pendant une conversation"
+MGA.301,Word-finding difficulties,HP:0002451,Émission involontaire de mots inappropriés ou inversions de syllabes
+MGA.301,Palpitations,HP:0001627,"Palpitations fréquentes et soudaines, même au repos"
+MGA.301,Vertigo,HP:0002321,"Vertiges lors de crises nocturnes, parfois associés à des palpitations"
+MGA.301,Normal chest sensation,HP:0030962,Sensation d’oppression thoracique absente
+MGA.301,Nocturnal vertigo,HP:0002011,Réveil nocturne avec vertiges
+MGA.301,Nausea with vomiting,HP:0012186,Vomissements lors de crises nocturnes
+MGA.301,Post-exertional malaise,HP:0001935,Fatigue extrême après des épisodes de crise
+MGA.301,Paresthesia,HP:0003401,"Picotements et fourmillements dans les pieds, apparaissant rapidement en position assise"
+MGA.301,Limb heaviness,HP:0003470,Sensation de jambes lourdes pendant ou après les crises nocturnes
+MGA.301,Anosmia,HP:0002103,Perte temporaire de l’odorat après COVID
+MGA.301,Hypogeusia,HP:0002165,Perte temporaire du goût après COVID
+MGA.301,Tinnitus,HP:0000360,Acouphènes associés aux crises nocturnes
+MGA.301,Normal hearing,HP:0000501,Audition normale en dehors des crises
+MGA.301,Constipation,HP:0002019,"Constipation récente, sans douleur abdominale ni diarrhée"
+MGA.301,Nausea with vomiting,HP:0002011,Vomissements lors de crises nocturnes
+MGA.301,Recurrent urinary tract infections,HP:0002813,"Antécédents d’infections urinaires fréquentes, parfois douloureuses"
+MGA.301,Normal menstruation,HP:0000132,Aucun trouble gynécologique ou menstruel identifié
+MGA.301,Skin depigmentation,HP:0001010,Apparition d’une petite tache dépigmentée sur la cuisse
+MGA.301,Learning difficulties,HP:0001342,"Dégradation des capacités en mathématiques depuis 2021-2022, associée à des difficultés de concentration"
+MGA.301,Impaired attention,HP:0000739,Nécessité de plus de temps pour comprendre les concepts complexes
+MGA.310,Chronic fatigue,HP:0012378,"Fatigue extrême, besoin de dormir 19hjour"
+MGA.310,Hypersomnia,HP:0002189,Augmentation du temps de sommeil (>14h par jour)
+MGA.310,Excessive daytime sleepiness,HP:0001262,"Somnolence persistante, paupières lourdes"
+MGA.310,Attention deficit,HP:0000736,Difficulté de concentration après 5-10 minutes
+MGA.310,Short-term memory impairment,HP:0002354,Obligation de noter pour se souvenir
+MGA.310,Long-term memory impairment,HP:0002553,Souvenirs vagues des événements lointains
+MGA.310,Anomia,HP:0002450,"Recherche du mot exact, contournement du terme"
+MGA.310,Speech articulation impairment,HP:0001337,Inversions ou erreurs dans les mots
+MGA.310,Hyperacusis,HP:0010780,Sensibilité exacerbée aux sons aigus
+MGA.310,Orthostatic dizziness,HP:0001279,"Taches noires lors du lever, perte d’équilibre"
+MGA.310,Orthostatic intolerance,HP:0001278,Sensation de malaise en position debout
+MGA.310,Palpitations,HP:0001627,Battements cardiaques rapides non remarqués
+MGA.310,Gastroesophageal reflux,HP:0002020,Brûlures rétro-sternales
+MGA.310,Intermittent diarrhea,HP:0002014,Épisodes occasionnels de diarrhée
+MGA.310,Abdominal pain,HP:0002027,Douleurs abdominales épisodiques
+MGA.310,Paresthesia,HP:0003401,Picotements intermittents dans le pied gauche
+MGA.310,Transient paralysis episodes,HP:0010856,Blocage total des jambes durant 2-3 jours
+MGA.310,Muscle hypertonia,HP:0001276,Spasmes musculaires résistants à la mobilisation
+MGA.310,New allergies,HP:0003828,Sensibilité accrue à la poussière post-COVID
+MGA.310,Episodic anosmia,HP:0000458,Perte temporaire de l’odorat lors des rhumes
+MGA.310,Post-exercise fatigue,HP:0008054,Épuisement extrême après un effort physique
+MGA.313,Joint pain,HP:0002829,douleurs aux articulations
+MGA.313,Ankle pain,HP:0030832,douleurs aux chevilles
+MGA.313,Knee pain,HP:0030831,douleurs aux genoux
+MGA.313,Wrist pain,HP:0030833,douleurs au poignet droit
+MGA.313,Thumb pain,HP:0030834,douleurs à la base du pouce
+MGA.313,Lower back pain,HP:0003419,douleurs au bas du dos
+MGA.313,Headache,HP:0002315,douleurs à la tête
+MGA.313,Frontal headache,HP:0032453,douleurs au front
+MGA.313,Temporal headache,HP:0032454,douleurs aux tempes
+MGA.313,Photophobia,HP:0000613,sensibilité à la lumière
+MGA.313,Phonophobia,HP:0011100,sensibilité au bruit
+MGA.313,Dizziness,HP:0002321,vertiges
+MGA.313,Neck pain,HP:0003326,douleurs au cou
+MGA.313,Tremor,HP:0001337,tremblements
+MGA.313,Concentration difficulty,HP:0002385,difficulté de concentration
+MGA.313,Memory impairment,HP:0002354,trouble de la mémoire de travail
+MGA.313,Fatigue,HP:0012378,fatigue
+MGA.313,Dyspnea,HP:0002094,essoufflement
+MGA.313,Tachycardia,HP:0001649,accélération du rythme cardiaque
+MGA.313,Chest pain,HP:0100749,douleurs thoraciques
+MGA.313,Blurred vision,HP:0000622,baisse de l'acuité visuelle
+MGA.313,Altered sense of smell,HP:0004408,modification de l'odorat
+MGA.321,MGA.321 Fatigue,HP:0012378,fatigue++
+MGA.321,Insomnia,HP:0100785,insomnies
+MGA.321,Irritability,HP:0000737,irritabilité
+MGA.321,Somnolence,HP:0002329,somnolence
+MGA.321,Headache,HP:0002315,céphalées
+MGA.321,Cognitive impairment,HP:0100543,brouillard mental
+MGA.321,Memory impairment,HP:0002354,troubles de la mémoire
+MGA.321,Anomia,HP:0030829,manque du mot
+MGA.321,Vertigo,HP:0002321,vertiges
+MGA.321,Tremor,HP:0001337,tremblements
+MGA.321,Abnormality of balance,HP:0001252,troubles de l'équilibre
+MGA.321,Anosmia,HP:0000458,perte de l'odorat
+MGA.321,Ageusia,HP:0041051,perte du goût
+MGA.321,Chills,HP:0025142,frissons
+MGA.321,Myalgia,HP:0003326,courbatures
+MGA.321,Weight loss,HP:0001824,amaigrissement
+MGA.321,Decreased appetite,HP:0004396,perte d'appétit
+MGA.321,Night sweats,HP:0030166,sueurs
+MGA.321,Cough,HP:0012735,toux
+MGA.321,Exertional dyspnea,HP:0002875,dyspnée
+MGA.321,Limb heaviness,HP:0033707,jambes lourdes
+MGA.321,Muscle pain,HP:0001324,douleurs musculaires
+MGA.321,Cervical pain,HP:0003325,douleurs cervicales
+MGA.321,Back pain,HP:0003418,douleurs dorsales
+MGA.321,Hearing impairment,HP:0000365,hypoacousie
+MGA.321,Sore throat,HP:0033050,douleurs de gorge
+MGA.321,Rhinorrhea,HP:0031417,rhinorrhée
+MGA.321,Ear pain,HP:0030766,douleurs auriculaires
+MGA.321,Blurred vision,HP:0000622,vision floue
+MGA.321,Dry eyes,HP:0001097,sécheresse oculaire
+MGA.321,Lymphadenopathy,HP:0002716,ganglions gonflés et douloureux
+MGA.321,Urinary urgency,HP:0012738,envies pressantes d’uriner
+MGA.324,Cognitive impairment,HP:0100543,"oublis, difficultés de concentration, incapacité à suivre les cours"
+MGA.324,Headache,HP:0002315,maux de tête
+MGA.324,Photophobia,HP:0000613,intolérance à la lumière
+MGA.324,Phonophobia,HP:0002183,intolérance au bruit
+MGA.324,Fatigue,HP:0012378,fatigue après effort
+MGA.324,Exercise intolerance,HP:0003546,"essoufflement, épuisement après effort"
+MGA.324,Knee pain,HP:0031057,douleurs aux genoux
+MGA.324,Chest pain,HP:0100749,douleur thoracique au sternum
+MGA.324,Neck pain,HP:0033050,douleurs à la nuque
+MGA.324,Sleep disturbance,HP:0002360,"sommeil prolongé, difficulté à se lever"
+MGA.324,Blurred vision,HP:0000622,vision floue
+MGA.324,Urinary urgency,HP:0031450,envie urgente d’uriner
+MGA.324,Weight loss,HP:0001824,perte de poids
+MGA.324,Anorexia,HP:0002039,perte d’appétit
+MGA.324,Depression,HP:0000716,"tristesse intense, pleurs fréquents"
+MGA.324,Dysmenorrhea,HP:0000135,règles plus douloureuses
+MGA.327,Fatigue,HP:0012378,fatigue sévère
+MGA.327,Orthostatic intolerance,HP:0001278,intolérance orthostatique
+MGA.327,Cognitive impairment,HP:0100543,brouillard mental
+MGA.327,Bradyphrenia,HP:0031843,difficulté à réfléchir
+MGA.327,Dysarthria,HP:0001260,difficulté à parler
+MGA.327,Paresthesia,HP:0003401,paresthésies
+MGA.327,Gait disturbance,HP:0001288,instabilité de la marche
+MGA.327,Muscle weakness,HP:0001324,faiblesse musculaire
+MGA.327,Headache,HP:0002315,céphalées frontales fréquentes
+MGA.327,Insomnia,HP:0100785,troubles du sommeil
+MGA.327,Palpitations,HP:0001962,palpitations au lever
+MGA.327,Exertional dyspnea,HP:0002875,dyspnée à l’effort
+MGA.327,Gastritis,HP:0002592,gastrite
+MGA.327,Esophagitis,HP:0002030,œsophagite
+MGA.327,Constipation,HP:0002019,constipation chronique
+MGA.327,Nausea,HP:0002018,nausées
+MGA.327,Weight loss,HP:0001824,amaigrissement
+MGA.327,Anxiety,HP:0000739,anxiété sociale
+MGA.327,Social withdrawal,HP:0033676,retrait social
+MGA.327,Myalgia,HP:0003326,myalgies
+MGA.327,Photophobia,HP:0000613,hypersensibilité à la lumière
+MGA.327,Dizziness,HP:0002321,vertiges
+MGA.327,Syncope,HP:0001279,chutes liées à l’orthostatisme
+MGA.327,Abdominal pain,HP:0002027,douleurs abdominales
+MGA.327,Hyperacusis,HP:0010780,hypersensibilité au bruit
+MGA.328,Fatigue,HP:0012378,fatigue
+MGA.328,Difficulty concentrating,HP:0031987,problèmes de concentration
+MGA.328,Dizziness,HP:0002321,sensations de flottement
+MGA.328,Knee pain,HP:0005106,mal aux genoux à plusieurs reprises
+MGA.328,Anemia,HP:0001903,anémie légère
+MGA.328,Emotional lability,HP:0000712,plus émotive
+MGA.328,Cervicalgia,HP:0003326,nuque et vertèbres cervicales tendues et douloureuses au toucher
+MGA.330,Fever,HP:0001945,"fièvre quotidienne oscillante, pas la nuit"
+MGA.330,Chronic fatigue,HP:0012378,fatigue constante
+MGA.330,Exertional dyspnea,HP:0002875,essoufflement à l'effort
+MGA.330,Pallor,HP:0000998,pâleur
+MGA.330,Post-exertional malaise,HP:0030973,fatigue amplifiée après effort
+MGA.330,Muscle pain,HP:0003326,douleurs musculaires
+MGA.330,Joint pain,HP:0002829,douleurs articulaires
+MGA.330,Abdominal pain,HP:0002027,maux de ventre
+MGA.330,Weight loss,HP:0001824,perte de poids
+MGA.330,Irritability,HP:0000737,"nervosité, petites colères"
+MGA.330,Sleep disturbance,HP:0002360,insomnies
+MGA.330,Chills,HP:0025144,frissons
+MGA.330,Cold intolerance,HP:0002045,sensation de froid permanent
+MGA.330,Chest pain,HP:0100749,douleurs thoraciques après effort
+MGA.330,Social withdrawal,HP:0033676,"mise en bulle, isolement social"
+MGA.330,Exercise intolerance,HP:0003546,"incapacité à faire gym, trottinette"
+MGA.330,Emotional lability,HP:0000712,humeur changeante
+MGA.330,Oppression chest,HP:0031355,oppression thoracique
+MGA.330,Diarrhea,HP:0002014,diarrhée épisodique
+MGA.330,Decreased appetite,HP:0004396,perte d’appétit passée
+MGA.330,Cervical lymphadenopathy,HP:0002716,ganglions cervicaux gonflés
+MGA.330,Dark circles under eyes,HP:0033841,cernes violettes
+MGA.330,Dysautonomia,HP:0012334,dysfonction du système nerveux autonome
+MGA.330,Emotional distress,HP:0000711,"baisse de moral, épuisement"
+MGA.331,Cognitive impairment,HP:0100543,"oublis, difficultés de concentration, incapacité à suivre les cours"
+MGA.331,Headache,HP:0002315,maux de tête
+MGA.331,Photophobia,HP:0000613,intolérance à la lumière
+MGA.331,Phonophobia,HP:0002183,intolérance au bruit
+MGA.331,Fatigue,HP:0012378,fatigue après effort
+MGA.331,Exercise intolerance,HP:0003546,"essoufflement, épuisement après effort"
+MGA.331,Knee pain,HP:0031057,douleurs aux genoux
+MGA.331,Chest pain,HP:0100749,douleur thoracique au sternum
+MGA.331,Neck pain,HP:0033050,douleurs à la nuque
+MGA.331,Sleep disturbance,HP:0002360,"sommeil prolongé, difficulté à se lever"
+MGA.331,Blurred vision,HP:0000622,vision floue
+MGA.331,Urinary urgency,HP:0031450,envie urgente d’uriner
+MGA.331,Weight loss,HP:0001824,perte de poids
+MGA.331,Anorexia,HP:0002039,perte d’appétit
+MGA.331,Depression,HP:0000716,"tristesse intense, pleurs fréquents"
+MGA.331,Dysmenorrhea,HP:0000135,règles plus douloureuses
+MGA.337,Headache,HP:0002315,"céphalées diffuses, lancinantes, holocrâniennes"
+MGA.337,Fatigue,HP:0012378,"fatigue chronique majeure, fatigue importante dès le lever"
+MGA.337,Low-grade fever,HP:0011134,subfébrilité nocturne
+MGA.337,Cough,HP:0012735,toux persistante
+MGA.337,Sore throat,HP:0010200,mal de gorge récurrent
+MGA.337,Nausea,HP:0002018,nausées intenses
+MGA.337,Tremor,HP:0001337,tremblements
+MGA.337,Muscle weakness,HP:0001324,faiblesse musculaire
+MGA.337,Hyperventilation,HP:0003136,hyperventilation avec sensation d’étouffement
+MGA.337,Altered consciousness,HP:0004372,altération de l’état de conscience
+MGA.337,Dysarthria,HP:0001260,dysarthrie
+MGA.337,Hypersalivation,HP:0002305,hypersalivation
+MGA.337,Swallowing difficulty,HP:0002015,fausses routes à la déglutition
+MGA.337,Visual impairment,HP:0000505,troubles visuels transitoires
+MGA.337,Ataxia,HP:0001251,marche instable
+MGA.337,Cognitive impairment,HP:0100543,"trouble de la compréhension écrite, mémoire déficiente"
+MGA.337,Memory impairment,HP:0002354,troubles mnésiques
+MGA.337,Executive function deficit,HP:0033051,trouble cognitif fluctuant
+MGA.337,Speech impairment,HP:0001344,ralentissement de la parole
+MGA.337,Dyscalculia,HP:0033781,difficultés en calcul
+MGA.337,Inappropriate laughter,HP:0000743,rires inappropriés
+MGA.337,Emotional lability,HP:0000712,labilité émotionnelle
+MGA.337,Anxiety,HP:0000739,anxiété de performance
+MGA.337,Hyperacusis,HP:0010780,hyperacousie
+MGA.337,Blurred vision,HP:0000622,vision floue
+MGA.337,Orthostatic intolerance,HP:0012661,intolérance orthostatique
+MGA.337,Hypotension,HP:0002615,hypotension orthostatique probable
+MGA.337,Facial asymmetry,HP:0000324,asymétrie faciale transitoire
+MGA.337,Non-restorative sleep,HP:0031355,sommeil non réparateur
+MGA.337,Vivid dreams,HP:0031354,rêves intenses et réalistes
+MGA.337,Nocturia,HP:0000072,nycturie
+MGA.337,Daytime sleepiness,HP:0002360,somnolence diurne
+MGA.349,Headache,HP:0002315,maux de tête
+MGA.349,Migraine,HP:0002076,migraine hémiplégique
+MGA.349,Fatigue,HP:0012378,fatigue persistante
+MGA.349,Cognitive impairment,HP:0100543,brouillard cérébral
+MGA.349,Esophageal spasm,HP:0002573,spasmes œsophagiens
+MGA.349,Generalized muscle weakness,HP:0003326,faiblesse générale
+MGA.349,Orthostatic hypotension,HP:0001278,hypotension
+MGA.349,Abdominal pain,HP:0002027,douleurs abdominales
+MGA.349,Diarrhea,HP:0002014,diarrhées
+MGA.349,Nausea,HP:0002018,nausées
+MGA.349,Insomnia,HP:0100785,troubles du sommeil
+MGA.349,Irritability,HP:0000737,humeur changeante
+MGA.349,Myalgia,HP:0003326,courbatures
+MGA.349,Anorexia,HP:0002039,perte d'appétit
+MGA.349,Somnolence,HP:0002329,somnolence
+MGA.349,Chest pain,HP:0100749,douleurs thoraciques
+MGA.349,Palpitations,HP:0001962,palpitations
+MGA.349,Dyspnea,HP:0002094,dyspnée
+MGA.349,Arthralgia,HP:0002829,douleurs articulaires
+MGA.349,Back pain,HP:0003418,douleurs dorsales
+MGA.349,Paresthesia,HP:0003401,paresthésies
+MGA.349,Memory impairment,HP:0002354,troubles de la mémoire
+MGA.349,Ageusia,HP:0000224,perte de goût
+MGA.349,Word-finding difficulty,HP:0033842,manque du mot
+MGA.349,Hypoesthesia,HP:0001252,hypoesthésie
+MGA.349,Tremor,HP:0001337,tremblements
+MGA.349,Balance impairment,HP:0001250,trouble de l'équilibre
+MGA.349,Visual impairment,HP:0000505,flou visuel
+MGA.349,Photophobia,HP:0000613,photophobie
+MGA.349,Phonophobia,HP:0002183,phobie du bruit
+MGA.349,Hypoacusis,HP:0000407,baisse de l'audition
+MGA.349,Ear pain,HP:0030766,douleur d'oreille
+MGA.349,Rhinorrhea,HP:0031417,nez qui coule
+MGA.369,Chest pain,HP:0100749,J’ai fort mal au sternum
+MGA.369,Chest tightness,HP:0031355,C’est comme une impression qu’on compresse la poitrine
+MGA.369,Pounding heartbeat,HP:0001962,Comme des coups de marteau
+MGA.369,Palpitations,HP:0001962,Mon cœur va de plus en plus vite
+MGA.369,Cold sweats,HP:0025144,Des sueurs froides
+MGA.369,Pallor,HP:0000970,Il peut être blême
+MGA.369,Nocturnal palpitations,HP:0033775,"Mais lorsqu’on prenait le pouls, il n’y avait pas de tachycardie"
+MGA.369,Impaired concentration,HP:0002315,J’arrive pas à me concentrer
+MGA.369,Impaired executive functioning,HP:0033666,Je ne sais plus trouver mes touches entre guillemets
+MGA.369,Cognitive fluctuation,HP:0033687,C’est vraiment impressionnant... la fois d’après il se réveille et il dit “ah oui c’est ça”
+MGA.369,Memory impairment,HP:0002354,Je dois demander à maman le mot parce que je m’en souviens plus
+MGA.369,Word-finding difficulty,HP:0030784,Tu veux dire ballon... puis tu trouves pas le mot ballon
+MGA.369,Visual blackout,HP:0002324,"Je vois une ruche d’abeille, tout en noir"
+MGA.369,Syncope,HP:0001279,"J’étais par terre et quand on m’a réveillé, je me rends compte que je me suis évanoui"
+MGA.369,Paresthesia,HP:0003401,"J’ai des fourmis dans les pieds, dans le dos"
+MGA.369,Vertigo,HP:0002321,"Ça tourne autour, tu vois la pièce qui bouge"
+MGA.369,Abnormal sensation of body weight,HP:0033832,"Comme si tout mon corps m’aplatissait, tout plat"
+MGA.369,Excessive daytime sleepiness,HP:0001259,Je dors tout le temps
+MGA.369,Post-exertional fatigue,HP:0030973,Je joue un peu au ballon... et je dois aller dormir
+MGA.369,Fatigability,HP:0002322,Parfois je me rends compte que je suis vraiment nul donc j’arrête
+MGA.369,Abnormal sleep pattern,HP:0002360,"Avant je dormais pas à part le soir, maintenant je dors tout le temps"
+MGA.369,Mental exertion-induced fatigue,HP:0033755,J’essaie de lui faire revoir des choses... il est épuisé après 20 minutes
+MGA.369,Exertional dyspnea,HP:0002877,Je monte les escaliers et je suis fort essoufflé
+MGA.369,Reduced exercise tolerance,HP:0003546,"Parfois je dois faire des pauses, je m’arrête sur le banc"
+MGA.369,Exercise-induced sleepiness,HP:0033747,Après un effort... il s’endort inexorablement
+MGA.369,Reduced stamina,HP:0033670,"Avant je jouais à Fortnite pendant longtemps, maintenant je ne sais plus rester aussi longtemps"
+MGA.381,Elevated serum creatine kinase,HP:0003236,élévation des CPK
+MGA.381,Exertional symptom exacerbation,HP:0033555,l’association de l’effort et de l’histamine est le déclencheur de la crise
+MGA.381,Prolonged pain episode,HP:0033746,la crise douloureuse qui a duré deux mois
+MGA.381,Pain,HP:0012531,"des douleurs un peu partout. Des moments aléatoires. Ça a des moments aussi plus forts, des moments aussi moins forts… même dans les dents, la langue, partout"
+MGA.381,Insomnia,HP:0100785,je dors pas hyper bien… maintenant avec ça je m’endors souvent… pas très bon dormant avec des douleurs quoi
+MGA.381,Fatigue,HP:0012378,c’est surtout pour ça que je vais pas à l’école… je suis fatigué… c’est une fatigue où voilà quoi. T'arrives pas bien te lever… t’as pas de hyper bonne énergie
+MGA.381,Exertional dizziness,HP:0002873,je me souviens que quand j’essayais d’aller au basket… souvent j’avais la tête qui tournait parce que quand je faisais trop d’efforts physiques
+MGA.381,Pain-induced limitation of activities,HP:0033695,je devais poser la manette pour respirer… j'avais mal… ça m'empêchait de faire du sport
+MGA.384,Fatigue,HP:0012378,fatigue intense
+MGA.384,Sinus tachycardia,HP:0001649,tachycardie au repos et à l’effort
+MGA.384,Orthostatic hypotension,HP:0001278,hypotension orthostatique
+MGA.384,Dizziness,HP:0002321,vertiges
+MGA.384,Cognitive impairment,HP:0100543,"difficultés de concentration, brouillard mental"
+MGA.384,Excessive daytime sleepiness,HP:0002360,"somnolence, sommeil non récupérateur"
+MGA.384,Weight loss,HP:0001824,amaigrissement
+MGA.384,Anorexia,HP:0002039,perte d’appétit
+MGA.384,Pallor,HP:0000998,pâleur marquée
+MGA.384,Dry skin,HP:0000958,peau très sèche
+MGA.384,Raynaud phenomenon,HP:0007430,doigts blancs
+MGA.384,Palpitations,HP:0001962,palpitations
+MGA.384,Sleep disturbance,HP:0002360,troubles du sommeil
+MGA.384,Emotional lability,HP:0000712,"humeur changeante, irritabilité"
+MGA.384,Night sweats,HP:0030166,sueurs
+MGA.384,Heat intolerance,HP:0002046,bouffées de chaleur
+MGA.384,Headache,HP:0002315,céphalées
+MGA.384,Memory impairment,HP:0002354,troubles de la mémoire
+MGA.384,Tremor,HP:0001337,tremblements
+MGA.384,Balance disorder,HP:0001250,trouble de l'équilibre
+MGA.384,Shortness of breath,HP:0002094,essoufflements
+MGA.384,Chest pain,HP:0100749,douleurs thoraciques
+MGA.384,Cough,HP:0012735,toux
+MGA.384,Chest tightness,HP:0031352,oppression thoracique
+MGA.384,Nausea,HP:0002018,nausées
+MGA.384,Sore throat,HP:0012531,mal de gorge
+MGA.384,Rhinorrhea,HP:0031417,rhinorrhée
+MGA.384,Skin desquamation,HP:0001052,desquamation
+MGA.384,Visual impairment,HP:0000505,baisse de la vision
+MGA.384,Blood pressure abnormality,HP:0032263,anomalies de la tension artérielle
+MGA.384,Proteinuria,HP:0000093,protéinurie
+MGA.384,Hematuria,HP:0000790,érythrocytes dans les urines
+MGA.384,Pyrexie,HP:0001945,"il a de la fièvre, température 37,5 - 38"
+MGA.384,Pericarditis,HP:0001632,"épaississement du péricarde, péricardite diagnostiquée"
+MGA.384,Tachycardia,HP:0001649,"palpitations, cœur battait trop vite, 170 bpm, Holter avec pics"
+MGA.384,Fatigue,HP:0012378,"KO, complètement KO, resté fatigué longtemps, fatigue persistante"
+MGA.384,Dizziness,HP:0002321,"vertiges quand je bouge vite, vertiges après effort"
+MGA.384,Difficulty concentrating,HP:0031987,"impossible de me concentrer, temps de latence, perte d'attention"
+MGA.384,Memory impairment,HP:0002354,"mémoire moins bonne qu’avant, un peu dégradée"
+MGA.384,Language impairment,HP:0002465,"je perds mes mots, je ne trouve pas le mot qu'il faut"
+MGA.384,Paresthesia,HP:0003401,"fourmillements dans les pieds, ça va ça vient"
+MGA.384,Muscle weakness,HP:0001324,"ma force lâche, impression de perte de force dans la jambe"
+MGA.384,Exertional dyspnea,HP:0002875,essoufflement en montant les escaliers
+MGA.402,Fatigue,HP:0012378, ik voel me altijd moe  
+MGA.402,Impaired concentration,HP:0100664,Concentratiestoornissen
+MGA.402,Cognitive impairment,HP:0100543,"Brain fog, geheugenstoornissen"
+MGA.402,Headache,HP:0002315,Chronische hoofdpijn
+MGA.402,Dizziness,HP:0002321,Duizeligheid ( ik viel op de grond  )
+MGA.402,Insomnia,HP:0100785,Slapeloosheid (inslaap- en doorslaapproblemen)
+MGA.402,Irritability,HP:0000737,prikkelbaarheid
+MGA.402,Mood disorder,HP:0000712,Stemmingsstoornissen
+MGA.402,Postural orthostatic tachycardia syndrome,HP:0012378,
+MGA.402,Abdominal pain,HP:0002027,Intermitterende buikpijn
+MGA.402,Nausea,HP:0002018,Misselijkheid ( soms heb ik pijn… buik  )
+MGA.402,Lymphadenopathy,HP:0002716,Voorbijgaande adenopathieën
+MGA.402,Rash,HP:0000988,Recente allergische huidreactie
+MGA.402,Decreased appetite,HP:0004396, ik eet heel weinig  
+MGA.402,Heat intolerance,HP:0002046,Overgevoeligheid voor warmte
+MGA.402,Cold sensitivity,HP:0025142,Overgevoeligheid voor koude
+MGA.402,Xerosis cutis,HP:0000958,droge huid
+MGA.405,Brain fog,HP:0033630,brouillard mental
+MGA.405,Impaired concentration,HP:0100542,troubles de la concentration
+MGA.405,Memory impairment,HP:0002354,troubles de la mémoire
+MGA.405,Anomia,HP:0002371,difficultés d’évocation lexicale
+MGA.405,Vertigo,HP:0002321,vertiges
+MGA.405,Paresthesia,HP:0003401,paresthésies
+MGA.405,Tremor,HP:0001337,tremblements
+MGA.405,Hypotension,HP:0002615,malaises hypotensifs
+MGA.405,Tachycardia,HP:0001649,tachycardie
+MGA.405,Postural orthostatic tachycardia syndrome,HP:0012378,intolérance orthostatique
+MGA.405,Chronic fatigue,HP:0012378,fatigue chronique sévère
+MGA.405,Post-exertional malaise,HP:0030973,aggravation liée aux efforts physiques ou cognitifs
+MGA.405,Irritability,HP:0000737,irritabilité
+MGA.405,Depression,HP:0000716,baisse du moral
+MGA.405,Myalgia,HP:0003326,douleurs musculaires
+MGA.405,Arthralgia,HP:0002829,douleurs articulaires
+MGA.405,Muscle weakness,HP:0001324,faiblesse
+MGA.405,Fatigability,HP:0003674,fatigabilité
+MGA.405,Tinnitus,HP:0000360,acouphènes
+MGA.405,Dry eye,HP:0001097,sécheresse oculaire
+MGA.405,Macular drusen,HP:0001134,
+MGA.405,Rash,HP:0000988,éruptions cutanées transitoires
+MGA.412,Fatigue,HP:0012378,fatigue
+MGA.412,Muscle weakness,HP:0001324,difficulté à se maintenir assise ou debout
+MGA.412,Mental fatigue,HP:0100887,brouillard mental
+MGA.412,Dysarthria,HP:0001260,mauvaise prononciation des mots
+MGA.412,Word-finding difficulties,HP:0030784,inversion des syllabes ou mauvais mots
+MGA.412,Vertigo,HP:0002321,vertiges
+MGA.412,Impaired balance,HP:0002321,"perte d’équilibre, difficulté à maîtriser ses mouvements"
+MGA.412,Orthostatic dizziness,HP:0001278,vertiges en changeant de position
+MGA.412,Short-term memory impairment,HP:0033687,oubli des événements immédiats
+MGA.412,Blurred vision,HP:0000622,"vision floue, difficulté à faire la mise au point"
+MGA.412,Photophobia,HP:0000613,lumière trop forte ou trop blanche provoquant douleur
+MGA.412,Insomnia,HP:0100785,insomnie
+MGA.412,Hypersomnia,HP:0001906,dormir 12–13 heures
+MGA.412,Unrefreshing sleep,HP:0033666,réveil sans sensation de sommeil réparateur
+MGA.412,Sensory hypersensitivity,HP:0100724,"intolérance au bruit, à la lumière, aux odeurs fortes"
+MGA.412,Hyperacusis,HP:0010780,bruit comme déclencheur de malaise
+MGA.412,Dyspnea,HP:0002094,difficulté à inspirer à fond
+MGA.412,Chest tightness,HP:0011944,oppression thoracique
+MGA.412,Palpitations,HP:0001962,cœur qui s’emballe
+MGA.412,Headache,HP:0002315,maux de tête
+MGA.412,Temporal headache,HP:0001322,pression sur les tempes
+MGA.412,Neck pain,HP:0000476,douleurs cervicales
+MGA.412,Exercise-induced headache,HP:0030976,migraines aggravées par l’effort
+MGA.412,Arthralgia,HP:0002829,douleurs articulaires
+MGA.412,Myalgia,HP:0003326,douleurs musculaires
+MGA.412,Costal pain,HP:0030833,douleurs aux côtes
+MGA.412,Sore throat,HP:0010300,maux de gorge à la fatigue
+MGA.412,Nausea,HP:0002018,nausées
+MGA.412,Esophageal spasm,HP:0002578,spasmes œsophagiens avec brûlures à la déglutition
+MGA.412,Urinary urgency,HP:0000012,envie urgente d’uriner
+MGA.412,Bladder pain,HP:0031622,douleur vésicale
+MGA.412,Phantosmia,HP:0033698,goûts fantômes
+MGA.412,Migraine,HP:0002076,migraines
+MGA.446,Transient anosmia,HP:0000458,
+MGA.446,Cough,HP:0012735,
+MGA.446,Thoracic pain,HP:0032408,
+MGA.446,Chest pain,HP:0100749,
+MGA.446,Exertional dyspnea,HP:0002875,effort exhaustion
+MGA.446,Fatigue,HP:0012378,tiredness
+MGA.446,Memory impairment,HP:0002354,memory problem
+MGA.446,Depressed mood,HP:0000716,depressive feelings
+MGA.446,Vestibular dysfunction,HP:0001751,
+MGA.450,Extreme fatigue,HP:0012378,fatigue extrême qui l’empêche totalement de fonctionner
+MGA.450,Headache,HP:0002315,"maux de tête+++qui s’aggravent (ma tête brûle, cogne, se contracte)"
+MGA.450,Nausea,HP:0002018,nausées
+MGA.450,Insomnia,HP:0100785,impossibilité de dormir tellement c’est douloureux
+MGA.450,Photophobia,HP:0000613,impossibilité de regarder un écran (trop de lumière)
+MGA.450,Phonophobia,HP:0010780,impossibilité de regarder un écran (trop de bruits)
+MGA.450,Tremor,HP:0001337,tremblement à l’intérieur du corps
+MGA.450,Memory impairment,HP:0002354,"trouble de la mémoire (cherche mes mots, réagit en retard aux discussions)"
+MGA.450,Dysphagia,HP:0002015,difficulté soudaine à déglutir pendant les repas
+MGA.450,Exercise intolerance,HP:0003546,se sentait vite essoufflée
+MGA.450,Chest tightness,HP:0031352,oppression dans la poitrine
+MGA.450,Migraine,HP:0002076,maux de tête ressemblant à des migraines
+MGA.450,Fatigability,HP:0012379,fatigue avec maux de tête après chaque virus
+MGA.460,Fatigabilité marquée,HP:0012378,
+MGA.460,Intolérance à l’effort (malaise post-effort),HP:0030974,
+MGA.460,Troubles de l’attention,HP:0007018,
+MGA.460,Troubles de la mémoire,HP:0002354,
+MGA.460,Douleurs abdominales,HP:0002027,
+MGA.460,Céphalées,HP:0002315,
+MGA.460,Nausée,HP:0002018,
+MGA.460,Intolérance orthostatique,HP:0012530,
+MGA.460, il devenait tout mou,il fallait qu’il se couche par terre  ,","
+MGA.461,Orthostatic tachycardia,HP:0004926,Tachycardie à l’orthostatisme
+MGA.461,Orthostatic intolerance,HP:0001278,Orthostatisme objectivé
+MGA.461,Presyncope,HP:0001279,malaise pré-syncopal
+MGA.461,Palpitations,HP:0001962,palpitations
+MGA.461,Hot flashes,HP:0002046,Bouffées de chaleur
+MGA.461,Fatigue,HP:0012378,fatigue marquée
+MGA.461,Exercise intolerance,HP:0003546,Efforts légers seulement
+MGA.461,Difficulty concentrating,HP:0000736,Difficultés de concentration
+MGA.461,Cognitive impairment,HP:0031843,brouillard mental
+MGA.461,Memory impairment,HP:0002354,Troubles de mémorisation
+MGA.461,Anomia,HP:0030784,Manque du mot
+MGA.461,Dizziness,HP:0002321,vertiges
+MGA.461,Paresthesia,HP:0003401,paresthésies
+MGA.461,Anxiety,HP:0000739,anxiété
+MGA.461,Depressive mood,HP:0000716,symptômes dépressifs
+MGA.461,Abdominal pain,HP:0002027,douleurs abdominales
+MGA.461,Nausea,HP:0002018,nausées
+MGA.461,Diarrhea,HP:0002014,selles défaites
+MGA.461,Myalgia,HP:0003326,myalgies
+MGA.461,Back pain,HP:0003418,dorsalgies
+MGA.461,Muscle weakness,HP:0001324,faiblesse des membres
+MGA.461,Dysphagia,HP:0002015,dysphagie légère
+MGA.466,Extreme fatigue,HP:0012378,fatigue extrême qui l’empêche totalement de fonctionner
+MGA.466,Headache,HP:0002315,"maux de tête+++qui s’aggravent (ma tête brûle, cogne, se contracte)"
+MGA.466,Nausea,HP:0002018,nausées
+MGA.466,Insomnia,HP:0100785,impossibilité de dormir tellement c’est douloureux
+MGA.466,Memory impairment,HP:0002354,"trouble de la mémoire (cherche mes mots, réagit en retard aux discussions)"
+MGA.467,Syncope,HP:0001279,de perdre connaissance une ou deux fois
+MGA.467,Vertige,HP:0002321,"j’ai des vertiges, tête qui tourne"
+MGA.467,Instabilité posturale,HP:0002315,"je perds l’équilibre, je me penche vers la gauche"
+MGA.467,Fatigue,HP:0001250,toujours très fatigué
+MGA.467,Sommeil non réparateur,HP:0002924,fatigué même après 12 heures de sommeil
+MGA.467,Céphalée frontale,HP:0000240,maux de tête à l’avant du crâne
+MGA.467,Vision floue intermittente,HP:0000622,vision floue comme un flash
+MGA.467,Hypoesthésie MI droit,HP:0006842,je ressens moins bien la jambe droite
+MGA.467,Faiblesse MI droit,HP:0007340,jambe droite plus faible
+MGA.467,Paresthésies,HP:0003401,courants électriques dans les épaules
+MGA.467,Dysarthrie légère,HP:0001260,"la langue fourche, engourdie"
+MGA.467,Trouble de l’évocation lexicale,HP:0000738,mots qui mettent du temps à venir
+MGA.467,Tachycardie,HP:0001649,cœur plus rapide
+MGA.467,Intolérance orthostatique,HP:0002171,mal surtout en position debout
+MGA.467,Incontinence urinaire,HP:0000020,
+MGA.473,Déclin cognitif acquis,HP:0001268,
+MGA.473,Perte de mémoire,HP:0002354,
+MGA.473,Trouble de la mémoire de travail,HP:0007019,
+MGA.473,Troubles de l’attention,HP:0000739,
+MGA.473,Ralentissement cognitif (bradyphrénie),HP:0031845,
+MGA.473,Absences épisodes de vide,HP:0031983,
+MGA.473,Inhibition émotionnelle,HP:0000716,
+MGA.473,Minimisation des symptômes,HP:0034332,
+MGA.473,Peur de paraître malade,HP:0034272,
+MGA.473,Régression développementale,HP:0002376,
+MGA.473,Difficultés d’apprentissage acquises,HP:0001328,
+MGA.473,Déscolarisation secondaire,HP:0033752,
+MGA.473,Baisse du fonctionnement adaptatif,HP:0032872,
+MGA.473,Anxiété sévère,HP:0000739,
+MGA.473,Phobie scolaire,HP:0030252,
+MGA.473,Pleurs excessifs,HP:0002303,
+MGA.473,Évitement,HP:0000725,
+MGA.473,Céphalées,HP:0002315,
+MGA.473,Arthralgies,HP:0002829,
+MGA.473,Asthme,HP:0002099,
+MGA.473,Migraine,HP:0002076,migraines de fou
+MGA.473,Photophobia,HP:0000613,la lumière te gênait ?
+MGA.473,Memory impairment,HP:0002354,souvent j'oublie
+MGA.473,Impaired concentration,HP:0000736,"des fois, je ne retiens pas"
+MGA.473,Disorientation,HP:0001289,"il se perd, ou il ne sait plus où il était"
+MGA.473,Abdominal pain,HP:0002027,il a souvent mal au ventre
+MGA.473,Diarrhea,HP:0002014,diarrhée
+MGA.485,Fatigue,HP:0012378,Je suis très très fatiguée
+MGA.485,Insomnia,HP:0100785,j'ai l'insomnie / je ne dors pas beaucoup
+MGA.485,Migraine,HP:0002076,très très migraine / une graine de fou
+MGA.485,Somnolence,HP:0001262,"pendant les cours, là, je m'endors"
+MGA.485,Memory impairment,HP:0002354,je n'arrêtais pas d'oublier
+MGA.485,Amnesia,HP:0000855,je ne me rappelle plus du tout que j'avais religion
+MGA.485,Impaired concentration,HP:0000736,j'oublie directement ce qui se passe à l'instant
+MGA.485,Distractibility,HP:0000732,quand il y a un bruit... j'oublie directement ce qui se passe
+MGA.485,Hyperacusis,HP:0000708,"quand il y a des bruits, ça me dérange énormément"
+MGA.485,Headache aggravated by noise,HP:0031936,juste un mini-bruit... ça augmente la migraine
+MGA.485,Chest pain,HP:0100749,j'ai vraiment très très mal au cœur
+MGA.485,Palpitations,HP:0001962,je sens mon cœur qui bat très fort... même je l'entends
+MGA.485,Abdominal pain,HP:0002027,j'ai souvent mal... au ventre
+MGA.485,Constipation,HP:0002019,de la constipation parfois
+MGA.485,Irregular menstruation,HP:0000858,c'est hyper irrégulier
+MGA.485,Menorrhagia,HP:0000132,"quand ça vient, c'est très très fort"
+MGA.485,Dysmenorrhea,HP:0000857,"les crampes, c'est horrible"
+MGA.485,Anosmia (past episode),HP:0000458,"deux ans, j'avais vraiment plus... l'odeur"
+MGA.485,Ageusia (past episode),HP:0041051,"deux ans, j'avais vraiment plus le goût"
+MGA.486,Fatigue,HP:0012378,"elle est épuisée, elle dort tout le temps"
+MGA.486,Hypersomnia,HP:0002360,elle dort tout le temps
+MGA.486,Exercise intolerance,HP:0003546,je ne suis pas capable d'y aller / trop épuisée
+MGA.486,School refusal,HP:0007023,pas envie d'aller à l'école
+MGA.486,Social withdrawal,HP:0000725,elle dit oui puis n'y va pas
+MGA.486,Shyness,HP:0100962,c'est une grande timide
+MGA.486,Avoids eye contact,HP:0000819,elle fuyait notre regard
+MGA.486,Stereotyped finger movements,HP:0000733,elle bougeait ses doigts
+MGA.486,Body image disturbance,HP:0031488,problème avec son aspect physique
+MGA.486,Memory impairment,HP:0002354,elle n'a pas mémorisé
+MGA.486,Impaired concentration,HP:0000736,elle passe des heures devant sa feuille
+MGA.486,Learning difficulty,HP:0001328,elle étudie des choses qui sont fausses
+MGA.486,Emotional lability,HP:0000712,elle pleurait
+MGA.486,Post-exertional malaise,HP:0030973,tout me demande beaucoup d'effort
+MGA.486,Reduced physical activity,HP:0006856,beaucoup de difficultés à réaliser mes activités habituelles
+MGA.495,Headache (céphalées),HP:0002315,les maux de tête … une sensation de compression
+MGA.495,Photophobia,HP:0000613,"j’avais mal aux yeux, à la lumière"
+MGA.495,Eye redness,HP:0000480,je me suis réveillée un jour avec les yeux rouges
+MGA.495,Blurred vision,HP:0000622,je voyais complètement flou
+MGA.495,Uveitis,HP:0000554,il y a une uvéite bilatérale
+MGA.495,Optic disc edema (papilledema),HP:0001085,ils ont vu qu’il y avait un œdème au niveau du nerf optique
+MGA.495,Fatigue,HP:0002355,je suis obligée de faire des siestes pour tenir
+MGA.495,Postural fatigue,HP:0030974,la fatigue va monter beaucoup plus vite si je suis assise ou debout
+MGA.495,Memory impairment,HP:0002354,la mémoire n’est plus super bonne
+MGA.495,Impaired concentration,HP:0000736,j’ai plus de mal à comprendre les mots
+MGA.495,Orthostatic intolerance,HP:0001278,je fais des chutes de tension quand je me lève
+MGA.495,Dizziness,HP:0002321,j’ai des petites tournes
+MGA.495,Constipation,HP:0002019,c’est dur parfois
+MGA.495,Diarrhea,HP:0002014,et parfois la diarrhée aussi
+MGA.495,Abdominal pain,HP:0002027,ça fait mal au ventre
+MGA.495,Dysmenorrhea,HP:0000140,j’ai plus mal maintenant qu’avant
+MGA.495,Myalgia,HP:0003326,des douleurs qui viennent un peu partout… très mal
+MGA.495,Unilateral pain,HP:0030181,c’est du côté droit de mon corps
+MGA.495,Palpitations,HP:0001962,à un moment il bat fort
+MGA.495,Hyposmia,HP:0004409,mon odorat est moins bon
+MGA.495,Visual impairment,HP:0000505,c’est beaucoup moins net qu’avant
+MGA.502,Fatigue chronique sévère,HP:0012378, fatigue majeure  
+MGA.502,Hypersomnolence,HP:0001262, hypersomnolence  
+MGA.502,Intolérance à l’effort,HP:0003546, diminution d’endurance  
+MGA.502,Syncope,HP:0001279, malaises scolaires  
+MGA.502,Perte de tonus musculaire,HP:0002523, pertes de tonus  
+MGA.502,Insomnie,HP:0100785, insomnies majeures (plusieurs nuits sans sommeil)  
+MGA.502,Anorexie,HP:0002039, anorexie  
+MGA.502,Perte de poids,HP:0001824, perte pondérale importante (BMI à 16 ; poids à 45 kg en février 2025)  
+MGA.502,Douleur thoracique,HP:0100749, douleurs thoraciques  
+MGA.502,Vertiges,HP:0002321, vertiges  
+MGA.502,Nausées,HP:0002018," vertiges, nausées  "
+MGA.502,Constipation,HP:0002019, constipation sévère  
+MGA.502,Tachycardie sinusale,HP:0011675, tachycardie sinusale à 141 bpm  
+MGA.502,Lombalgie aiguë,HP:0003419, douleurs lombaires aiguës majorées  
+MGA.502,Vomissements,HP:0002013, vomissements  
+MGA.502,Parésie,HP:0002376, parésie transitoire des extrémités  
+MGA.502,Troubles attentionnels,HP:0000736, Troubles attentionnels (HP:0000736)  
+MGA.502,Troubles mnésiques récents,HP:0002354, Troubles mnésiques récents (HP:0002354)  
+MGA.502,Intolérance orthostatique,HP:0001278, Intolérance orthostatique (HP:0001278)  
+MGA.502,Dyspnée d’effort,HP:0002875, Dyspnée d’effort (HP:0002875)  
+MGA.502,Douleurs abdominales,HP:0002027, Douleurs abdominales (HP:0002027)  
+MGA.502,Aménorrhée secondaire,HP:0000869, Aménorrhée secondaire (HP:0000869)  
+MGA.502,Dysménorrhée sévère,HP:0030271, Dysménorrhée sévère (HP:0030271)  
