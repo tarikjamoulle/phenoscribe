@@ -1,0 +1,20 @@
+# Phenoscribe configuration
+
+llm:
+  provider: "openai"          # openai | anthropic | ollama
+  model: "gpt-4o"             # model name for the chosen provider
+  ollama_base_url: "http://localhost:11434"  # only used if provider is ollama
+
+transcription:
+  model: "large-v3"           # faster-whisper model name
+  language: "fr"              # audio language
+  device: "cpu"               # cpu | cuda | auto
+
+output:
+  format: "semicolon"         # semicolon | purl
+  path: "output/results.xlsx"
+
+paths:
+  chroma_db: "data/chroma_db"
+  jobs_db: "data/jobs.db"
+  hpo_obo: "data/hpo/hp.obo"

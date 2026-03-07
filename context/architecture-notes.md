@@ -1,0 +1,160 @@
+# HPO Identifier — Architecture Notes
+
+## Problem
+A GP doing long COVID research needs to automate his manual pipeline:
+Audio interview → Transcribe → Remove PII → Extract HPO phenotype codes → Structured output
+
+Currently done manually using various LLM tools. ~150 existing recordings, ongoing use.
+
+## Pipeline Flow
+
+```
+Audio file (.wav/.mp3)
+    │
+    ▼
+[1. faster-whisper] ── local transcription (French-tuned Whisper model)
+    │
+    ▼
+Raw transcript (text)
+    │
+    ▼
+[2. OpenMed] ── local PII detection & redaction (French medical, 97.97% F1)
+    │
+    ▼
+PII-redacted transcript
+    │
+    ▼
+[3. LLM — symptom extraction] ── extract symptoms + patient verbatim from text
+    │                               (API-based, PII already removed)
+    ▼
+List of (symptom_description, patient_verbatim) pairs
+    │
+    ▼
+[4. ChromaDB] ── vector search: symptom → top-K HPO candidates
+    │               (17K HPO terms + synonyms embedded locally)
+    ▼
+Top-K HPO candidates per symptom
+    │
+    ▼
+[5. LLM — HPO judge] ── pick best HPO term from shortlist per symptom
+    │
+    ▼
+Final (HPO_term, HPO_code, patient_verbatim) triplets
+    │
+    ▼
+[6. openpyxl] ── Excel output matching GP's existing format
+```
+
+## Tech Stack (Locked)
+
+| Step | Tool | Why |
+|------|------|-----|
+| Transcription | **faster-whisper** | 2-4x faster than Whisper, pip install, French-tuned models available (WER 8.15%). Phone recordings — test first, add noise reduction later if needed |
+| PII Detection | **OpenMed** (HuggingFace) | 97.97% F1 on French medical text, 55+ entity types, Apache 2.0, fully local |
+| LLM (extraction + judging) | **Direct API + thin config** | LLM-agnostic — swap OpenAI/Anthropic/Ollama via config. PII stripped before API call |
+| HPO Search | **ChromaDB** (embedded) | Zero-infra, Python-native, persists to disk. 17K terms is tiny |
+| Excel Output | **openpyxl** | Standard Python Excel lib |
+
+## Output Format
+
+Target format (from GP's existing manual work):
+```
+Patient_ID | observation_source_value
+MGA.014    | Transient anosmia (HP:0030447); Cough (HP:0012735); Fatigue (HP:0012378) [tiredness]; ...
+```
+
+Standardized triplets separated by `;`:
+- HPO Term (HP:code) [patient verbatim]
+
+## Key Design Decisions
+
+1. **Hybrid HPO matching**: LLM identifies symptoms in natural language → vector search gets top-K HPO candidates → LLM picks from bounded shortlist. Prevents hallucinated codes.
+
+2. **PII before LLM**: All PII redaction happens locally (OpenMed) BEFORE any text reaches an external API. GDPR-safe by design.
+
+3. **LLM-agnostic**: Thin config layer — provider + model in a config file. No LiteLLM dependency.
+
+4. **Pipeline-first**: No UI for now. CLI/script that processes batch recordings. UI comes later.
+
+## Constraints
+
+- **GDPR + Belgian health data law**: PII must never leave local machine
+- **LLM-agnostic**: Must work with any provider (OpenAI, Anthropic, local Ollama)
+- **Local-first**: Transcription and PII redaction always local
+- **Validation**: 1003 manually coded rows exist as ground truth
+
+## HPO Ontology
+
+- ~17,000 terms organized hierarchically
+- Available as OBO/OWL file
+- Each term has: ID (HP:XXXXXXX), name, synonyms, parent categories
+- Need both leaf-level (specific) and category-level output
+
+## PII Strategy: Pseudonymization (not anonymization)
+
+Instead of destroying PII context (e.g., replacing "Dr. John" with "[REDACTED]"), use **pseudonymization**:
+- `Dr. John` → `Dr. 1`, `Dr. Mary` → `Dr. 2` (consistent throughout transcript)
+- `Hôpital Erasme` → `Hospital 1`
+- `March 2023` → `Date 1`
+- Non-identifying context preserved: "grandmother", "school", "work" stay as-is
+
+Implementation:
+1. OpenMed detects PII entities with type labels
+2. Replacement layer assigns numbered pseudonyms per entity type (PERSON_1, DATE_1, LOCATION_1...)
+3. Mapping table kept locally (never sent to API)
+4. Pseudonymized text sent to LLM — relationships and temporal flow preserved
+
+## Open Questions (Stress Testing)
+
+- [x] What happens when PII redaction removes medically relevant context? → Pseudonymization preserves context
+- [x] Error handling: what if one step fails mid-batch? → Retry once, then log failure. SQLite job tracker.
+
+## LLM Call Strategy: Two Separate Calls
+
+Two LLM calls per recording (not collapsed into one):
+1. **Symptom extraction**: transcript (French) → list of (patient_verbatim, clinical_term, context) triplets
+   - LLM acts as "clinical translator": colloquial French patient language → standard English medical concept
+   - e.g., "j'ai mal au ventre" → clinical_term: "abdominal pain", verbatim stays French
+   - e.g., "dresses in black, emotional changes" → clinical_term: "emotional instability"
+   - Also captures temporal/severity context (onset, frequency, triggers)
+   - Output as structured JSON
+   - **Language strategy**: clinical_term always in English (for HPO matching), patient_verbatim always in original French (for GP's output)
+2. **HPO judging**: clinical_term + top-5 HPO candidates from ChromaDB → best match
+
+Why separate:
+- Separation of concerns — prevents HPO matching from being biased by extraction context
+- Each call has a focused, testable prompt
+- Easier to debug which step went wrong
+
+Cost analysis (150 recordings):
+- ~6K tokens per recording × 150 = ~900K tokens total
+- Estimated cost: $3-5 (Sonnet) to $15 (GPT-4o) for full batch
+- **Cost is negligible** — separation of concerns is worth it
+
+## Batch Processing & State
+
+- **SQLite** single-file database tracks pipeline state
+- Schema: `jobs (id, audio_file, status, step_failed, error_msg, retries, created_at, updated_at)`
+- Status flow: `pending → processing → completed | failed`
+- Retry policy: 1 automatic retry, then mark failed with error context
+- GP can re-run failures after investigating logs
+- [x] How to handle inconsistent transcript quality? → Test first with raw audio, add noise reduction later if needed
+- [x] What's the right top-K for HPO candidate retrieval? → K=5, tune later against ground truth
+- [x] How to validate pipeline output against ground truth at scale? → Hierarchical scoring with partial credit
+
+## Validation & Scoring
+
+Ground truth: 1003 manually coded rows in Excel.
+
+Scoring model (per symptom match):
+- **Exact match** (same HP code) = 1.0
+- **Parent/child** (1 hop in HPO tree) = 0.75
+- **Grandparent/grandchild** (2 hops) = 0.5
+- **Beyond 2 hops or wrong** = 0
+- **Missed symptom** (in ground truth but not extracted) = 0 (recall penalty)
+- **Hallucinated symptom** (extracted but not in ground truth) = precision penalty
+
+Uses HPO `is_a` relationships from OBO file to walk the hierarchy.
+Aggregate score per recording + across full dataset to track improvements.
+- [x] Error handling: what if one step fails mid-batch? → Retry once, then log. SQLite job tracker.
+- [x] Language gap (French interviews, English HPO)? → LLM outputs clinical_term in English, verbatim stays French
