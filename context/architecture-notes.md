@@ -86,6 +86,10 @@ MGA.014    | Transient anosmia (HP:0030447); Cough (HP:0012735); Fatigue (HP:001
 Standardized triplets separated by `;`:
 - HPO Term (HP:code) [patient verbatim]
 
+### Cohort prevalence
+
+`phenoscribe aggregate <results.xlsx>` reads any of the three output formats and produces a per-term prevalence list (CSV) plus a horizontal bar chart (PNG) of the top N terms. The chart matches the style used in the Plovdiv poster and Figure 1 of the children's paper — bars sorted long-to-short, term name with HP code on the y-axis, patient count on the x-axis.
+
 ## Key Design Decisions
 
 1. **Hybrid HPO matching**: LLM identifies symptoms in natural language → vector search gets top-K HPO candidates → LLM picks from bounded shortlist. Prevents hallucinated codes.

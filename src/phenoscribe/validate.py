@@ -6,15 +6,13 @@ ancestor, which the previous strictly-up/strictly-down walk missed.
 """
 
 import logging
-import re
-from collections import defaultdict, deque
+from collections import deque
 
 import hpotk
-import openpyxl
+
+from phenoscribe.aggregate import load_patient_codes
 
 logger = logging.getLogger(__name__)
-
-HP_CODE_PATTERN = re.compile(r"HP:\d{7}")
 
 _HPO_CACHE = None
 
@@ -30,44 +28,13 @@ def _get_hpo():
 
 
 def load_codes_from_excel(path: str) -> dict[str, set[str]]:
-    """Extract HPO codes per patient from an Excel file.
+    """Extract HPO codes per patient from an Excel file (any output format).
 
-    Handles detailed (per-row), semicolon, and PURL formats.
+    Wraps `aggregate.load_patient_codes` and discards term names.
     Returns dict of patient_id -> set of HP codes.
     """
-    wb = openpyxl.load_workbook(path)
-    ws = wb.active
-    headers = [cell.value for cell in ws[1]]
-
-    patient_codes: dict[str, set[str]] = defaultdict(set)
-
-    if "HPO Code Purl" in headers:
-        id_col = headers.index("CASE ID")
-        purl_col = headers.index("HPO Code Purl")
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            pid = row[id_col]
-            purl = row[purl_col]
-            if pid and purl:
-                match = re.search(r"HP_(\d{7})", str(purl))
-                if match:
-                    patient_codes[str(pid)].add(f"HP:{match.group(1)}")
-    elif "HPO Code" in headers:
-        id_col = headers.index("Patient_ID")
-        code_col = headers.index("HPO Code")
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            pid, code = row[id_col], row[code_col]
-            if pid and code and str(code).startswith("HP:"):
-                patient_codes[str(pid)].add(str(code))
-    else:
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            pid = row[0]
-            obs = str(row[1]) if row[1] else ""
-            if pid:
-                codes = set(HP_CODE_PATTERN.findall(obs))
-                if codes:
-                    patient_codes[str(pid)] = codes
-
-    return dict(patient_codes)
+    rich = load_patient_codes(path)
+    return {pid: {entry["hpo_id"] for entry in entries} for pid, entries in rich.items()}
 
 
 def hop_distance(hpo, a: str, b: str, max_hops: int = 2) -> int | None:

@@ -20,6 +20,7 @@ dependencies = [
     "sentencepiece>=0.2.0",
     "pyannote.audio>=3.1.0",
     "hpo-toolkit>=0.5,<1.0",
+    "matplotlib>=3.7",
 ]
 
 [project.scripts]
