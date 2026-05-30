@@ -110,6 +110,8 @@ python scripts/validate.py --ground-truth context/CRS__under20_35_HPO_corr.xlsx 
 
 ### Task 3: `phenoscribe aggregate` cohort command
 
+> **Shipped 2026-05-30** in PR #3. Verified: 23/23 unit tests pass (6 Task 1 + 8 Task 2 + 9 new). Live run on `output/results.xlsx` (3 patients, 50 codes) produced a 54-row prevalence CSV and a 1200×1020 PNG chart matching the Plovdiv-poster style; Fatigue HP:0012378 tops the list at 100% as expected. Side benefit: `load_codes_from_excel` in `validate.py` now delegates to the shared `aggregate.load_patient_codes` loader, killing duplication between the two modules.
+
 **Files:** `src/phenoscribe/aggregate.py` (new), `src/phenoscribe/cli.py`, `tests/test_aggregate.py` (new), `pyproject.toml`
 
 Both the Plovdiv poster ("Mapping the prevalence of Long COVID symptoms in 10 kids") and the children's paper Figure 1 ("Prevalence of Long COVID Symptoms in 10 Children Seen in General Practice") show the same chart: HPO terms on the y-axis, patient count on the x-axis, sorted descending. Today Phenoscribe outputs per-patient rows only — aggregating into a prevalence chart is manual work.
@@ -196,6 +198,6 @@ cat context/exports/ontogpt-benchmark-2026-05-30.md
 
 - [x] Task 1: judge step canonicalizes term names; tests pass; label_corrected log line exists; committed (PR #1, 2026-05-30).
 - [x] Task 2: hpo-toolkit replaces hand-rolled hierarchy walk in `validate.py`; aggregate F1 stable-or-higher vs. pre-migration; committed (PR #2, 2026-05-30).
-- [ ] Task 3: `phenoscribe aggregate` produces CSV + PNG matching the Plovdiv-poster style; sample outputs in `output/`; committed.
+- [x] Task 3: `phenoscribe aggregate` produces CSV + PNG matching the Plovdiv-poster style; sample outputs in `output/`; committed (PR #3, 2026-05-30).
 - [ ] Task 4: ontoGPT benchmark report exists in `context/exports/` with concrete F1 / cost / verdict; committed.
 - [ ] When all four are shipped: move this plan to `context/shipped/`.
