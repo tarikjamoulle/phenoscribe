@@ -200,7 +200,7 @@ def _cmd_aggregate(args):
 
     write_prevalence_csv(rows, args.csv)
     if not args.no_chart:
-        write_prevalence_chart(rows, args.chart, top_n=args.top)
+        write_prevalence_chart(rows, args.chart, top_n=args.top, n_patients=n_patients)
 
     print(f"\nTop {min(10, len(rows))} terms by prevalence:")
     print(f"{'#':>3}  {'Patients':>8}  {'Pct':>5}  {'HPO Code':<12}  Term")
