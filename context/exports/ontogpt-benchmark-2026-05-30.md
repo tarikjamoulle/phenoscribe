@@ -8,11 +8,13 @@ plan: ../plans/stakeholder-feedback-plan-2026-05-30.md
 
 ## Verdict
 
-On 3 pseudonymised long-COVID transcripts, Phenoscribe surfaces an average of 19.3 HPO codes per patient; ontoGPT surfaces 5.0 (~3.9× fewer). When ontoGPT does find something, its codes line up with Phenoscribe most of the time — 73% of ontoGPT's codes match Phenoscribe exactly. ontoGPT contributes essentially nothing Phenoscribe missed (1 of 15 codes is unique to ontoGPT across the cohort).
+**Sample is small (3 transcripts).** Treat the numbers as a directional signal, not a settled benchmark.
 
-The recall gap is the dominant signal. Phenoscribe finds 41 codes ontoGPT misses entirely — and on the toughest transcript (1 of 3), ontoGPT returns **zero** phenotypes. Phenoscribe's bounded ChromaDB shortlist plus a second-pass LLM judge is what closes that gap — exactly the discipline Peter Robinson recommended.
+On these 3 pseudonymised long-COVID transcripts, Phenoscribe surfaces an average of 19.3 HPO codes per patient; ontoGPT surfaces 5.0 (~3.9× fewer). When ontoGPT does find something, its codes line up with Phenoscribe most of the time — 73% of ontoGPT's codes match Phenoscribe exactly. ontoGPT contributes essentially nothing Phenoscribe missed (1 of 15 codes are unique to ontoGPT across the cohort).
 
-**Recommendation: keep Phenoscribe; do not adopt ontoGPT as-is.** Setup friction is high (three install workarounds, see below), French input requires a translation pre-pass, and recall is much weaker. Worth revisiting if ontoGPT ships a working out-of-the-box HPO template with a non-English annotator.
+The recall gap is the dominant signal even at this scale. Phenoscribe finds 41 codes ontoGPT misses entirely — and on the toughest transcript (1 of 3), ontoGPT returns **zero** phenotypes. Phenoscribe's bounded ChromaDB shortlist plus a second-pass LLM judge is what closes that gap — exactly the discipline Peter Robinson recommended.
+
+**Recommendation: keep Phenoscribe; do not adopt ontoGPT as-is.** Setup friction is high (three install workarounds, see below), French input requires a translation pre-pass, and recall is much weaker on this sample. Worth revisiting if ontoGPT ships a working out-of-the-box HPO template with a non-English annotator — and worth re-running with a larger cohort before treating the recommendation as final.
 
 ## Setup notes (real install friction)
 
