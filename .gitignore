@@ -15,13 +15,16 @@ venv/
 .vscode/
 *.swp
 
-# Data (large files)
+# Data — all of these may contain patient PII, never commit
 *.db
-data/hpo/
+data/
+output/
+docs/
 chroma_db/
 
 # Environment
 .env
+setup.sh
 
 # OS
 .DS_Store
