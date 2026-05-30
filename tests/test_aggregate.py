@@ -1,5 +1,6 @@
 """Tests for the cohort aggregation module."""
 
+import logging
 from pathlib import Path
 
 import openpyxl
@@ -89,6 +90,28 @@ def test_load_semicolon_format(tmp_path):
     assert any(e["hpo_term"] == "Fatigue" for e in out["P1"])
 
 
+def test_semicolon_format_extracts_verbatim(tmp_path):
+    # Regression: detailed and PURL formats include verbatim; semicolon used to silently drop it.
+    path = _make_semicolon_xlsx(
+        tmp_path,
+        [
+            ("P1", "Fatigue (HP:0012378) [I'm tired all the time]; Cough (HP:0012735) [coughing fits]"),
+        ],
+    )
+    out = load_patient_codes(str(path))
+    by_id = {e["hpo_id"]: e for e in out["P1"]}
+    assert by_id["HP:0012378"]["verbatim"] == "I'm tired all the time"
+    assert by_id["HP:0012735"]["verbatim"] == "coughing fits"
+
+
+def test_semicolon_format_handles_missing_verbatim(tmp_path):
+    # Verbatim is optional in the format; the loader shouldn't crash when it's absent.
+    path = _make_semicolon_xlsx(tmp_path, [("P1", "Fatigue (HP:0012378); Cough (HP:0012735)")])
+    out = load_patient_codes(str(path))
+    assert {e["hpo_id"] for e in out["P1"]} == {"HP:0012378", "HP:0012735"}
+    assert all("verbatim" not in e for e in out["P1"])
+
+
 def test_prevalence_shared_term_tops_the_list():
     patient_codes = {
         "P1": [{"hpo_id": "HP:0012378", "hpo_term": "Fatigue"}, {"hpo_id": "HP:0012735", "hpo_term": "Cough"}],
@@ -100,6 +123,18 @@ def test_prevalence_shared_term_tops_the_list():
     assert rows[0]["n_patients"] == 3
     assert rows[0]["pct"] == pytest.approx(100.0)
     assert rows[0]["patient_ids"] == ["P1", "P2", "P3"]
+
+
+def test_prevalence_logs_term_label_disagreement(caplog):
+    caplog.set_level(logging.DEBUG, logger="phenoscribe.aggregate")
+    patient_codes = {
+        "P1": [{"hpo_id": "HP:0012378", "hpo_term": "Fatigue"}],
+        "P2": [{"hpo_id": "HP:0012378", "hpo_term": "Tiredness"}],  # different label, same ID
+    }
+    rows = compute_prevalence(patient_codes)
+    assert rows[0]["hpo_term"] == "Fatigue"  # first-seen wins
+    assert "term_label_disagreement" in caplog.text
+    assert "HP:0012378" in caplog.text
 
 
 def test_prevalence_same_patient_listed_once_per_term():
@@ -136,7 +171,7 @@ def test_chart_writes_a_valid_png(tmp_path):
         {"hpo_id": "HP:0012735", "hpo_term": "Cough", "n_patients": 1, "pct": 33.3, "patient_ids": ["P1"]},
     ]
     out = tmp_path / "prev.png"
-    write_prevalence_chart(rows, str(out), top_n=20)
+    write_prevalence_chart(rows, str(out), top_n=20, n_patients=3)
     assert out.exists()
     # PNG magic bytes
     assert out.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"

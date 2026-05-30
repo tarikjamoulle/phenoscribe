@@ -15,8 +15,13 @@ import openpyxl
 
 logger = logging.getLogger(__name__)
 
-# "Fatigue (HP:0012378) [tired]; Cough (HP:0012735) [coughing]" style
-_SEMICOLON_TRIPLET = re.compile(r"([^();]+?)\s*\((HP:\d{7})\)")
+# "Fatigue (HP:0012378) [tired]; Cough (HP:0012735) [coughing]" style.
+# The term name is captured non-greedily up to the parenthesised HP code,
+# then the bracketed verbatim is optional. Assumes term labels themselves
+# do not contain '(' or ';' — HPO labels in the current release don't.
+_SEMICOLON_TRIPLET = re.compile(
+    r"([^();]+?)\s*\((HP:\d{7})\)(?:\s*\[([^\]]+)\])?"
+)
 _PURL_TO_HP = re.compile(r"HP_(\d{7})")
 
 
@@ -72,8 +77,11 @@ def load_patient_codes(path: str) -> dict[str, list[dict]]:
             obs = str(row[1]) if row[1] else ""
             if not pid:
                 continue
-            for term, code in _SEMICOLON_TRIPLET.findall(obs):
-                result[str(pid)].append({"hpo_id": code, "hpo_term": term.strip()})
+            for term, code, verbatim in _SEMICOLON_TRIPLET.findall(obs):
+                entry = {"hpo_id": code, "hpo_term": term.strip()}
+                if verbatim:
+                    entry["verbatim"] = verbatim.strip()
+                result[str(pid)].append(entry)
 
     return dict(result)
 
@@ -94,9 +102,16 @@ def compute_prevalence(patient_codes: dict[str, list[dict]]) -> list[dict]:
             hp_id = entry["hpo_id"]
             slot = by_term[hp_id]
             slot["patient_ids"].add(pid)
-            # First-seen term name wins; downstream callers can normalize against HPO.
-            if not slot["hpo_term"] and entry.get("hpo_term"):
-                slot["hpo_term"] = entry["hpo_term"]
+            incoming = entry.get("hpo_term", "")
+            if not slot["hpo_term"] and incoming:
+                slot["hpo_term"] = incoming
+            elif incoming and slot["hpo_term"] and incoming != slot["hpo_term"]:
+                # Rare with Task 1's canonical-name fix in place, but possible
+                # if the workbook mixes older outputs or manual edits.
+                logger.debug(
+                    "term_label_disagreement: id=%s kept=%r dropped=%r",
+                    hp_id, slot["hpo_term"], incoming,
+                )
 
     rows = [
         {
@@ -129,11 +144,17 @@ def write_prevalence_csv(rows: list[dict], path: str) -> None:
     logger.info("Wrote prevalence CSV (%d terms) to %s", len(rows), path)
 
 
-def write_prevalence_chart(rows: list[dict], path: str, top_n: int = 20) -> None:
+def write_prevalence_chart(
+    rows: list[dict],
+    path: str,
+    top_n: int = 20,
+    n_patients: int | None = None,
+) -> None:
     """Write a horizontal bar chart of the top N terms by patient count.
 
     Layout matches the Plovdiv-poster style: terms on the y-axis, count on the x-axis,
-    longest bars at the top.
+    longest bars at the top. `n_patients` is the cohort size that the bars are
+    expressed against; if omitted the title falls back to the count of distinct terms.
     """
     if not rows:
         logger.warning("No prevalence rows to chart; skipping %s", path)
@@ -153,8 +174,11 @@ def write_prevalence_chart(rows: list[dict], path: str, top_n: int = 20) -> None
     fig_height = max(3.0, 0.35 * len(top) + 1.5)
     fig, ax = plt.subplots(figsize=(10, fig_height))
     ax.barh(labels, counts, color="#4472C4")
+    cohort_suffix = f", N={n_patients} patients" if n_patients is not None else ""
     ax.set_xlabel("Patients")
-    ax.set_title(f"HPO term prevalence (top {len(top)} of {len(rows)})")
+    ax.set_title(
+        f"HPO term prevalence (top {len(top)} of {len(rows)} terms{cohort_suffix})"
+    )
     ax.xaxis.get_major_locator().set_params(integer=True)
     for i, c in enumerate(counts):
         ax.text(c, i, f" {c}", va="center", fontsize=9)
