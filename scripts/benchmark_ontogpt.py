@@ -1,6 +1,9 @@
 """Benchmark ontoGPT vs Phenoscribe on the same pseudonymised transcripts.
 
-Setup (one-off, isolated from main project deps):
+Setup (one-off, isolated from main project deps). The `setuptools<81` pin is
+load-bearing — modern setuptools dropped `pkg_resources`, which oaklib's
+eutils dependency still imports.
+
     uv venv .venv-ontogpt
     VIRTUAL_ENV=$(pwd)/.venv-ontogpt uv pip install ontogpt "setuptools<81"
 
@@ -26,6 +29,7 @@ Outputs:
 import argparse
 import json
 import logging
+import re
 import subprocess
 import sys
 from datetime import date
@@ -51,19 +55,41 @@ TRANSLATE_SYSTEM = (
 logger = logging.getLogger("benchmark_ontogpt")
 
 
+_PSEUDONYM_TOKEN = re.compile(r"(?:PERSON|ORGANIZATION|LOCATION|DATE|MISC)_\d+")
+
+
+def _check_pseudonyms_preserved(fr: str, en: str, patient_id: str) -> None:
+    """Warn if the LLM dropped any pseudonymisation tokens during translation.
+
+    The cached `en.txt` becomes a second-class artefact we don't want anyone
+    to mistake for fully-pseudonymised text. A warning here makes the gap
+    visible instead of silent.
+    """
+    fr_tokens = set(_PSEUDONYM_TOKEN.findall(fr))
+    en_tokens = set(_PSEUDONYM_TOKEN.findall(en))
+    missing = fr_tokens - en_tokens
+    if missing:
+        logger.warning(
+            "[%s] translation dropped %d pseudonym token(s): %s",
+            patient_id, len(missing), sorted(missing),
+        )
+
+
 def translate(fr_text: str, patient_id: str, force: bool = False) -> str:
     """French → English translation, cached per patient to avoid re-running."""
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     cache = TMP_DIR / f"{patient_id}.en.txt"
     if not force and cache.exists():
-        return cache.read_text()
-    en = llm_call(
-        system_prompt=TRANSLATE_SYSTEM,
-        user_prompt=fr_text,
-        provider="openai",
-        model="gpt-4o",
-    )
-    cache.write_text(en)
+        en = cache.read_text()
+    else:
+        en = llm_call(
+            system_prompt=TRANSLATE_SYSTEM,
+            user_prompt=fr_text,
+            provider="openai",
+            model="gpt-4o",
+        )
+        cache.write_text(en)
+    _check_pseudonyms_preserved(fr_text, en, patient_id)
     return en
 
 
@@ -77,7 +103,7 @@ def run_ontogpt(en_text: str, patient_id: str, force: bool = False) -> set[str]:
     out_path = TMP_DIR / f"{patient_id}.json"
     in_path.write_text(en_text)
     if force or not out_path.exists():
-        subprocess.run(
+        result = subprocess.run(
             [
                 str(ONTOGPT_BIN),
                 "extract",
@@ -87,15 +113,40 @@ def run_ontogpt(en_text: str, patient_id: str, force: bool = False) -> set[str]:
                 "-O", "json",
                 "-o", str(out_path),
             ],
-            check=True,
             capture_output=True,
+            text=True,
         )
+        if result.returncode != 0:
+            logger.error(
+                "[%s] ontogpt extract failed (exit %d). stderr tail:\n%s",
+                patient_id, result.returncode, result.stderr[-2000:],
+            )
+            result.check_returncode()
     data = json.loads(out_path.read_text())
     return {
         ne["id"]
         for ne in data.get("named_entities", [])
         if isinstance(ne.get("id"), str) and ne["id"].startswith("HP:")
     }
+
+
+def find_unknown_codes(codes: set[str], hpo) -> set[str]:
+    """Return the subset of `codes` that aren't recognised by the loaded HPO ontology.
+
+    A code present in Phenoscribe's ChromaDB but unknown to hpo-toolkit's
+    cached release means the two HPO snapshots disagree — possibly a
+    real release skew worth flagging.
+    """
+    unknown = set()
+    for code in codes:
+        try:
+            term = hpo.get_term(code)
+        except Exception:
+            unknown.add(code)
+            continue
+        if term is None:
+            unknown.add(code)
+    return unknown
 
 
 def categorise(predicted: set[str], reference: set[str], hpo, max_hops: int = 2):
@@ -156,6 +207,7 @@ def main():
             "ontogpt_close": og_close,
             "phenoscribe_unique": ph_unique,
             "ontogpt_unique": og_unique,
+            "phenoscribe_unknown_to_hpotk": find_unknown_codes(ph_ids, hpo),
         })
 
     write_report(per_patient)
@@ -176,6 +228,7 @@ def write_report(per_patient: list[dict]) -> None:
     og_avg = total_og / n if n else 0
     ratio = total_ph / total_og if total_og else float("inf")
     overlap_pct_of_og = (total_exact / total_og * 100) if total_og else 0.0
+    all_unknown = set().union(*(p["phenoscribe_unknown_to_hpotk"] for p in per_patient))
 
     lines = [
         "---",
@@ -188,12 +241,22 @@ def write_report(per_patient: list[dict]) -> None:
         "",
         "## Verdict",
         "",
-        f"On {n} pseudonymised long-COVID transcripts, Phenoscribe surfaces an average of {ph_avg:.1f} HPO codes per patient; ontoGPT surfaces {og_avg:.1f} (~{ratio:.1f}× fewer). When ontoGPT does find something, its codes line up with Phenoscribe most of the time — {overlap_pct_of_og:.0f}% of ontoGPT's codes match Phenoscribe exactly. ontoGPT contributes essentially nothing Phenoscribe missed (1 of {total_og} codes is unique to ontoGPT across the cohort).",
+        f"**Sample is small ({n} transcripts).** Treat the numbers as a directional signal, not a settled benchmark.",
         "",
-        f"The recall gap is the dominant signal. Phenoscribe finds {total_ph_unique} codes ontoGPT misses entirely — and on the toughest transcript ({zero_count} of {n}), ontoGPT returns **zero** phenotypes. Phenoscribe's bounded ChromaDB shortlist plus a second-pass LLM judge is what closes that gap — exactly the discipline Peter Robinson recommended.",
+        f"On these {n} pseudonymised long-COVID transcripts, Phenoscribe surfaces an average of {ph_avg:.1f} HPO codes per patient; ontoGPT surfaces {og_avg:.1f} (~{ratio:.1f}× fewer). When ontoGPT does find something, its codes line up with Phenoscribe most of the time — {overlap_pct_of_og:.0f}% of ontoGPT's codes match Phenoscribe exactly. ontoGPT contributes essentially nothing Phenoscribe missed ({total_og_unique} of {total_og} codes are unique to ontoGPT across the cohort).",
         "",
-        "**Recommendation: keep Phenoscribe; do not adopt ontoGPT as-is.** Setup friction is high (three install workarounds, see below), French input requires a translation pre-pass, and recall is much weaker. Worth revisiting if ontoGPT ships a working out-of-the-box HPO template with a non-English annotator.",
+        f"The recall gap is the dominant signal even at this scale. Phenoscribe finds {total_ph_unique} codes ontoGPT misses entirely — and on the toughest transcript ({zero_count} of {n}), ontoGPT returns **zero** phenotypes. Phenoscribe's bounded ChromaDB shortlist plus a second-pass LLM judge is what closes that gap — exactly the discipline Peter Robinson recommended.",
         "",
+        "**Recommendation: keep Phenoscribe; do not adopt ontoGPT as-is.** Setup friction is high (three install workarounds, see below), French input requires a translation pre-pass, and recall is much weaker on this sample. Worth revisiting if ontoGPT ships a working out-of-the-box HPO template with a non-English annotator — and worth re-running with a larger cohort before treating the recommendation as final.",
+        "",]
+    if all_unknown:
+        lines += [
+            "### Note on HPO release skew",
+            "",
+            f"{len(all_unknown)} of the {total_ph} Phenoscribe codes ({(len(all_unknown)/total_ph*100):.0f}%) are unknown to the hpo-toolkit ontology snapshot used by the scorer (e.g. `{sorted(all_unknown)[:5]}`). These are likely newer additions to HPO than the cached release; they fall straight into the \"unique\" column because `hop_distance` can't compute a neighbour. Worth checking that Phenoscribe's ChromaDB and `hpo-toolkit`'s cache are on similar release dates before treating the unique counts as final.",
+            "",
+        ]
+    lines += [
         "## Setup notes (real install friction)",
         "",
         "Three concrete problems hit during install:",
