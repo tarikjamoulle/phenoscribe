@@ -113,10 +113,20 @@ def _parse_judge_response(response: str, candidates: list[dict]) -> dict:
     try:
         data = json.loads(text)
         if "hpo_id" in data and "hpo_term" in data:
-            # Verify the code is from our candidates
-            candidate_ids = {c["hpo_id"] for c in candidates}
-            if data["hpo_id"] in candidate_ids:
-                return data
+            # LLMs reliably produce HPO labels but can drift on identifiers
+            # (Peter Robinson, dec 2025). Trust the candidate's canonical
+            # name once the ID has been verified against the shortlist.
+            candidate_by_id = {c["hpo_id"]: c["name"] for c in candidates}
+            if data["hpo_id"] in candidate_by_id:
+                canonical_name = candidate_by_id[data["hpo_id"]]
+                if data["hpo_term"] != canonical_name:
+                    logger.info(
+                        "label_corrected: id=%s llm=%r canonical=%r",
+                        data["hpo_id"],
+                        data["hpo_term"],
+                        canonical_name,
+                    )
+                return {"hpo_id": data["hpo_id"], "hpo_term": canonical_name}
             logger.warning("LLM selected code not in candidates: %s", data["hpo_id"])
     except (json.JSONDecodeError, TypeError):
         pass
