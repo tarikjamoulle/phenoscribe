@@ -6,6 +6,24 @@ Audio interview → Transcribe → Remove PII → Extract HPO phenotype codes �
 
 Currently done manually using various LLM tools. ~150 existing recordings, ongoing use.
 
+## How it works, in plain words
+
+The pipeline turns a recorded GP–patient conversation into a list of standardized medical codes (HPO codes) describing the patient's symptoms. Six steps:
+
+1. **Listen to the recording and write it down.** A speech-to-text model tuned for French (faster-whisper) runs on the laptop and produces a raw transcript. The audio never leaves the machine. Optionally, a second model separates who is speaking — doctor or patient — so the transcript reads as a dialogue.
+
+2. **Replace personal information with consistent placeholders.** A medical-French model (OpenMed) detects names, places, dates and other identifying details and swaps them for stable tokens: "Dr. Martin" becomes "Dr. 1", "Erasme hospital" becomes "Hospital 1". The same name always gets the same placeholder throughout the transcript, so the story still reads as a story — only the identifying surface is hidden. The mapping stays on the machine.
+
+3. **Pull out every symptom the patient mentions.** An AI model reads the cleaned transcript and lists each complaint, keeping the patient's own French words ("j'ai mal au ventre") alongside a clinical English label ("abdominal pain"). Because identifying details were replaced in step 2, only de-identified text ever reaches the AI.
+
+4. **Shortlist five candidate HPO codes per symptom.** HPO has about 19,000 standardized phenotype terms. For each extracted symptom, a meaning-based search picks the five HPO terms whose definitions are closest. This bounds what the AI is allowed to pick from in the next step.
+
+5. **Pick the best code from the shortlist.** The AI is shown only those five candidates and asked which one fits best. It returns the chosen HPO code. The term name shipped to the output is then read from our own shortlist, not from the AI's reply, so the code and the term can never disagree (this is what the Peter Robinson fix in PR #1 guarantees).
+
+6. **Write the Excel file.** Each patient gets rows like *Fatigue | HP:0012378 | "I'm tired all the time"* — standardized code, term name, and the patient's own words side by side.
+
+A batch of recordings can run unattended. Each recording's progress is tracked in a small local database; if a step fails (network blip, malformed audio, etc.) the system retries once and logs the rest for the user to inspect later.
+
 ## Pipeline Flow
 
 ```
