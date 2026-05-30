@@ -29,3 +29,6 @@ setup.sh
 # OS
 .DS_Store
 Thumbs.db
+
+# Microsoft Office lock files
+~$*
