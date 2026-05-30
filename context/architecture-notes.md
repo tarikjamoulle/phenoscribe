@@ -18,7 +18,9 @@ The pipeline turns a recorded GP–patient conversation into a list of standardi
 
 4. **Shortlist five candidate HPO codes per symptom.** HPO has about 19,000 standardized phenotype terms. For each extracted symptom, a meaning-based search picks the five HPO terms whose definitions are closest. This bounds what the AI is allowed to pick from in the next step.
 
-5. **Pick the best code from the shortlist.** The AI is shown only those five candidates and asked which one fits best. It returns the chosen HPO code. The term name shipped to the output is then read from our own shortlist, not from the AI's reply, so the code and the term can never disagree (this is what the Peter Robinson fix in PR #1 guarantees).
+5. **Pick the best code from the shortlist.** The AI is shown only those five candidates and asked which one fits best. It returns the chosen HPO code.
+
+   Peter Robinson, who created HPO, has flagged a catch with using AI for this kind of work: these models are reliable at naming a medical condition. Getting the exact identifier code right is harder for them — they can drop a digit or pick a nearby ID. The system handles this by reading the official term name back from its own shortlist using the AI's chosen code. The code and the name can never end up disagreeing.
 
 6. **Write the Excel file.** Each patient gets rows like *Fatigue | HP:0012378 | "I'm tired all the time"* — standardized code, term name, and the patient's own words side by side.
 
