@@ -60,6 +60,8 @@ pytest tests/test_match_hpo.py -v
 
 ### Task 2: Migrate hierarchy scoring to `hpo-toolkit`
 
+> **Shipped 2026-05-30** in PR #2. Verified: 14/14 unit tests pass (6 from Task 1 + 8 new). Synthetic real-HPO comparison shows the sibling case (Chest pain ↔ Abdominal pain via shared parent Pain) now scores 0.5 where the old walker scored 0; exact / parent / unrelated cases unchanged. The new scorer also added detailed-format parsing as a side effect; the prior loader couldn't read the format the pipeline has produced since post-shipping (the old scorer saw 0 predicted codes on `output/results.xlsx` despite 168 rows). Real-data F1 comparison was blocked separately by a patient-ID format mismatch between pipeline output (`038`) and ground truth (`MGA.038`), flagged for follow-up.
+
 **Files:** `src/phenoscribe/validate.py`, `pyproject.toml`, `tests/test_validate.py` (new)
 
 The hand-rolled `get_ancestors` (validate.py:54-73) and `score_match` (validate.py:76-104) only walk strictly up or strictly down from each term — they miss the case where predicted and ground-truth are siblings sharing a near common ancestor. `hpo-toolkit` ships a `distance(a, b)` over the directed graph that handles this correctly.
@@ -193,7 +195,7 @@ cat context/exports/ontogpt-benchmark-2026-05-30.md
 ## Definition of Done
 
 - [x] Task 1: judge step canonicalizes term names; tests pass; label_corrected log line exists; committed (PR #1, 2026-05-30).
-- [ ] Task 2: hpo-toolkit replaces hand-rolled hierarchy walk in `validate.py`; aggregate F1 stable-or-higher vs. pre-migration; committed.
+- [x] Task 2: hpo-toolkit replaces hand-rolled hierarchy walk in `validate.py`; aggregate F1 stable-or-higher vs. pre-migration; committed (PR #2, 2026-05-30).
 - [ ] Task 3: `phenoscribe aggregate` produces CSV + PNG matching the Plovdiv-poster style; sample outputs in `output/`; committed.
 - [ ] Task 4: ontoGPT benchmark report exists in `context/exports/` with concrete F1 / cost / verdict; committed.
 - [ ] When all four are shipped: move this plan to `context/shipped/`.

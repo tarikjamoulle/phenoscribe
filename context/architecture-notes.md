@@ -168,13 +168,14 @@ Ground truth: 1003 manually coded rows in Excel.
 
 Scoring model (per symptom match):
 - **Exact match** (same HP code) = 1.0
-- **Parent/child** (1 hop in HPO tree) = 0.75
-- **Grandparent/grandchild** (2 hops) = 0.5
+- **One hop apart** in the HPO tree = 0.75 (direct parent or direct child)
+- **Two hops apart** = 0.5 (grandparent, grandchild, sibling via shared parent, or uncle/nephew)
 - **Beyond 2 hops or wrong** = 0
 - **Missed symptom** (in ground truth but not extracted) = 0 (recall penalty)
 - **Hallucinated symptom** (extracted but not in ground truth) = precision penalty
 
-Uses HPO `is_a` relationships from OBO file to walk the hierarchy.
+Hierarchy walks use [hpo-toolkit](https://pypi.org/project/hpo-toolkit/) (recommended by Peter Robinson, who created HPO). The library auto-downloads the HPO release and exposes the `is_a` graph. The scorer runs a small bounded BFS over parents and children, so siblings and uncle/nephew relationships score correctly via a shared ancestor. The earlier hand-rolled walker only counted strictly-up or strictly-down paths and scored those relationships as 0.
+
 Aggregate score per recording + across full dataset to track improvements.
 - [x] Error handling: what if one step fails mid-batch? → Retry once, then log. SQLite job tracker.
 - [x] Language gap (French interviews, English HPO)? → LLM outputs clinical_term in English, verbatim stays French
