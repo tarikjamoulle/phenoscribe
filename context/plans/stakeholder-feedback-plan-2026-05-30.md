@@ -26,6 +26,8 @@ All four are independent enough to ship one at a time. Order below is by value-p
 
 ### Task 1: HPO ID re-resolution in judge step
 
+> **Shipped 2026-05-30** in PR #1 (merged as `4c1e586`). Verified: 6/6 unit tests pass; audit of 168 prior-run rows shows 0 (term, ID) mismatches; end-to-end smoke with mocked Peter-style drift confirms canonical name shipped + `label_corrected` log fires; live gpt-4o run over 3 transcripts (50 matches, 53 calls) produced 0 mismatches and 0 log hits — defensive guarantee with no happy-path behavior change.
+
 **Files:** `src/phenoscribe/match_hpo.py`, `tests/test_match_hpo.py` (new)
 
 The current `_parse_judge_response` (match_hpo.py:103-136) validates that `data["hpo_id"]` is in the candidate set but returns `data` directly — meaning the LLM's `hpo_term` string is shipped untouched. If the LLM writes `{"hpo_id": "HP:0002027", "hpo_term": "Fatigue"}` (term mislabeled but ID valid), the bad pair ends up in the Excel.
@@ -190,7 +192,7 @@ cat context/exports/ontogpt-benchmark-2026-05-30.md
 
 ## Definition of Done
 
-- [ ] Task 1: judge step canonicalizes term names; tests pass; label_corrected log line exists; committed.
+- [x] Task 1: judge step canonicalizes term names; tests pass; label_corrected log line exists; committed (PR #1, 2026-05-30).
 - [ ] Task 2: hpo-toolkit replaces hand-rolled hierarchy walk in `validate.py`; aggregate F1 stable-or-higher vs. pre-migration; committed.
 - [ ] Task 3: `phenoscribe aggregate` produces CSV + PNG matching the Plovdiv-poster style; sample outputs in `output/`; committed.
 - [ ] Task 4: ontoGPT benchmark report exists in `context/exports/` with concrete F1 / cost / verdict; committed.
