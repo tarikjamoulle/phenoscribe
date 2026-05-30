@@ -1,10 +1,14 @@
 ---
 problem: "Automate HPO phenotype coding from long COVID patient interviews"
 date: 2026-03-01
-adr: "hpo-identifier-adr-2026-03-01.md"
+adr: "../exports/hpo-identifier-adr-2026-03-01.md"
+shipped: 2026-03-07
+status: shipped
 ---
 
 # Implementation Plan: HPO Identifier Pipeline
+
+> **Shipped 2026-03-07.** All 11 tasks implemented and verified end-to-end on real recordings. Package renamed `hpo_identifier → phenoscribe` during implementation. Post-ship additions not covered by this plan: speaker diarization (`src/phenoscribe/diarize.py`), transcript caching with `--skip-transcription`, `detailed` output format, retry loop + `status` CLI subcommand.
 
 ## Summary
 
