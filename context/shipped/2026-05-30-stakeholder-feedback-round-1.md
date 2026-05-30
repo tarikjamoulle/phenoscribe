@@ -159,7 +159,7 @@ pytest tests/test_aggregate.py -v
 
 ### Task 4: ontoGPT benchmark (one-off, informational)
 
-> **Shipped 2026-05-30** in PR #4. Verdict landed in `context/exports/ontogpt-benchmark-2026-05-30.md`: on 3 pseudonymised long-COVID transcripts, Phenoscribe finds ~3.9× more HPO codes than ontoGPT (19.3 vs 5.0 avg per patient). 73% of ontoGPT's codes match Phenoscribe exactly; only 1 of 15 is unique to ontoGPT. One transcript returned zero phenotypes from ontoGPT. Recommendation: keep Phenoscribe, don't adopt ontoGPT as-is. Setup required three workarounds (pydantic schema patch, oaklib HPO cache warm-up, French→English translation pre-pass via `phenoscribe.llm`).
+> **Shipped 2026-05-30** in PR #4. Verdict landed in [`../exports/2026-05-30-ontogpt-benchmark.md`](../exports/2026-05-30-ontogpt-benchmark.md): on 3 pseudonymised long-COVID transcripts, Phenoscribe finds ~3.9× more HPO codes than ontoGPT (19.3 vs 5.0 avg per patient). 73% of ontoGPT's codes match Phenoscribe exactly; only 1 of 15 is unique to ontoGPT. One transcript returned zero phenotypes from ontoGPT. Recommendation: keep Phenoscribe, don't adopt ontoGPT as-is. Setup required three workarounds (pydantic schema patch, oaklib HPO cache warm-up, French→English translation pre-pass via `phenoscribe.llm`).
 
 **Files:** `scripts/benchmark_ontogpt.py` (new), `context/exports/ontogpt-benchmark-2026-05-30.md` (new, the report itself)
 
