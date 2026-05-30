@@ -154,6 +154,8 @@ pytest tests/test_aggregate.py -v
 
 ### Task 4: ontoGPT benchmark (one-off, informational)
 
+> **Shipped 2026-05-30** in PR #4. Verdict landed in `context/exports/ontogpt-benchmark-2026-05-30.md`: on 3 pseudonymised long-COVID transcripts, Phenoscribe finds ~3.9× more HPO codes than ontoGPT (19.3 vs 5.0 avg per patient). 73% of ontoGPT's codes match Phenoscribe exactly; only 1 of 15 is unique to ontoGPT. One transcript returned zero phenotypes from ontoGPT. Recommendation: keep Phenoscribe, don't adopt ontoGPT as-is. Setup required three workarounds (pydantic schema patch, oaklib HPO cache warm-up, French→English translation pre-pass via `phenoscribe.llm`).
+
 **Files:** `scripts/benchmark_ontogpt.py` (new), `context/exports/ontogpt-benchmark-2026-05-30.md` (new, the report itself)
 
 Peter Robinson explicitly suggested ontoGPT (PMID 38383067). The point of this task is **not** to integrate it — it's to get a defensible number for "how does Phenoscribe compare to a well-known purpose-built tool on the same data."
@@ -199,5 +201,5 @@ cat context/exports/ontogpt-benchmark-2026-05-30.md
 - [x] Task 1: judge step canonicalizes term names; tests pass; label_corrected log line exists; committed (PR #1, 2026-05-30).
 - [x] Task 2: hpo-toolkit replaces hand-rolled hierarchy walk in `validate.py`; aggregate F1 stable-or-higher vs. pre-migration; committed (PR #2, 2026-05-30).
 - [x] Task 3: `phenoscribe aggregate` produces CSV + PNG matching the Plovdiv-poster style; sample outputs in `output/`; committed (PR #3, 2026-05-30).
-- [ ] Task 4: ontoGPT benchmark report exists in `context/exports/` with concrete F1 / cost / verdict; committed.
+- [x] Task 4: ontoGPT benchmark report exists in `context/exports/` with concrete numbers + verdict; committed (PR #4, 2026-05-30).
 - [ ] When all four are shipped: move this plan to `context/shipped/`.
