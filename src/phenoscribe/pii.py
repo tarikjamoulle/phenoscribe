@@ -84,62 +84,80 @@ def pseudonymize(text: str) -> tuple[str, dict]:
     category_counters: dict[str, int] = defaultdict(int)
     mapping: dict[str, str] = {}
 
-    # First pass: assign pseudonyms (forward order for consistent numbering)
+    # First pass: assign pseudonyms and adjust spans to trim whitespace
+    adjusted_spans = []
     for span in sorted(spans, key=lambda s: s["start"]):
-        original = text[span["start"]:span["end"]].strip()
-        if not original:
+        raw = text[span["start"]:span["end"]]
+        stripped = raw.strip()
+        if not stripped:
             continue
-        if original not in value_to_pseudonym:
+        # Adjust offsets to match the stripped content
+        leading = len(raw) - len(raw.lstrip())
+        trailing = len(raw) - len(raw.rstrip())
+        adj_start = span["start"] + leading
+        adj_end = span["end"] - trailing
+        adjusted_spans.append({"start": adj_start, "end": adj_end, "category": span["category"]})
+        if stripped not in value_to_pseudonym:
             category_counters[span["category"]] += 1
             pseudonym = f"{span['category']}_{category_counters[span['category']]}"
-            value_to_pseudonym[original] = pseudonym
-            mapping[pseudonym] = original
+            value_to_pseudonym[stripped] = pseudonym
+            mapping[pseudonym] = stripped
 
     # Second pass: replace in text (reverse order to preserve offsets)
     result = text
-    for span in sorted(spans, key=lambda s: s["start"], reverse=True):
-        original = text[span["start"]:span["end"]].strip()
+    for span in sorted(adjusted_spans, key=lambda s: s["start"], reverse=True):
+        original = text[span["start"]:span["end"]]
         if original and original in value_to_pseudonym:
             result = result[:span["start"]] + value_to_pseudonym[original] + result[span["end"]:]
 
     return result, mapping
 
 
-def _detect_entities(ner, text: str) -> list[dict]:
+def _detect_entities(ner, text: str, min_score: float = 0.6) -> list[dict]:
     """Detect entities, handling long texts by chunking."""
     if len(text) < 1500:
-        return ner(text)
+        entities = ner(text)
+    else:
+        chunks = _split_into_chunks(text, max_chars=1200)
+        entities = []
+        offset = 0
 
-    chunks = _split_into_chunks(text, max_chars=1200)
-    all_entities = []
-    offset = 0
+        for chunk in chunks:
+            chunk_entities = ner(chunk)
+            for e in chunk_entities:
+                e["start"] += offset
+                e["end"] += offset
+            entities.extend(chunk_entities)
+            offset += len(chunk)
 
-    for chunk in chunks:
-        entities = ner(chunk)
-        for e in entities:
-            e["start"] += offset
-            e["end"] += offset
-        all_entities.extend(entities)
-        offset += len(chunk)
-
-    return all_entities
+    # Filter out low-confidence detections
+    filtered = [e for e in entities if e.get("score", 0) >= min_score]
+    logger.debug(
+        "NER: %d entities detected, %d kept (score >= %.2f)",
+        len(entities), len(filtered), min_score,
+    )
+    return filtered
 
 
 def _split_into_chunks(text: str, max_chars: int = 1200) -> list[str]:
-    """Split text into chunks at sentence boundaries."""
-    sentences = text.replace(". ", ".\n").split("\n")
+    """Split text into chunks at sentence boundaries, preserving exact offsets."""
+    # Find split points after ". " sequences
+    split_points = [m.end() for m in re.finditer(r"\.\s", text)]
+
+    if not split_points:
+        return [text]
+
     chunks = []
-    current = ""
+    start = 0
 
-    for sentence in sentences:
-        if len(current) + len(sentence) > max_chars and current:
-            chunks.append(current)
-            current = sentence
-        else:
-            current += sentence
+    for point in split_points:
+        if point - start >= max_chars and start < point:
+            chunks.append(text[start:point])
+            start = point
 
-    if current:
-        chunks.append(current)
+    # Add the remaining text
+    if start < len(text):
+        chunks.append(text[start:])
 
     return chunks
 

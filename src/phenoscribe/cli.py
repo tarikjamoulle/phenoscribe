@@ -27,6 +27,7 @@ def main():
     proc.add_argument("input_dir", help="Directory containing audio/text files")
     proc.add_argument("--output", "-o", default=None, help="Output Excel file path")
     proc.add_argument("--config", "-c", default="config.yaml", help="Config file path")
+    proc.add_argument("--skip-transcription", action="store_true", help="Skip transcription, read from saved transcripts in output/transcripts/")
     proc.add_argument("--retry-failed", action="store_true", help="Retry previously failed jobs")
 
     # Status command
@@ -60,10 +61,11 @@ def _cmd_process(args):
         print(f"Error: '{input_dir}' is not a directory.")
         sys.exit(1)
 
-    # Find input files
+    # Find input files (exclude _pseudo files which are generated outputs)
     files = sorted(
         f for f in input_dir.iterdir()
         if f.suffix.lower() in SUPPORTED_EXTENSIONS
+        and not f.stem.endswith("_pseudo")
     )
 
     if not files:
@@ -95,6 +97,7 @@ def _cmd_process(args):
                 patient_id,
                 config,
                 output_path=output_path,
+                skip_transcription=args.skip_transcription,
             )
             update_job(db_path, job_id, "completed")
             completed += 1
@@ -120,6 +123,7 @@ def _cmd_process(args):
                         patient_id,
                         config,
                         output_path=output_path,
+                        skip_transcription=args.skip_transcription,
                     )
                     update_job(db_path, job["id"], "completed")
                     completed += 1

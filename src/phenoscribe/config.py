@@ -34,11 +34,18 @@ class PathsConfig:
 
 
 @dataclass
+class DiarizationConfig:
+    enabled: bool = False
+    num_speakers: int = 2
+
+
+@dataclass
 class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
     transcription: TranscriptionConfig = field(default_factory=TranscriptionConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
+    diarization: DiarizationConfig = field(default_factory=DiarizationConfig)
 
 
 def load_config(path: str = "config.yaml") -> Config:
@@ -55,4 +62,5 @@ def load_config(path: str = "config.yaml") -> Config:
         transcription=TranscriptionConfig(**raw.get("transcription", {})),
         output=OutputConfig(**raw.get("output", {})),
         paths=PathsConfig(**raw.get("paths", {})),
+        diarization=DiarizationConfig(**raw.get("diarization", {})),
     )

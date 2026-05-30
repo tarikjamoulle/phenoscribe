@@ -11,10 +11,14 @@ transcription:
   device: "cpu"               # cpu | cuda | auto
 
 output:
-  format: "semicolon"         # semicolon | purl
+  format: "detailed"          # detailed | semicolon | purl
   path: "output/results.xlsx"
 
 paths:
   chroma_db: "data/chroma_db"
   jobs_db: "data/jobs.db"
   hpo_obo: "data/hpo/hp.obo"
+
+diarization:
+  enabled: false              # enable speaker diarization (requires HF_TOKEN)
+  num_speakers: 2             # expected number of speakers (e.g. doctor + patient)

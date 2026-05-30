@@ -69,3 +69,57 @@ def transcribe(
     )
 
     return text
+
+
+def transcribe_segments(
+    input_path: str,
+    model_name: str = "large-v3",
+    language: str = "fr",
+    device: str = "cpu",
+) -> tuple[str, list[dict]]:
+    """Transcribe an audio file and return text with segment timestamps.
+
+    Args:
+        input_path: Path to audio file.
+        model_name: Whisper model name.
+        language: Audio language code.
+        device: Device for Whisper inference.
+
+    Returns:
+        Tuple of (full_text, segments) where each segment has start, end, text.
+    """
+    path = Path(input_path)
+    suffix = path.suffix.lower()
+
+    if suffix not in AUDIO_EXTENSIONS:
+        raise ValueError(
+            f"transcribe_segments requires audio input, got '{suffix}'. "
+            f"Supported: {AUDIO_EXTENSIONS}"
+        )
+
+    logger.info("Transcribing audio with segments: %s", path.name)
+    start = time.time()
+
+    model = _get_model(model_name, device)
+    segments_iter, info = model.transcribe(str(path), language=language)
+
+    segments_list = []
+    text_parts = []
+    for segment in segments_iter:
+        text_parts.append(segment.text.strip())
+        segments_list.append({
+            "start": segment.start,
+            "end": segment.end,
+            "text": segment.text.strip(),
+        })
+
+    elapsed = time.time() - start
+    logger.info(
+        "Transcription complete: %.1fs audio, took %.1fs (%.1fx realtime), %d segments",
+        info.duration,
+        elapsed,
+        info.duration / elapsed if elapsed > 0 else 0,
+        len(segments_list),
+    )
+
+    return " ".join(text_parts), segments_list

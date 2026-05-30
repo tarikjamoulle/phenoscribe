@@ -1,13 +1,15 @@
 """Pipeline orchestrator — chains all processing steps."""
 
 import logging
+import os
+from pathlib import Path
 
 from phenoscribe.config import Config
 from phenoscribe.extract_symptoms import extract_symptoms
 from phenoscribe.match_hpo import match_hpo
 from phenoscribe.output import write_excel
 from phenoscribe.pii import pseudonymize
-from phenoscribe.transcribe import transcribe
+from phenoscribe.transcribe import transcribe, transcribe_segments, AUDIO_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ def process_recording(
     patient_id: str,
     config: Config,
     output_path: str | None = None,
+    skip_transcription: bool = False,
 ) -> list[dict]:
     """Process a single recording through the full pipeline.
 
@@ -32,26 +35,81 @@ def process_recording(
         patient_id: Patient identifier.
         config: Pipeline configuration.
         output_path: Override output path (uses config default if None).
+        skip_transcription: If True, read from saved transcript instead of running Whisper.
 
     Returns:
         List of HPO matches.
     """
     out = output_path or config.output.path
+    out_dir = os.path.dirname(out) or "output"
+    transcript_dir = os.path.join(out_dir, "transcripts")
 
-    # Step 1: Transcribe
-    logger.info("[%s] Step 1: Transcribing...", patient_id)
-    raw_text = transcribe(
-        input_path,
-        model_name=config.transcription.model,
-        language=config.transcription.language,
-        device=config.transcription.device,
-    )
+    if skip_transcription:
+        # Read from previously saved transcript
+        transcript_path = os.path.join(transcript_dir, f"{patient_id}.txt")
+        if not os.path.exists(transcript_path):
+            raise FileNotFoundError(
+                f"No saved transcript for {patient_id} at {transcript_path}. "
+                "Run the full pipeline first to generate transcripts."
+            )
+        logger.info("[%s] Step 1: Skipped (reading saved transcript)", patient_id)
+        raw_text = Path(transcript_path).read_text(encoding="utf-8").strip()
+    else:
+        # Step 1: Transcribe (with optional diarization)
+        is_audio = Path(input_path).suffix.lower() in AUDIO_EXTENSIONS
+        use_diarization = config.diarization.enabled and is_audio
+
+        if use_diarization:
+            logger.info("[%s] Step 1: Transcribing with diarization...", patient_id)
+            raw_text, whisper_segments = transcribe_segments(
+                input_path,
+                model_name=config.transcription.model,
+                language=config.transcription.language,
+                device=config.transcription.device,
+            )
+
+            # Lazy import to avoid loading pyannote when not needed
+            from phenoscribe.diarize import diarize, align_segments, format_transcript
+
+            logger.info("[%s] Step 1b: Running speaker diarization...", patient_id)
+            diarization_segments = diarize(
+                input_path, num_speakers=config.diarization.num_speakers
+            )
+            aligned = align_segments(whisper_segments, diarization_segments)
+            raw_text = format_transcript(aligned)
+            logger.info("[%s] Diarized transcript: %d chars", patient_id, len(raw_text))
+        else:
+            if config.diarization.enabled and not is_audio:
+                logger.info("[%s] Diarization enabled but input is text — skipping.", patient_id)
+            logger.info("[%s] Step 1: Transcribing...", patient_id)
+            raw_text = transcribe(
+                input_path,
+                model_name=config.transcription.model,
+                language=config.transcription.language,
+                device=config.transcription.device,
+            )
+
+        # Save raw transcript
+        os.makedirs(transcript_dir, exist_ok=True)
+        transcript_path = os.path.join(transcript_dir, f"{patient_id}.txt")
+        with open(transcript_path, "w", encoding="utf-8") as f:
+            f.write(raw_text)
+        logger.info("[%s] Transcript saved: %s", patient_id, transcript_path)
+
     logger.info("[%s] Transcript: %d chars", patient_id, len(raw_text))
 
     # Step 2: Pseudonymize
     logger.info("[%s] Step 2: Pseudonymizing PII...", patient_id)
     safe_text, pii_mapping = pseudonymize(raw_text)
     logger.info("[%s] PII entities replaced: %d", patient_id, len(pii_mapping))
+
+    # Save pseudonymized transcript
+    pseudo_dir = os.path.join(out_dir, "pseudo")
+    os.makedirs(pseudo_dir, exist_ok=True)
+    pseudo_path = os.path.join(pseudo_dir, f"{patient_id}.txt")
+    with open(pseudo_path, "w", encoding="utf-8") as f:
+        f.write(safe_text)
+    logger.info("[%s] Pseudonymized transcript saved: %s", patient_id, pseudo_path)
 
     # Step 3: Extract symptoms
     logger.info("[%s] Step 3: Extracting symptoms...", patient_id)
