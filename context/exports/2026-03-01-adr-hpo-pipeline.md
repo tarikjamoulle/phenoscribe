@@ -1,7 +1,7 @@
 ---
 problem: "Automate HPO phenotype coding from long COVID patient interviews"
 date: 2026-03-01
-plan: "hpo-identifier-plan-2026-03-01.md"
+plan: "../shipped/2026-03-01-hpo-pipeline-initial-build.md"
 ---
 
 # HPO Identifier Pipeline for Long COVID Research

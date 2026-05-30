@@ -1,7 +1,7 @@
 ---
 problem: "Automate HPO phenotype coding from long COVID patient interviews"
 date: 2026-03-01
-adr: "../exports/hpo-identifier-adr-2026-03-01.md"
+adr: "../exports/2026-03-01-adr-hpo-pipeline.md"
 shipped: 2026-03-07
 status: shipped
 ---

@@ -1,10 +1,15 @@
 ---
 problem: "Tighten HPO accuracy and add cohort outputs based on stakeholder feedback (Peter Robinson email + Jamoulle papers + Plovdiv poster)"
 date: 2026-05-30
-adr: "../exports/hpo-identifier-adr-2026-03-01.md"
+shipped: 2026-05-30
+status: shipped
+adr: "../exports/2026-03-01-adr-hpo-pipeline.md"
+related_export: "../exports/2026-05-30-ontogpt-benchmark.md"
 ---
 
 # Implementation Plan: Stakeholder Feedback Round 1
+
+> **Shipped 2026-05-30.** All 4 tasks merged across PRs #1–#4. The ontoGPT benchmark report lives alongside this plan at [`../exports/2026-05-30-ontogpt-benchmark.md`](../exports/2026-05-30-ontogpt-benchmark.md).
 
 ## Summary
 
@@ -202,4 +207,4 @@ cat context/exports/ontogpt-benchmark-2026-05-30.md
 - [x] Task 2: hpo-toolkit replaces hand-rolled hierarchy walk in `validate.py`; aggregate F1 stable-or-higher vs. pre-migration; committed (PR #2, 2026-05-30).
 - [x] Task 3: `phenoscribe aggregate` produces CSV + PNG matching the Plovdiv-poster style; sample outputs in `output/`; committed (PR #3, 2026-05-30).
 - [x] Task 4: ontoGPT benchmark report exists in `context/exports/` with concrete numbers + verdict; committed (PR #4, 2026-05-30).
-- [ ] When all four are shipped: move this plan to `context/shipped/`.
+- [x] When all four are shipped: move this plan to `context/shipped/`. Done 2026-05-30.

@@ -1,7 +1,7 @@
 ---
 date: 2026-05-30
 type: benchmark
-plan: ../plans/stakeholder-feedback-plan-2026-05-30.md
+plan: ../shipped/2026-05-30-stakeholder-feedback-round-1.md
 ---
 
 # ontoGPT vs Phenoscribe — benchmark
