@@ -1,22 +1,38 @@
-"""Validation scorer — compare pipeline output against ground truth."""
+"""Validation scorer — compare pipeline output against ground truth.
+
+Hierarchy walks use hpo-toolkit (recommended by Peter Robinson) so that
+sibling and uncle/nephew relationships score correctly via a shared
+ancestor, which the previous strictly-up/strictly-down walk missed.
+"""
 
 import logging
 import re
-from collections import defaultdict
+from collections import defaultdict, deque
 
+import hpotk
 import openpyxl
-
-from phenoscribe.hpo_index import parse_obo, build_hierarchy
 
 logger = logging.getLogger(__name__)
 
 HP_CODE_PATTERN = re.compile(r"HP:\d{7}")
 
+_HPO_CACHE = None
+
+
+def _get_hpo():
+    """Load HPO once per process (the auto-downloaded release is ~10MB and parsing takes a few seconds)."""
+    global _HPO_CACHE
+    if _HPO_CACHE is None:
+        store = hpotk.configure_ontology_store()
+        _HPO_CACHE = store.load_minimal_hpo()
+        logger.info("Loaded HPO via hpo-toolkit, version %s", _HPO_CACHE.version)
+    return _HPO_CACHE
+
 
 def load_codes_from_excel(path: str) -> dict[str, set[str]]:
     """Extract HPO codes per patient from an Excel file.
 
-    Handles both semicolon format and PURL format.
+    Handles detailed (per-row), semicolon, and PURL formats.
     Returns dict of patient_id -> set of HP codes.
     """
     wb = openpyxl.load_workbook(path)
@@ -25,21 +41,24 @@ def load_codes_from_excel(path: str) -> dict[str, set[str]]:
 
     patient_codes: dict[str, set[str]] = defaultdict(set)
 
-    # Detect format
     if "HPO Code Purl" in headers:
-        # PURL format: one row per code
         id_col = headers.index("CASE ID")
         purl_col = headers.index("HPO Code Purl")
         for row in ws.iter_rows(min_row=2, values_only=True):
             pid = row[id_col]
             purl = row[purl_col]
             if pid and purl:
-                # Extract HP code from PURL: http://purl.obolibrary.org/obo/HP_0002027
                 match = re.search(r"HP_(\d{7})", str(purl))
                 if match:
                     patient_codes[str(pid)].add(f"HP:{match.group(1)}")
+    elif "HPO Code" in headers:
+        id_col = headers.index("Patient_ID")
+        code_col = headers.index("HPO Code")
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            pid, code = row[id_col], row[code_col]
+            if pid and code and str(code).startswith("HP:"):
+                patient_codes[str(pid)].add(str(code))
     else:
-        # Semicolon format: all codes in observation_source_value
         for row in ws.iter_rows(min_row=2, values_only=True):
             pid = row[0]
             obs = str(row[1]) if row[1] else ""
@@ -51,77 +70,70 @@ def load_codes_from_excel(path: str) -> dict[str, set[str]]:
     return dict(patient_codes)
 
 
-def get_ancestors(hpo_id: str, hierarchy: dict[str, list[str]], max_depth: int = 2) -> dict[str, int]:
-    """Get ancestors of an HPO term up to max_depth.
+def hop_distance(hpo, a: str, b: str, max_hops: int = 2) -> int | None:
+    """Shortest is_a path between two HPO terms, treating the DAG as undirected.
 
-    Returns dict of ancestor_id -> distance.
+    Returns None if the distance exceeds max_hops or either term is unknown.
+    With max_hops=2 this captures: exact, parent/child, grandparent/grandchild,
+    siblings (shared parent), and uncle-nephew (one step up then one step down).
     """
-    ancestors = {}
-    frontier = [(hpo_id, 0)]
-    visited = {hpo_id}
+    if a == b:
+        return 0
+    seen = {a}
+    queue = deque([(a, 0)])
+    while queue:
+        current, depth = queue.popleft()
+        if depth >= max_hops:
+            continue
+        try:
+            neighbours = [str(p) for p in hpo.graph.get_parents(current)]
+            neighbours += [str(c) for c in hpo.graph.get_children(current)]
+        except (KeyError, ValueError):
+            continue
+        for nxt in neighbours:
+            if nxt in seen:
+                continue
+            new_depth = depth + 1
+            if nxt == b:
+                return new_depth
+            seen.add(nxt)
+            queue.append((nxt, new_depth))
+    return None
 
-    while frontier:
-        current, depth = frontier.pop(0)
-        if depth > 0:
-            ancestors[current] = depth
-        if depth < max_depth:
-            for parent in hierarchy.get(current, []):
-                if parent not in visited:
-                    visited.add(parent)
-                    frontier.append((parent, depth + 1))
 
-    return ancestors
+def score_match(predicted: str, ground_truth: set[str], hpo) -> float:
+    """Score a predicted HPO code against a set of ground-truth codes.
 
-
-def score_match(
-    predicted: str, ground_truth: set[str], hierarchy: dict[str, list[str]]
-) -> float:
-    """Score a single predicted HPO code against ground truth codes.
-
-    Returns:
-        1.0 for exact match
-        0.75 for parent/child (1 hop)
-        0.5 for grandparent/grandchild (2 hops)
-        0.0 otherwise
+    1.0 exact, 0.75 one hop, 0.5 two hops, 0 otherwise.
     """
     if predicted in ground_truth:
         return 1.0
 
-    # Check if predicted is an ancestor of any ground truth code
+    best = 0.0
     for gt_code in ground_truth:
-        ancestors = get_ancestors(gt_code, hierarchy, max_depth=2)
-        if predicted in ancestors:
-            dist = ancestors[predicted]
-            return 0.75 if dist == 1 else 0.5
-
-    # Check if any ground truth code is an ancestor of predicted
-    pred_ancestors = get_ancestors(predicted, hierarchy, max_depth=2)
-    for gt_code in ground_truth:
-        if gt_code in pred_ancestors:
-            dist = pred_ancestors[gt_code]
-            return 0.75 if dist == 1 else 0.5
-
-    return 0.0
+        d = hop_distance(hpo, predicted, gt_code, max_hops=2)
+        if d == 1:
+            score = 0.75
+        elif d == 2:
+            score = 0.5
+        else:
+            score = 0.0
+        if score > best:
+            best = score
+    return best
 
 
 def validate(
     ground_truth_path: str,
     pipeline_output_path: str,
-    obo_path: str = "data/hpo/hp.obo",
+    _obo_path_ignored: str | None = None,
+    **_legacy_kwargs,
 ) -> dict:
-    """Compare pipeline output against ground truth.
-
-    Returns validation report dict.
-    """
-    # Load data
+    """Compare pipeline output against ground truth. Returns validation report dict."""
     gt_codes = load_codes_from_excel(ground_truth_path)
     pred_codes = load_codes_from_excel(pipeline_output_path)
+    hpo = _get_hpo()
 
-    # Build hierarchy
-    terms = parse_obo(obo_path)
-    hierarchy = build_hierarchy(terms)
-
-    # Score per patient
     patient_scores = {}
     all_patients = set(gt_codes.keys()) | set(pred_codes.keys())
 
@@ -138,11 +150,10 @@ def validate(
         total_gt += len(gt)
         total_pred += len(pred)
 
-        # Score each prediction
         scores = []
         matched_gt = set()
         for p_code in pred:
-            s = score_match(p_code, gt, hierarchy)
+            s = score_match(p_code, gt, hpo)
             scores.append(s)
             if s == 1.0:
                 total_exact += 1
@@ -150,11 +161,8 @@ def validate(
             elif s > 0:
                 total_close += 1
 
-        # Missed = ground truth codes not matched
         missed = gt - matched_gt
         total_missed += len(missed)
-
-        # Extra = predicted codes with score 0
         extra = sum(1 for s in scores if s == 0.0)
         total_extra += extra
 
@@ -174,11 +182,10 @@ def validate(
             "extra": extra,
         }
 
-    # Aggregate
     precision = (total_exact + total_close) / total_pred if total_pred else 0.0
     recall = total_exact / total_gt if total_gt else 0.0
 
-    report = {
+    return {
         "patients_evaluated": len(all_patients),
         "total_gt_codes": total_gt,
         "total_pred_codes": total_pred,
@@ -191,8 +198,6 @@ def validate(
         "f1": 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0,
         "per_patient": patient_scores,
     }
-
-    return report
 
 
 def print_report(report: dict) -> None:
