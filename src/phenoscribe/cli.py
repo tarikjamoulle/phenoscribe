@@ -34,6 +34,17 @@ def main():
     status = subparsers.add_parser("status", help="Show processing status")
     status.add_argument("--config", "-c", default="config.yaml", help="Config file path")
 
+    # Aggregate command
+    agg = subparsers.add_parser(
+        "aggregate",
+        help="Compute cohort-level HPO prevalence from a results workbook",
+    )
+    agg.add_argument("results", help="Path to results Excel file")
+    agg.add_argument("--csv", default="output/prevalence.csv", help="Output CSV path")
+    agg.add_argument("--chart", default="output/prevalence.png", help="Output chart PNG path")
+    agg.add_argument("--top", type=int, default=20, help="Number of top terms to show in the chart")
+    agg.add_argument("--no-chart", action="store_true", help="Skip the chart (CSV only)")
+
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -46,6 +57,8 @@ def main():
         _cmd_process(args)
     elif args.command == "status":
         _cmd_status(args)
+    elif args.command == "aggregate":
+        _cmd_aggregate(args)
     else:
         parser.print_help()
         sys.exit(1)
@@ -162,6 +175,41 @@ def _cmd_status(args):
         print("\nFailed jobs:")
         for j in failed:
             print(f"  {j['patient_id']} — {j['step_failed']}: {j['error_msg']}")
+
+
+def _cmd_aggregate(args):
+    from phenoscribe.aggregate import (
+        compute_prevalence,
+        load_patient_codes,
+        write_prevalence_chart,
+        write_prevalence_csv,
+    )
+
+    if not Path(args.results).is_file():
+        print(f"Error: '{args.results}' is not a file.")
+        sys.exit(1)
+
+    patient_codes = load_patient_codes(args.results)
+    if not patient_codes:
+        print(f"No HPO codes found in {args.results}.")
+        sys.exit(1)
+
+    rows = compute_prevalence(patient_codes)
+    n_patients = len(patient_codes)
+    print(f"Cohort: {n_patients} patient(s), {len(rows)} distinct HPO term(s).")
+
+    write_prevalence_csv(rows, args.csv)
+    if not args.no_chart:
+        write_prevalence_chart(rows, args.chart, top_n=args.top)
+
+    print(f"\nTop {min(10, len(rows))} terms by prevalence:")
+    print(f"{'#':>3}  {'Patients':>8}  {'Pct':>5}  {'HPO Code':<12}  Term")
+    print("-" * 70)
+    for i, r in enumerate(rows[:10], 1):
+        print(f"{i:>3}  {r['n_patients']:>8}  {r['pct']:>4.1f}%  {r['hpo_id']:<12}  {r['hpo_term']}")
+    print(f"\nCSV:   {args.csv}")
+    if not args.no_chart:
+        print(f"Chart: {args.chart}")
 
 
 def _identify_failed_step(error: Exception) -> str:
