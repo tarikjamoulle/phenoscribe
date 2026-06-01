@@ -4,10 +4,40 @@ import json
 import logging
 import os
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+_api_key_override: ContextVar[dict[str, str] | None] = ContextVar(
+    "_api_key_override", default=None
+)
+
+
+@contextmanager
+def use_api_key(provider: str, api_key: str):
+    """Make `api_key` available to LLM calls for this provider, scoped to the with-block.
+
+    Used by the GUI to keep a user-pasted key out of `os.environ` (where it would
+    persist across requests and leak to other users of the same process).
+    """
+    if not api_key:
+        yield
+        return
+    token = _api_key_override.set({provider: api_key})
+    try:
+        yield
+    finally:
+        _api_key_override.reset(token)
+
+
+def _resolve_api_key(provider: str, env_var: str) -> str:
+    override = _api_key_override.get()
+    if override and override.get(provider):
+        return override[provider]
+    return os.environ.get(env_var, "")
 
 
 def llm_call(
@@ -50,7 +80,7 @@ def llm_call(
 def _call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
     from openai import OpenAI
 
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    client = OpenAI(api_key=_resolve_api_key("openai", "OPENAI_API_KEY"))
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -65,7 +95,7 @@ def _call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
 def _call_anthropic(system_prompt: str, user_prompt: str, model: str) -> str:
     from anthropic import Anthropic
 
-    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = Anthropic(api_key=_resolve_api_key("anthropic", "ANTHROPIC_API_KEY"))
     response = client.messages.create(
         model=model,
         max_tokens=4096,

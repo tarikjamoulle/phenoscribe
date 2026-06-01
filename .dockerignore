@@ -1,0 +1,30 @@
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.egg-info
+dist
+build
+
+# Patient data and runtime state — must never enter the image
+data/
+output/
+*.db
+.env
+setup.sh
+
+# Local docs & context (not needed at runtime)
+context/
+docs/
+tests/
+
+# OS junk
+.DS_Store
+Thumbs.db

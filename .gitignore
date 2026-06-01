@@ -23,6 +23,9 @@ output/
 docs/
 chroma_db/
 
+# Local model caches (Whisper, HF transformers, etc.) — large, machine-local
+models/
+
 # Environment
 .env
 setup.sh

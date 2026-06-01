@@ -21,10 +21,12 @@ dependencies = [
     "pyannote.audio>=3.1.0",
     "hpo-toolkit>=0.5,<1.0",
     "matplotlib>=3.7",
+    "gradio>=4.44,<5",
 ]
 
 [project.scripts]
 phenoscribe = "phenoscribe.cli:main"
+phenoscribe-gui = "phenoscribe.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/phenoscribe"]

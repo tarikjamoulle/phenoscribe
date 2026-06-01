@@ -20,6 +20,7 @@ def process_recording(
     config: Config,
     output_path: str | None = None,
     skip_transcription: bool = False,
+    skip_pii: bool = False,
 ) -> list[dict]:
     """Process a single recording through the full pipeline.
 
@@ -98,18 +99,27 @@ def process_recording(
 
     logger.info("[%s] Transcript: %d chars", patient_id, len(raw_text))
 
-    # Step 2: Pseudonymize
-    logger.info("[%s] Step 2: Pseudonymizing PII...", patient_id)
-    safe_text, pii_mapping = pseudonymize(raw_text)
-    logger.info("[%s] PII entities replaced: %d", patient_id, len(pii_mapping))
+    # Step 2: Pseudonymize (optional)
+    if skip_pii:
+        logger.warning(
+            "[%s] Step 2: SKIPPED — PII pseudonymization disabled. "
+            "Raw text (may contain patient identifiers) will be sent to the LLM.",
+            patient_id,
+        )
+        safe_text = raw_text
+        pii_mapping: dict = {}
+    else:
+        logger.info("[%s] Step 2: Pseudonymizing PII...", patient_id)
+        safe_text, pii_mapping = pseudonymize(raw_text)
+        logger.info("[%s] PII entities replaced: %d", patient_id, len(pii_mapping))
 
-    # Save pseudonymized transcript
-    pseudo_dir = os.path.join(out_dir, "pseudo")
-    os.makedirs(pseudo_dir, exist_ok=True)
-    pseudo_path = os.path.join(pseudo_dir, f"{patient_id}.txt")
-    with open(pseudo_path, "w", encoding="utf-8") as f:
-        f.write(safe_text)
-    logger.info("[%s] Pseudonymized transcript saved: %s", patient_id, pseudo_path)
+        # Save pseudonymized transcript
+        pseudo_dir = os.path.join(out_dir, "pseudo")
+        os.makedirs(pseudo_dir, exist_ok=True)
+        pseudo_path = os.path.join(pseudo_dir, f"{patient_id}.txt")
+        with open(pseudo_path, "w", encoding="utf-8") as f:
+            f.write(safe_text)
+        logger.info("[%s] Pseudonymized transcript saved: %s", patient_id, pseudo_path)
 
     # Step 3: Extract symptoms
     logger.info("[%s] Step 3: Extracting symptoms...", patient_id)
