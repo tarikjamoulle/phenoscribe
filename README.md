@@ -37,18 +37,19 @@ Cohort summaries with `phenoscribe aggregate` — counts per HPO term plus a hor
 Both ways use the same folder layout next to the project. Create them once:
 
 ```bash
-mkdir -p data/recordings output models
+mkdir -p data/recordings output
 ```
 
 | Folder | What goes in it | Who writes it |
 |---|---|---|
 | `data/recordings/` | **Your audio files.** Drop `.mp3`, `.wav`, `.m4a`, `.ogg` (or pre-made `.txt` transcripts) here. | You |
-| `output/` | **The results.** Excel lands at `output/results.xlsx`. Transcripts at `output/transcripts/<name>.txt`. Pseudonymised text at `output/pseudo/<name>.txt`. | Phenoscribe |
-| `models/` | Whisper model cache (~1.5 GB the first time, then reused forever). | Phenoscribe — don't touch |
+| `output/` | **The results.** Excel at `output/results.xlsx`, transcripts at `output/transcripts/<name>.txt`, pseudonymised text at `output/pseudo/<name>.txt`, and `output/filename_mapping.json` mapping each hashed `pt-…` id back to your original filename. | Phenoscribe |
+
+The Whisper transcription model and the HPO ontology are baked into the Docker image at build time, so the first run doesn't trigger a multi-GB download mid-transcription.
 
 ### Web app (Docker — recommended for non-developers)
 
-First time only — build the image (10–20 min, mostly downloads):
+First time only — build the image (20–30 min, mostly downloading Whisper + Torch):
 
 ```bash
 docker build -t phenoscribe .
@@ -57,14 +58,15 @@ docker build -t phenoscribe .
 Every time — start the app:
 
 ```bash
-docker run --rm -p 7860:7860 \
+docker run --rm -p 127.0.0.1:7860:7860 \
   -e PHENOSCRIBE_INPUT_DIR=/data/recordings \
   -e PHENOSCRIBE_OUTPUT_DIR=/data/output \
   -v "$(pwd)/data/recordings:/data/recordings:ro" \
   -v "$(pwd)/output:/data/output" \
-  -v "$(pwd)/models:/root/.cache/huggingface" \
   phenoscribe
 ```
+
+The `127.0.0.1:` prefix on `-p` keeps the published port reachable only from this machine — nobody else on your network can browse to it.
 
 Then:
 
@@ -72,9 +74,7 @@ Then:
 2. The files you put in `data/recordings/` show up as checkboxes. Tick the ones you want to process. (Added new files after the app started? Click **Refresh file list**.)
 3. Pick your LLM provider, paste your API key in the password box, choose the language.
 4. Click **Run**. Progress bar shows which file is being processed.
-5. When it finishes, open `output/results.xlsx` on your machine. There's also a download button in the browser.
-
-First run downloads the Whisper model (~1.5 GB, 5–10 min). Every run after that skips the download because the model is cached in `models/`.
+5. When it finishes, open `output/results.xlsx` on your machine. There's also a download button in the browser. `output/filename_mapping.json` tells you which original filename each `pt-…` id came from.
 
 ### CLI
 
@@ -120,8 +120,7 @@ src/phenoscribe/        Pipeline source
   diarize.py            Optional: pyannote speaker diarization (needs HF_TOKEN)
 
 data/                   HPO ontology, ChromaDB, recordings (gitignored)
-output/                 Excel, transcripts, pseudonymised text
-models/                 Whisper model cache (Docker host mount)
+output/                 Excel, transcripts, pseudonymised text, filename mapping
 context/                Architecture notes, plans, shipped docs, exports
 tests/                  Unit + integration tests
 ```

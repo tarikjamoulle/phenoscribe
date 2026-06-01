@@ -7,7 +7,7 @@ This guide is for people who have never used a command line. If you can follow a
 ## 1. What you need
 
 - A laptop running **Mac**, **Windows 10/11**, or **Linux**.
-- About **8 GB of free disk space** (most of that is the Whisper voice-recognition model).
+- About **10 GB of free disk space** for the Docker image (it bundles the Whisper voice-recognition model and the HPO ontology so the first run doesn't need to download them).
 - An **internet connection** for the first run (later runs can be offline for transcription; the AI step still needs internet).
 - An **API key** from OpenAI or Anthropic. This is what pays for the AI part. About $0.01 per recording. (See step 3.)
 
@@ -90,7 +90,7 @@ To check you're in the right place, type `ls` (Mac/Linux) or `dir` (Windows) and
 
 ## 7. Build the Phenoscribe image (one time)
 
-This builds the sealed box that runs Phenoscribe. **It takes 10–20 minutes the first time** because it downloads a lot of software. After this, you won't need to do it again unless you re-download a new version.
+This builds the sealed box that runs Phenoscribe. **It takes 20–30 minutes the first time** because it downloads the Whisper voice-recognition model (~3 GB) and a lot of supporting software, all into the image. After this, you won't need to do it again unless you re-download a new version of Phenoscribe.
 
 Type this command and press Enter:
 
@@ -102,20 +102,20 @@ docker build -t phenoscribe .
 
 ## 8. Create your folders
 
-Phenoscribe needs three folders next to the project: one for your recordings, one for results, one for the voice-recognition model.
+Phenoscribe needs two folders next to the project: one for your recordings, one for results.
 
 Type this command and press Enter:
 
 **Mac / Linux:**
 
 ```
-mkdir -p data/recordings output models
+mkdir -p data/recordings output
 ```
 
 **Windows:**
 
 ```
-mkdir data\recordings output models
+mkdir data\recordings output
 ```
 
 What each folder is for:
@@ -123,8 +123,9 @@ What each folder is for:
 | Folder | What goes in it |
 |---|---|
 | `data/recordings/` | **Your audio files.** Drag your `.mp3`, `.wav`, `.m4a`, or `.ogg` recordings into this folder. |
-| `output/` | **Your results.** Phenoscribe writes the Excel here. You don't put anything in it yourself. |
-| `models/` | The Whisper voice-recognition model gets stored here automatically the first time you run Phenoscribe. **Don't touch this folder.** |
+| `output/` | **Your results.** Phenoscribe writes the Excel here, plus a `filename_mapping.json` that links each hashed `pt-…` id back to your original filename. You don't put anything in this folder yourself. |
+
+The Whisper voice-recognition model is already inside the Docker image (that's why step 7 took a while), so there's no separate model folder to manage.
 
 ## 9. Add your recordings
 
@@ -137,28 +138,28 @@ Back in the Terminal, type this command and press Enter. It's one long command �
 **Mac / Linux:**
 
 ```
-docker run --rm -p 7860:7860 \
+docker run --rm -p 127.0.0.1:7860:7860 \
   -e PHENOSCRIBE_INPUT_DIR=/data/recordings \
   -e PHENOSCRIBE_OUTPUT_DIR=/data/output \
   -v "$(pwd)/data/recordings:/data/recordings:ro" \
   -v "$(pwd)/output:/data/output" \
-  -v "$(pwd)/models:/root/.cache/huggingface" \
   phenoscribe
 ```
 
 **Windows (Command Prompt):**
 
 ```
-docker run --rm -p 7860:7860 ^
+docker run --rm -p 127.0.0.1:7860:7860 ^
   -e PHENOSCRIBE_INPUT_DIR=/data/recordings ^
   -e PHENOSCRIBE_OUTPUT_DIR=/data/output ^
   -v "%cd%\data\recordings:/data/recordings:ro" ^
   -v "%cd%\output:/data/output" ^
-  -v "%cd%\models:/root/.cache/huggingface" ^
   phenoscribe
 ```
 
-After a few seconds you'll see a line like `Running on local URL: http://0.0.0.0:7860`. The app is now running. **Leave this Terminal window open** — closing it stops the app.
+The `127.0.0.1:` prefix on `-p` is what keeps the app reachable only from your own laptop — without it, anyone on the same wifi could open the page.
+
+After a few seconds you'll see a line like `Running on local URL: http://0.0.0.0:7860` (that's the address *inside* the Docker container — from your browser, you still use `localhost`). The app is now running. **Leave this Terminal window open** — closing it stops the app.
 
 ## 11. Use the app in your browser
 
@@ -179,10 +180,12 @@ When Phenoscribe finishes, the Excel is at `output/results.xlsx` in your project
 
 You'll also see a download button in the browser if you'd rather grab it that way.
 
+The patient column in the Excel contains hashed ids like `pt-7a4b3c8e` instead of your original filenames. This is deliberate — filenames often carry patient names, and we don't want those in the spreadsheet. To map an id back to the source recording, open `output/filename_mapping.json`.
+
 Phenoscribe also saves:
 
-- `output/transcripts/<recording-name>.txt` — the raw transcript Whisper produced.
-- `output/pseudo/<recording-name>.txt` — the same transcript with names replaced by placeholders. This is what the AI saw.
+- `output/transcripts/pt-<hash>.txt` — the raw transcript Whisper produced.
+- `output/pseudo/pt-<hash>.txt` — the same transcript with names replaced by placeholders. This is what the AI saw.
 
 These are useful if you want to re-run just the AI step later (uncheck "Transcribe audio" in the GUI).
 
@@ -199,7 +202,7 @@ Once everything is installed, the everyday flow is just:
 3. Run the `docker run` command from step 10.
 4. Open <http://localhost:7860>.
 
-The first build (step 7) and Docker Desktop install (step 2) are one-time. The Whisper model download is also one-time — the `models/` folder keeps it.
+The first build (step 7) and Docker Desktop install (step 2) are one-time. The Whisper model lives inside the Docker image, so every fresh `docker run` already has it.
 
 ---
 
@@ -223,8 +226,8 @@ Wait another 30 seconds — the first start takes a moment. Then hard-refresh: `
 **"insufficient_quota" error on OpenAI**
 Your prepaid OpenAI credit is at $0. Top up at <https://platform.openai.com/settings/organization/billing/overview>. The "monthly usage limit" is separate from the actual credit balance.
 
-**Whisper download is very slow**
-Without a Hugging Face token, downloads are rate-limited. For a small one-time speedup: create a free account at <https://huggingface.co/join>, get a token at <https://huggingface.co/settings/tokens>, and add `-e HF_TOKEN=<your-token>` to the `docker run` command from step 10.
+**Whisper download fails during `docker build`**
+The build pulls the model from Hugging Face. If your connection is unstable, the build step may fail mid-download. Re-run `docker build -t phenoscribe .` — completed steps are cached, so it picks up where it left off.
 
 **Run failed with a Python error in the Terminal**
 Copy the last 20 lines of the Terminal output and send them to Tarik. The transcript and pseudonymised file (if produced) are in `output/transcripts/` and `output/pseudo/` — useful for debugging without re-running Whisper.

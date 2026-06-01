@@ -2,10 +2,11 @@
 
 Folder-mounted UX: files come from `PHENOSCRIBE_INPUT_DIR` (default `/app/input`),
 results go to `PHENOSCRIBE_OUTPUT_DIR` (default `/app/output`). The user picks
-which files to process, toggles options, hits Run, watches per-file progress,
-downloads the Excel.
+which files to process, hits Run, watches per-file progress, downloads the Excel.
 """
 
+import hashlib
+import json
 import logging
 import os
 import traceback
@@ -14,6 +15,7 @@ from pathlib import Path
 import gradio as gr
 
 from phenoscribe.config import load_config
+from phenoscribe.llm import use_api_key
 from phenoscribe.pipeline import process_recording
 from phenoscribe.transcribe import AUDIO_EXTENSIONS, TEXT_EXTENSIONS
 
@@ -67,6 +69,36 @@ def env_key_for(provider: str) -> str:
     return os.environ.get(PROVIDER_ENV_VAR.get(provider, ""), "")
 
 
+def patient_id_for(filename: str) -> str:
+    """Stable, content-free patient id derived from the filename.
+
+    Filenames in clinical use often carry patient names ("martin-jean-2025-04-12.mp3");
+    those names would otherwise leak into the Excel patient column and into transcript
+    file paths on disk, defeating the pseudonymisation guarantee. A short hash gives a
+    stable id without revealing the source string.
+    """
+    digest = hashlib.sha1(filename.encode("utf-8")).hexdigest()[:8]
+    return f"pt-{digest}"
+
+
+def record_filename_mapping(mapping: dict[str, str]) -> None:
+    """Append/merge the filename -> patient_id mapping to output/filename_mapping.json.
+
+    Lets the GP map an Excel row back to the source recording without putting the
+    raw filename in the Excel itself.
+    """
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUTPUT_DIR / "filename_mapping.json"
+    existing: dict[str, str] = {}
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            logger.warning("filename_mapping.json was malformed; rewriting from scratch")
+    existing.update(mapping)
+    path.write_text(json.dumps(existing, indent=2, sort_keys=True), encoding="utf-8")
+
+
 def refresh_files():
     return gr.update(choices=list_input_files(), value=[])
 
@@ -85,7 +117,6 @@ def update_api_key_field(provider: str):
 def run_pipeline(
     selected_files: list[str],
     do_transcribe: bool,
-    do_pseudonymize: bool,
     do_diarize: bool,
     language: str,
     provider: str,
@@ -97,9 +128,8 @@ def run_pipeline(
         return [["(no files selected)", "", 0, ""]], None
 
     env_var = PROVIDER_ENV_VAR.get(provider)
-    if env_var and api_key.strip():
-        os.environ[env_var] = api_key.strip()
-    if env_var and not os.environ.get(env_var):
+    pasted_key = api_key.strip()
+    if env_var and not pasted_key and not os.environ.get(env_var):
         return [["(no API key)", f"set {env_var} or paste it in the box", 0, ""]], None
 
     config = load_config(CONFIG_PATH)
@@ -112,26 +142,31 @@ def run_pipeline(
     output_path = str(OUTPUT_DIR / "results.xlsx")
 
     rows: list[list] = []
+    mapping: dict[str, str] = {}
     total = len(selected_files)
 
-    for i, filename in enumerate(selected_files):
-        progress(i / total, desc=f"[{i + 1}/{total}] {filename}")
-        filepath = INPUT_DIR / filename
-        patient_id = filepath.stem
+    with use_api_key(provider, pasted_key):
+        for i, filename in enumerate(selected_files):
+            progress(i / total, desc=f"[{i + 1}/{total}] {filename}")
+            filepath = INPUT_DIR / filename
+            patient_id = patient_id_for(filename)
+            mapping[patient_id] = filename
 
-        try:
-            matches = process_recording(
-                str(filepath),
-                patient_id,
-                config,
-                output_path=output_path,
-                skip_transcription=not do_transcribe,
-                skip_pii=not do_pseudonymize,
-            )
-            rows.append([filename, "done", len(matches), ""])
-        except Exception as e:
-            logger.error("Failed processing %s:\n%s", filename, traceback.format_exc())
-            rows.append([filename, "failed", 0, str(e)])
+            try:
+                matches = process_recording(
+                    str(filepath),
+                    patient_id,
+                    config,
+                    output_path=output_path,
+                    skip_transcription=not do_transcribe,
+                )
+                rows.append([filename, "done", len(matches), ""])
+            except Exception as e:
+                logger.error("Failed processing %s:\n%s", filename, traceback.format_exc())
+                rows.append([filename, "failed", 0, str(e)])
+
+    if mapping:
+        record_filename_mapping(mapping)
 
     progress(1.0, desc="Finished")
     excel = output_path if Path(output_path).exists() else None
@@ -169,11 +204,6 @@ def build_app() -> gr.Blocks:
                     label="Transcribe audio",
                     info="Off = reuse saved transcript from a previous run",
                 )
-                do_pseudonymize = gr.Checkbox(
-                    value=True,
-                    label="Pseudonymize PII",
-                    info="Off sends raw text to the LLM — only disable for non-clinical data",
-                )
                 do_diarize = gr.Checkbox(
                     value=False,
                     label="Speaker diarization",
@@ -208,7 +238,7 @@ def build_app() -> gr.Blocks:
                         else f"Paste your {initial_provider} API key"
                     ),
                     interactive=not initial_env_key,
-                    info="Stored in memory for this session only. Never written to disk.",
+                    info="Used for this run only — passed directly to the LLM client and dropped when the run ends. Not stored on disk.",
                 )
 
         run_btn = gr.Button("Run", variant="primary", size="lg")
@@ -229,7 +259,6 @@ def build_app() -> gr.Blocks:
             inputs=[
                 files,
                 do_transcribe,
-                do_pseudonymize,
                 do_diarize,
                 language,
                 provider,

@@ -6,7 +6,7 @@ llm:
   ollama_base_url: "http://localhost:11434"  # only used if provider is ollama
 
 transcription:
-  model: "medium"             # faster-whisper model name
+  model: "large-v3"           # faster-whisper model name (validated against ground truth)
   language: "fr"              # audio language
   device: "cpu"               # cpu | cuda | auto
 

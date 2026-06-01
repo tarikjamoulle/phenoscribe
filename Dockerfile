@@ -1,5 +1,12 @@
 FROM python:3.11-slim
 
+# Pinned versions — bump deliberately, then re-validate against ground truth.
+# HPO_VERSION must match a tag at
+#   https://github.com/obophenotype/human-phenotype-ontology/releases
+# WHISPER_MODEL is the faster-whisper model that gets baked into the image.
+ARG HPO_VERSION=v2025-05-06
+ARG WHISPER_MODEL=large-v3
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
         curl \
@@ -9,14 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install CPU-only torch explicitly (saves ~1.5 GB vs default CUDA wheels,
-# works on both linux/amd64 and linux/arm64 from the same index).
+# CPU-only torch (saves ~1.5 GB vs default CUDA wheels, works on amd64 + arm64).
 RUN pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cpu \
         torch
 
-# Project dependencies — copy minimum needed for the editable install,
-# then drop build-essential to slim the final image.
 COPY pyproject.toml ./
 COPY src/ src/
 RUN pip install --no-cache-dir -e . \
@@ -27,16 +31,19 @@ RUN pip install --no-cache-dir -e . \
 COPY scripts/ scripts/
 COPY config.yaml ./
 
-# Bake the public HPO ontology and a pre-seeded ChromaDB into the image
-# so first-run is functional without any download except the LLM call.
+# HPO ontology — pinned release, then seeded into ChromaDB.
 RUN mkdir -p data/hpo \
-    && curl -fsSL https://purl.obolibrary.org/obo/hp.obo -o data/hpo/hp.obo \
+    && curl -fsSL "https://github.com/obophenotype/human-phenotype-ontology/releases/download/${HPO_VERSION}/hp.obo" \
+        -o data/hpo/hp.obo \
+    && echo "${HPO_VERSION}" > data/hpo/VERSION \
     && python scripts/seed_hpo.py
 
-# Pre-fetch ChromaDB's default ONNX embedding model. Cached under
-# ~/.cache/chroma/ — the launcher only mounts ~/.cache/huggingface,
-# so this stays baked at runtime.
+# ChromaDB's default ONNX embedding model — caches under ~/.cache/chroma/.
 RUN python -c "from chromadb.utils.embedding_functions import DefaultEmbeddingFunction; ef = DefaultEmbeddingFunction(); ef(['warmup'])"
+
+# Bake the Whisper model into the image so the first user click doesn't
+# trigger a multi-GB download mid-transcription. ~3 GB for large-v3.
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu')"
 
 EXPOSE 7860
 
