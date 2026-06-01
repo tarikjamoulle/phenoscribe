@@ -23,6 +23,7 @@ All files in `exports/` and `shipped/` are named `YYYY-MM-DD-<slug>.md` so they 
 ### `shipped/`
 - **`2026-03-01-hpo-pipeline-initial-build.md`** — The 11-task plan for the initial pipeline build. Shipped 2026-03-07. Includes post-ship additions (diarization, transcript caching, detailed output format).
 - **`2026-05-30-stakeholder-feedback-round-1.md`** — Four-task plan addressing Peter Robinson's HPO+LLM caveat, hpo-toolkit hierarchy walks, the `phenoscribe aggregate` cohort command, and the ontoGPT benchmark. Shipped 2026-05-30 across PRs #1–#4.
+- **`2026-06-01-gradio-web-app.md`** — Gradio browser UI + Docker image + Claude provider wired end-to-end. Tasks 1–3 of the cross-platform Docker plan; multi-arch builds, OS launchers, and CUDA variant deferred.
 
 ## Data files do not live here
 
