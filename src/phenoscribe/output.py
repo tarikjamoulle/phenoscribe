@@ -10,10 +10,31 @@ from openpyxl.utils import get_column_letter
 logger = logging.getLogger(__name__)
 
 HEADERS = {
-    "detailed": ["Patient_ID", "HPO Term", "HPO Code", "Patient Verbatim"],
+    "detailed": [
+        "Patient_ID",
+        "HPO Term",
+        "HPO Code",
+        "Patient Verbatim",
+        "Needs Review",
+        "Confidence",
+    ],
     "semicolon": ["Patient_ID", "observation_source_value"],
-    "purl": ["CASE ID", "HPO TERM", "HPO Code Purl", "Verbatim"],
+    "purl": ["CASE ID", "HPO TERM", "HPO Code Purl", "Verbatim", "Needs Review", "Confidence"],
 }
+
+# Light amber fill for rows the GP should double-check.
+_REVIEW_FILL = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+
+
+def _review_label(match: dict) -> str:
+    """Human-readable review flag for a match row."""
+    return "REVIEW" if match.get("needs_review") else ""
+
+
+def _confidence_cell(match: dict):
+    """Confidence as a 0-1 float, or '' when the match carries none."""
+    conf = match.get("confidence")
+    return conf if conf is not None else ""
 
 _HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
 _HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -86,12 +107,26 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
     """One row per HPO match with separate columns."""
     for m in matches:
         verbatim = m.get("patient_verbatim", "")
-        ws.append([patient_id, m["hpo_term"], m["hpo_id"], verbatim])
+        ws.append(
+            [
+                patient_id,
+                m["hpo_term"],
+                m["hpo_id"],
+                verbatim,
+                _review_label(m),
+                _confidence_cell(m),
+            ]
+        )
         row = ws.max_row
         ws.cell(row=row, column=1).alignment = _TOP_ALIGNMENT
         ws.cell(row=row, column=2).alignment = _TOP_ALIGNMENT
         ws.cell(row=row, column=3).alignment = _TOP_ALIGNMENT
         ws.cell(row=row, column=4).alignment = _WRAP_ALIGNMENT
+        ws.cell(row=row, column=5).alignment = _TOP_ALIGNMENT
+        ws.cell(row=row, column=6).alignment = _TOP_ALIGNMENT
+        if m.get("needs_review"):
+            for col in range(1, 7):
+                ws.cell(row=row, column=col).fill = _REVIEW_FILL
 
 
 def _write_semicolon_format(ws, patient_id: str, matches: list[dict]) -> None:
@@ -101,6 +136,9 @@ def _write_semicolon_format(ws, patient_id: str, matches: list[dict]) -> None:
         entry = f"{m['hpo_term']} ({m['hpo_id']})"
         if m.get("patient_verbatim"):
             entry += f" [{m['patient_verbatim']}]"
+        # Mark low-confidence codes inline so they survive the flat cell format.
+        if m.get("needs_review"):
+            entry += " {REVIEW}"
         parts.append(entry)
 
     observation = "; ".join(parts)
@@ -112,7 +150,13 @@ def _write_purl_format(ws, patient_id: str, matches: list[dict]) -> None:
     for m in matches:
         purl = _hpo_id_to_purl(m["hpo_id"])
         verbatim = m.get("patient_verbatim", "")
-        ws.append([patient_id, m["hpo_term"], purl, verbatim])
+        ws.append(
+            [patient_id, m["hpo_term"], purl, verbatim, _review_label(m), _confidence_cell(m)]
+        )
+        if m.get("needs_review"):
+            row = ws.max_row
+            for col in range(1, 7):
+                ws.cell(row=row, column=col).fill = _REVIEW_FILL
 
 
 def _hpo_id_to_purl(hpo_id: str) -> str:

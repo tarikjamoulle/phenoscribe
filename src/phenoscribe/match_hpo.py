@@ -2,11 +2,18 @@
 
 import json
 import logging
+import re
 
 from phenoscribe.hpo_index import search_hpo
 from phenoscribe.llm import llm_call
 
 logger = logging.getLogger(__name__)
+
+# Cosine distance above which the top vector candidate is treated as weak.
+# ChromaDB cosine distance runs 0 (identical) to 2 (opposite). A symptom whose
+# best HPO candidate sits beyond this distance gets flagged for review even when
+# the judge picks confidently, because the shortlist itself may be off-target.
+WEAK_MATCH_DISTANCE = 0.6
 
 JUDGE_SYSTEM_PROMPT = """\
 You are an HPO (Human Phenotype Ontology) coding expert. Given a clinical concept and a \
@@ -14,12 +21,19 @@ list of candidate HPO terms, select the BEST matching HPO term.
 
 Rules:
 - Pick the most specific term that accurately describes the clinical concept
-- If none of the candidates match well, pick the closest one and note it
-- Return ONLY a JSON object with "hpo_id" and "hpo_term" keys
-- Do NOT invent or modify HPO codes — only use codes from the candidates provided
+- Only choose from the candidates provided. Do NOT invent or modify HPO codes.
+- If NONE of the candidates is a defensible match, say so by setting "match" to false.
+- Report your confidence in [0.0, 1.0]: how well the chosen term captures the concept.
+- Return ONLY a JSON object with keys "hpo_id", "hpo_term", "match", "confidence".
 
-Example output:
-{"hpo_id": "HP:0002027", "hpo_term": "Abdominal pain"}"""
+Example (good match):
+{"hpo_id": "HP:0002027", "hpo_term": "Abdominal pain", "match": true, "confidence": 0.95}
+
+Example (no candidate fits):
+{"hpo_id": null, "hpo_term": null, "match": false, "confidence": 0.1}"""
+
+# Below this self-reported confidence the match is surfaced for review.
+LOW_CONFIDENCE_THRESHOLD = 0.5
 
 
 def match_hpo(
@@ -45,7 +59,10 @@ def match_hpo(
         k: Number of HPO candidates to retrieve.
 
     Returns:
-        List of dicts with hpo_id, hpo_term, patient_verbatim, clinical_term.
+        List of dicts with hpo_id, hpo_term, patient_verbatim, clinical_term,
+        confidence (float in [0, 1]), and needs_review (bool). When the judge
+        cannot justify a match the row is still returned, flagged for review,
+        so a code is never silently dressed up as one the model endorsed.
     """
     results = []
 
@@ -79,8 +96,31 @@ def match_hpo(
             )
             selected = _parse_judge_response(response, candidates)
         except Exception as e:
-            logger.warning("LLM judge failed for '%s', using top candidate: %s", clinical_term, e)
-            selected = {"hpo_id": candidates[0]["hpo_id"], "hpo_term": candidates[0]["name"]}
+            logger.warning(
+                "LLM judge failed for '%s', falling back to top candidate (needs review): %s",
+                clinical_term,
+                e,
+            )
+            selected = {
+                "hpo_id": candidates[0]["hpo_id"],
+                "hpo_term": candidates[0]["name"],
+                "confidence": 0.0,
+                "needs_review": True,
+            }
+
+        # A weak vector shortlist drags confidence down even when the judge is
+        # sure: it can only be sure relative to candidates that may all be wrong.
+        top_distance = candidates[0].get("distance")
+        if top_distance is not None and top_distance > WEAK_MATCH_DISTANCE:
+            if not selected["needs_review"]:
+                logger.info(
+                    "weak_shortlist: term=%r top_distance=%.3f > %.2f -> needs_review",
+                    clinical_term,
+                    top_distance,
+                    WEAK_MATCH_DISTANCE,
+                )
+            selected["needs_review"] = True
+            selected["confidence"] = min(selected["confidence"], 0.4)
 
         results.append(
             {
@@ -88,20 +128,31 @@ def match_hpo(
                 "hpo_term": selected["hpo_term"],
                 "patient_verbatim": symptom.get("patient_verbatim", ""),
                 "clinical_term": clinical_term,
+                "confidence": round(selected["confidence"], 2),
+                "needs_review": selected["needs_review"],
             }
         )
         logger.info(
-            "Matched '%s' -> %s (%s)",
+            "Matched '%s' -> %s (%s) confidence=%.2f needs_review=%s",
             clinical_term,
             selected["hpo_term"],
             selected["hpo_id"],
+            selected["confidence"],
+            selected["needs_review"],
         )
 
     return results
 
 
 def _parse_judge_response(response: str, candidates: list[dict]) -> dict:
-    """Parse LLM judge response, falling back to top candidate."""
+    """Parse the LLM judge response into a match decision.
+
+    Returns a dict with hpo_id, hpo_term, confidence (float in [0, 1]) and
+    needs_review (bool). A match is flagged for review when the model declines
+    the shortlist, the JSON fails to parse, the chosen code is not a candidate,
+    or the reported confidence is low. The fallback to the top candidate stays,
+    but it is always marked needs_review so it can never pass as an endorsed code.
+    """
     text = response.strip()
 
     # Strip markdown code fences
@@ -110,37 +161,90 @@ def _parse_judge_response(response: str, candidates: list[dict]) -> dict:
         lines = [l for l in lines if not l.strip().startswith("```")]
         text = "\n".join(lines)
 
+    candidate_by_id = {c["hpo_id"]: c["name"] for c in candidates}
+
     try:
         data = json.loads(text)
-        if "hpo_id" in data and "hpo_term" in data:
+    except (json.JSONDecodeError, TypeError):
+        data = None
+
+    if isinstance(data, dict):
+        hpo_id = data.get("hpo_id")
+        # Explicit abstention: the model says no candidate fits.
+        if data.get("match") is False:
+            logger.warning(
+                "Judge declined the shortlist (match=false); top candidate flagged for review."
+            )
+            return _fallback_top_candidate(candidates)
+
+        if hpo_id in candidate_by_id:
             # LLMs reliably produce HPO labels but can drift on identifiers
             # (Peter Robinson, dec 2025). Trust the candidate's canonical
             # name once the ID has been verified against the shortlist.
-            candidate_by_id = {c["hpo_id"]: c["name"] for c in candidates}
-            if data["hpo_id"] in candidate_by_id:
-                canonical_name = candidate_by_id[data["hpo_id"]]
-                if data["hpo_term"] != canonical_name:
-                    logger.info(
-                        "label_corrected: id=%s llm=%r canonical=%r",
-                        data["hpo_id"],
-                        data["hpo_term"],
-                        canonical_name,
-                    )
-                return {"hpo_id": data["hpo_id"], "hpo_term": canonical_name}
-            logger.warning("LLM selected code not in candidates: %s", data["hpo_id"])
-    except (json.JSONDecodeError, TypeError):
-        pass
+            canonical_name = candidate_by_id[hpo_id]
+            llm_term = data.get("hpo_term")
+            if llm_term and llm_term != canonical_name:
+                logger.info(
+                    "label_corrected: id=%s llm=%r canonical=%r",
+                    hpo_id,
+                    llm_term,
+                    canonical_name,
+                )
+            confidence = _coerce_confidence(data.get("confidence"))
+            needs_review = confidence < LOW_CONFIDENCE_THRESHOLD
+            if needs_review:
+                logger.info(
+                    "low_confidence: id=%s confidence=%.2f < %.2f -> needs_review",
+                    hpo_id,
+                    confidence,
+                    LOW_CONFIDENCE_THRESHOLD,
+                )
+            return {
+                "hpo_id": hpo_id,
+                "hpo_term": canonical_name,
+                "confidence": confidence,
+                "needs_review": needs_review,
+            }
 
-    # Fallback: try to find an HP: code in the response
-    import re
+        if hpo_id is not None:
+            logger.warning("LLM selected code not in candidates: %s", hpo_id)
 
+    # Fallback: try to find an HP: code in the response. A clean candidate
+    # match here still came from unstructured text, so treat it as uncertain.
     match = re.search(r"HP:\d{7}", text)
     if match:
         hpo_id = match.group()
-        for c in candidates:
-            if c["hpo_id"] == hpo_id:
-                return {"hpo_id": hpo_id, "hpo_term": c["name"]}
+        if hpo_id in candidate_by_id:
+            logger.warning(
+                "Recovered candidate code %s from unstructured judge text; flagged for review.",
+                hpo_id,
+            )
+            return {
+                "hpo_id": hpo_id,
+                "hpo_term": candidate_by_id[hpo_id],
+                "confidence": 0.3,
+                "needs_review": True,
+            }
 
-    # Final fallback: top candidate
-    logger.warning("Could not parse judge response, using top candidate.")
-    return {"hpo_id": candidates[0]["hpo_id"], "hpo_term": candidates[0]["name"]}
+    # Final fallback: top candidate, surfaced for review (never silent).
+    logger.warning("Could not parse judge response; top candidate flagged for review.")
+    return _fallback_top_candidate(candidates)
+
+
+def _fallback_top_candidate(candidates: list[dict]) -> dict:
+    """Return the top vector candidate, always flagged for human review."""
+    return {
+        "hpo_id": candidates[0]["hpo_id"],
+        "hpo_term": candidates[0]["name"],
+        "confidence": 0.0,
+        "needs_review": True,
+    }
+
+
+def _coerce_confidence(value) -> float:
+    """Clamp the model's reported confidence to [0, 1]; treat junk as 0."""
+    try:
+        conf = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(1.0, conf))
