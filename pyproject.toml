@@ -31,3 +31,8 @@ phenoscribe-gui = "phenoscribe.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/phenoscribe"]
+
+[tool.pytest.ini_options]
+markers = [
+    "network: test needs network/model download; skips if the hub is unreachable",
+]

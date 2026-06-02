@@ -12,7 +12,7 @@ The pipeline turns a recorded GP–patient conversation into a list of standardi
 
 1. **Listen to the recording and write it down.** A speech-to-text model tuned for French (faster-whisper) runs on the laptop and produces a raw transcript. The audio never leaves the machine. Optionally, a second model separates who is speaking — doctor or patient — so the transcript reads as a dialogue.
 
-2. **Replace personal information with consistent placeholders.** A medical-French model (OpenMed) detects names, places, dates and other identifying details and swaps them for stable tokens: "Dr. Martin" becomes "Dr. 1", "Erasme hospital" becomes "Hospital 1". The same name always gets the same placeholder throughout the transcript, so the story still reads as a story — only the identifying surface is hidden. The mapping stays on the machine.
+2. **Replace personal information with consistent placeholders.** A French PII NER model plus regex detects names, places, dates, phones, emails and national IDs and swaps them for stable tokens: "Dr. Martin" becomes "PERSON_1", "Bruxelles" becomes "LOCATION_1". The same value always gets the same placeholder throughout the transcript, so the story still reads as a story — only the identifying surface is hidden. The mapping stays on the machine.
 
 3. **Pull out every symptom the patient mentions.** An AI model reads the cleaned transcript and lists each complaint, keeping the patient's own French words ("j'ai mal au ventre") alongside a clinical English label ("abdominal pain"). Because identifying details were replaced in step 2, only de-identified text ever reaches the AI.
 
@@ -38,7 +38,7 @@ Audio file (.wav/.mp3)
 Raw transcript (text)
     │
     ▼
-[2. OpenMed] ── local PII detection & redaction (French medical, 97.97% F1)
+[2. French PII NER + regex] ── local PII detection & redaction
     │
     ▼
 PII-redacted transcript
@@ -70,7 +70,7 @@ Final (HPO_term, HPO_code, patient_verbatim) triplets
 | Step | Tool | Why |
 |------|------|-----|
 | Transcription | **faster-whisper** (default) or **mlx-whisper** (Apple Silicon opt-in, ~4.5× faster on M1 Pro 16-core; measured in `context/exports/2026-06-03-mlx-transcription-benchmark.md`) | faster-whisper: CPU/CUDA, 2–4× faster than reference Whisper, French-tuned models (WER 8.15%). mlx-whisper: Metal-accelerated on M-series Macs; same Whisper weights, dispatched via a `backend:` config key. Diarization currently requires faster-whisper. **Avoid distil-* variants for this project — they are English-only and silently degrade on French audio.** |
-| PII Detection | **OpenMed** (HuggingFace) | 97.97% F1 on French medical text, 55+ entity types, Apache 2.0, fully local |
+| PII Detection | **`Anonym-IA/V2-camembert-ner-pii-french`** (HuggingFace), regex for structured PII | French PII NER, CamemBERT-base (110M, ~445 MB), MIT, fully local. Validation micro-F1 0.9327 (model card `best_metrics.json`); 39 BIO entity types (names, address, email, phone, NIR, dates, ...). Fallback `Jean-Baptiste/camembert-ner` (general PER/LOC/ORG/MISC, WikiNER F1 0.8914) loads if the default is unavailable. Both under-redact rare hospital/clinic/drug-eponym names — see PII Strategy below. |
 | LLM (extraction + judging) | **Direct API + thin config** | LLM-agnostic — swap OpenAI/Anthropic/Ollama via config. PII stripped before API call |
 | HPO Search | **ChromaDB** (embedded) | Zero-infra, Python-native, persists to disk. 17K terms is tiny |
 | Excel Output | **openpyxl** | Standard Python Excel lib |
@@ -94,7 +94,7 @@ Standardized triplets separated by `;`:
 
 1. **Hybrid HPO matching**: LLM identifies symptoms in natural language → vector search gets top-K HPO candidates → LLM picks from bounded shortlist. Prevents hallucinated codes.
 
-2. **PII before LLM**: All PII redaction happens locally (OpenMed) BEFORE any text reaches an external API. GDPR-safe by design.
+2. **PII before LLM**: All PII redaction happens locally (French PII NER + regex) BEFORE any text reaches an external API. GDPR-safe by design. NER recall is imperfect on rare proper nouns, so the first batch should be spot-checked (see PII Strategy).
 
 3. **LLM-agnostic**: Thin config layer — provider + model in a config file. No LiteLLM dependency.
 
@@ -123,10 +123,38 @@ Instead of destroying PII context (e.g., replacing "Dr. John" with "[REDACTED]")
 - Non-identifying context preserved: "grandmother", "school", "work" stay as-is
 
 Implementation:
-1. OpenMed detects PII entities with type labels
-2. Replacement layer assigns numbered pseudonyms per entity type (PERSON_1, DATE_1, LOCATION_1...)
-3. Mapping table kept locally (never sent to API)
-4. Pseudonymized text sent to LLM — relationships and temporal flow preserved
+1. A French PII NER head detects entities with type labels. Default
+   `Anonym-IA/V2-camembert-ner-pii-french` (CamemBERT-base, MIT, validation
+   micro-F1 0.9327, 39 BIO entity types). Its labels (NOM_PERSONNE, VILLE,
+   EMAIL, TELEPHONE, NUM_SECURITE_SOCIALE, DATE, ...) are mapped into our
+   pseudonym categories in `pii.py` (`LABEL_TO_CATEGORY`). Fallback
+   `Jean-Baptiste/camembert-ner` (PER/LOC/ORG/MISC) loads automatically if the
+   default is unavailable, keeping the pipeline working offline. Configurable
+   via `pii.model` / `pii.fallback_model` in `config.yaml`.
+2. Regex catches structured PII deterministically (dates, Belgian/French
+   phones, emails, Belgian national numbers), independent of the NER head.
+3. Replacement layer assigns numbered pseudonyms per category (PERSON_1,
+   DATE_1, LOCATION_1...). The same value always maps to the same pseudonym.
+4. Mapping table kept locally (never sent to API).
+5. Pseudonymized text sent to LLM — relationships and temporal flow preserved.
+
+Known limitation. NER recall on rare proper nouns is imperfect. Hospital and
+clinic names, drug eponyms, uncommon surnames and bare first names can slip
+through. On our pseudonymised sample transcripts the PII model caught residual
+person names while leaving drug/condition names (Zaldiar, Ivabradine,
+Paxlovid, "Covid long") intact — desirable, since those carry clinical
+meaning the LLM needs. The general fallback over-redacts those as MISC and
+catches some first names the PII model misses; neither dominates on recall.
+Neither model is a complete de-identifier. The regex layer is exact for the
+patterns it covers. Spot-check the first batch before relying on automated
+redaction.
+
+Earlier drafts of this document and the README claimed the PII step used
+"OpenMed (French medical NER, 97.97% F1, 55+ entity types)". The shipped code
+loaded `Jean-Baptiste/camembert-ner`, a general 4-label French NER, and the
+97.97% figure had no source. OpenMed's published NER models exist but target
+English biomedical disease/drug entities, not French PII. Those claims are
+corrected here to describe exactly what runs.
 
 ## Open Questions (Stress Testing)
 

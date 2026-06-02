@@ -11,6 +11,17 @@ transcription:
   language: "fr"              # audio language
   device: "cpu"               # cpu | cuda | auto (only used by faster-whisper)
 
+pii:
+  # French PII NER head, run locally before any text reaches an LLM.
+  # Default: Anonym-IA/V2-camembert-ner-pii-french (CamemBERT-base, 110M,
+  # ~445 MB, MIT). Detects French names, addresses, cities, emails, phones,
+  # social-security numbers, dates, job titles and more.
+  model: "Anonym-IA/V2-camembert-ner-pii-french"
+  # Offline fallback if the default cannot be downloaded/loaded:
+  # a general 4-label French NER (PER/LOC/ORG/MISC).
+  fallback_model: "Jean-Baptiste/camembert-ner"
+  min_score: 0.6              # drop NER detections below this confidence
+
 output:
   format: "detailed"          # detailed | semicolon | purl
   path: "output/results.xlsx"
