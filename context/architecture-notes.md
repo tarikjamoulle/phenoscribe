@@ -69,7 +69,7 @@ Final (HPO_term, HPO_code, patient_verbatim) triplets
 
 | Step | Tool | Why |
 |------|------|-----|
-| Transcription | **faster-whisper** | 2-4x faster than Whisper, pip install, French-tuned models available (WER 8.15%). Phone recordings — test first, add noise reduction later if needed |
+| Transcription | **faster-whisper** (default) or **mlx-whisper** (Apple Silicon opt-in, 5–8× faster) | faster-whisper: CPU/CUDA, 2–4× faster than reference Whisper, French-tuned models (WER 8.15%). mlx-whisper: Metal-accelerated on M-series Macs; same Whisper weights, dispatched via a `backend:` config key. Diarization currently requires faster-whisper. |
 | PII Detection | **OpenMed** (HuggingFace) | 97.97% F1 on French medical text, 55+ entity types, Apache 2.0, fully local |
 | LLM (extraction + judging) | **Direct API + thin config** | LLM-agnostic — swap OpenAI/Anthropic/Ollama via config. PII stripped before API call |
 | HPO Search | **ChromaDB** (embedded) | Zero-infra, Python-native, persists to disk. 17K terms is tiny |

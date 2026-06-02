@@ -1,30 +1,30 @@
-"""Transcription module — faster-whisper for audio, passthrough for text."""
+"""Transcription module — faster-whisper, mlx-whisper, or passthrough for text."""
 
 import logging
 import time
 from pathlib import Path
-
-from faster_whisper import WhisperModel
 
 logger = logging.getLogger(__name__)
 
 AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac"}
 TEXT_EXTENSIONS = {".txt"}
 
-_model_cache: dict[str, WhisperModel] = {}
+# Default HF repo when caller passes a bare faster-whisper model name to the mlx backend.
+_MLX_MODEL_ALIASES = {
+    "large-v3": "mlx-community/whisper-large-v3-mlx",
+    "large-v3-turbo": "mlx-community/whisper-large-v3-turbo",
+    "distil-large-v3": "mlx-community/distil-whisper-large-v3",
+    "medium": "mlx-community/whisper-medium-mlx",
+    "small": "mlx-community/whisper-small-mlx",
+}
 
-
-def _get_model(model_name: str, device: str) -> WhisperModel:
-    """Get or create a cached WhisperModel."""
-    key = f"{model_name}:{device}"
-    if key not in _model_cache:
-        logger.info("Loading Whisper model '%s' on %s...", model_name, device)
-        _model_cache[key] = WhisperModel(model_name, device=device)
-    return _model_cache[key]
+_faster_whisper_cache: dict[str, object] = {}
 
 
 def transcribe(
     input_path: str,
+    *,
+    backend: str = "faster-whisper",
     model_name: str = "large-v3",
     language: str = "fr",
     device: str = "cpu",
@@ -32,10 +32,12 @@ def transcribe(
     """Transcribe an audio file or read a text file.
 
     Args:
-        input_path: Path to audio file (.wav, .mp3, .m4a, .ogg) or text file (.txt).
-        model_name: Whisper model name (only used for audio).
-        language: Audio language code (only used for audio).
-        device: Device for Whisper inference: cpu, cuda, or auto.
+        input_path: Path to audio file (.wav, .mp3, .m4a, .ogg, .flac) or text file (.txt).
+        backend: "faster-whisper" (CPU/CUDA) or "mlx" (Apple Silicon Metal).
+        model_name: Whisper model name. For mlx, also accepts an HF repo path directly;
+            bare names like "large-v3" are mapped to the matching mlx-community repo.
+        language: Audio language code.
+        device: Device hint for faster-whisper (cpu | cuda | auto). Ignored by mlx.
 
     Returns:
         Transcript text.
@@ -53,22 +55,13 @@ def transcribe(
             f"Supported: {AUDIO_EXTENSIONS | TEXT_EXTENSIONS}"
         )
 
-    logger.info("Transcribing audio: %s", path.name)
-    start = time.time()
-
-    model = _get_model(model_name, device)
-    segments, info = model.transcribe(str(path), language=language)
-    text = " ".join(segment.text.strip() for segment in segments)
-
-    elapsed = time.time() - start
-    logger.info(
-        "Transcription complete: %.1fs audio, took %.1fs (%.1fx realtime)",
-        info.duration,
-        elapsed,
-        info.duration / elapsed if elapsed > 0 else 0,
+    if backend == "mlx":
+        return _transcribe_mlx(path, model_name, language)
+    if backend == "faster-whisper":
+        return _transcribe_faster_whisper(path, model_name, language, device)
+    raise ValueError(
+        f"Unknown transcription backend '{backend}'. Use 'faster-whisper' or 'mlx'."
     )
-
-    return text
 
 
 def transcribe_segments(
@@ -79,14 +72,8 @@ def transcribe_segments(
 ) -> tuple[str, list[dict]]:
     """Transcribe an audio file and return text with segment timestamps.
 
-    Args:
-        input_path: Path to audio file.
-        model_name: Whisper model name.
-        language: Audio language code.
-        device: Device for Whisper inference.
-
-    Returns:
-        Tuple of (full_text, segments) where each segment has start, end, text.
+    Always uses faster-whisper — the diarization alignment downstream expects
+    its segment format. The mlx backend does not support diarization yet.
     """
     path = Path(input_path)
     suffix = path.suffix.lower()
@@ -100,18 +87,20 @@ def transcribe_segments(
     logger.info("Transcribing audio with segments: %s", path.name)
     start = time.time()
 
-    model = _get_model(model_name, device)
+    model = _get_faster_whisper_model(model_name, device)
     segments_iter, info = model.transcribe(str(path), language=language)
 
     segments_list = []
     text_parts = []
     for segment in segments_iter:
         text_parts.append(segment.text.strip())
-        segments_list.append({
-            "start": segment.start,
-            "end": segment.end,
-            "text": segment.text.strip(),
-        })
+        segments_list.append(
+            {
+                "start": segment.start,
+                "end": segment.end,
+                "text": segment.text.strip(),
+            }
+        )
 
     elapsed = time.time() - start
     logger.info(
@@ -123,3 +112,57 @@ def transcribe_segments(
     )
 
     return " ".join(text_parts), segments_list
+
+
+def _get_faster_whisper_model(model_name: str, device: str):
+    """Lazily import faster-whisper and cache the loaded model."""
+    from faster_whisper import WhisperModel
+
+    key = f"{model_name}:{device}"
+    if key not in _faster_whisper_cache:
+        logger.info("Loading Whisper model '%s' on %s...", model_name, device)
+        _faster_whisper_cache[key] = WhisperModel(model_name, device=device)
+    return _faster_whisper_cache[key]
+
+
+def _transcribe_faster_whisper(
+    path: Path, model_name: str, language: str, device: str
+) -> str:
+    logger.info("Transcribing audio (faster-whisper): %s", path.name)
+    start = time.time()
+
+    model = _get_faster_whisper_model(model_name, device)
+    segments, info = model.transcribe(str(path), language=language)
+    text = " ".join(segment.text.strip() for segment in segments)
+
+    elapsed = time.time() - start
+    logger.info(
+        "Transcription complete: %.1fs audio, took %.1fs (%.1fx realtime)",
+        info.duration,
+        elapsed,
+        info.duration / elapsed if elapsed > 0 else 0,
+    )
+    return text
+
+
+def _transcribe_mlx(path: Path, model_name: str, language: str) -> str:
+    try:
+        import mlx_whisper
+    except ImportError as e:
+        raise ImportError(
+            "mlx-whisper is not installed. It only ships on Apple Silicon Macs. "
+            "Install with `uv sync` on an M-series Mac, or switch the transcription "
+            "backend back to 'faster-whisper' in config.yaml."
+        ) from e
+
+    repo = _MLX_MODEL_ALIASES.get(model_name, model_name)
+    logger.info("Transcribing audio (mlx-whisper, %s): %s", repo, path.name)
+    start = time.time()
+
+    result = mlx_whisper.transcribe(str(path), path_or_hf_repo=repo, language=language)
+    text = result["text"].strip()
+
+    elapsed = time.time() - start
+    # mlx-whisper does not surface audio duration on the result dict; log raw timing.
+    logger.info("Transcription complete: took %.1fs", elapsed)
+    return text

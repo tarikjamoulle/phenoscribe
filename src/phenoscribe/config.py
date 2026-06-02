@@ -15,9 +15,10 @@ class LLMConfig:
 
 @dataclass
 class TranscriptionConfig:
+    backend: str = "faster-whisper"  # faster-whisper | mlx (Apple Silicon)
     model: str = "large-v3"
     language: str = "fr"
-    device: str = "cpu"
+    device: str = "cpu"  # only used by faster-whisper
 
 
 @dataclass

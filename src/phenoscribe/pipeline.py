@@ -61,6 +61,12 @@ def process_recording(
         use_diarization = config.diarization.enabled and is_audio
 
         if use_diarization:
+            if config.transcription.backend == "mlx":
+                logger.warning(
+                    "[%s] Diarization is not supported with the mlx backend yet; "
+                    "falling back to faster-whisper for this transcript.",
+                    patient_id,
+                )
             logger.info("[%s] Step 1: Transcribing with diarization...", patient_id)
             raw_text, whisper_segments = transcribe_segments(
                 input_path,
@@ -85,6 +91,7 @@ def process_recording(
             logger.info("[%s] Step 1: Transcribing...", patient_id)
             raw_text = transcribe(
                 input_path,
+                backend=config.transcription.backend,
                 model_name=config.transcription.model,
                 language=config.transcription.language,
                 device=config.transcription.device,
