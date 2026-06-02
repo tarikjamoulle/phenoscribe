@@ -41,9 +41,13 @@ def load_patient_codes(path: str) -> dict[str, list[dict]]:
         term_col = headers.index("HPO Term")
         code_col = headers.index("HPO Code")
         verb_col = headers.index("Patient Verbatim") if "Patient Verbatim" in headers else None
+        status_col = headers.index("Present/Absent") if "Present/Absent" in headers else None
         for row in ws.iter_rows(min_row=2, values_only=True):
             pid, term, code = row[id_col], row[term_col], row[code_col]
             if not (pid and code and str(code).startswith("HP:")):
+                continue
+            # Prevalence counts findings the patient has. Skip absent findings.
+            if status_col is not None and str(row[status_col]).strip().lower() == "absent":
                 continue
             entry = {"hpo_id": str(code), "hpo_term": str(term or "")}
             if verb_col is not None and row[verb_col]:

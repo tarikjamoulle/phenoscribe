@@ -10,8 +10,17 @@ from openpyxl.utils import get_column_letter
 logger = logging.getLogger(__name__)
 
 HEADERS = {
-    "detailed": ["Patient_ID", "HPO Term", "HPO Code", "Patient Verbatim"],
-    "semicolon": ["Patient_ID", "observation_source_value"],
+    "detailed": [
+        "Patient_ID",
+        "HPO Term",
+        "HPO Code",
+        "Present/Absent",
+        "Frequency",
+        "Onset",
+        "Severity",
+        "Patient Verbatim",
+    ],
+    "semicolon": ["Patient_ID", "observation_source_value", "excluded_source_value"],
     "purl": ["CASE ID", "HPO TERM", "HPO Code Purl", "Verbatim"],
 }
 
@@ -82,34 +91,75 @@ def _auto_fit_columns(ws) -> None:
         ws.column_dimensions[get_column_letter(col_idx)].width = max(width, 12)
 
 
+def _modifier_cell(m: dict, field: str) -> str:
+    """Render a modifier as 'Label (HP:xxxx)' when mapped, else the raw text."""
+    hpo_id = m.get(f"{field}_hpo_id")
+    hpo_term = m.get(f"{field}_hpo_term")
+    if hpo_id and hpo_term:
+        return f"{hpo_term} ({hpo_id})"
+    return m.get(field, "") or ""
+
+
 def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
-    """One row per HPO match with separate columns."""
+    """One row per finding with present/absent and modifier columns.
+
+    Negated findings stay in the sheet marked 'Absent' so the excluded
+    findings are documented, not silently dropped.
+    """
     for m in matches:
-        verbatim = m.get("patient_verbatim", "")
-        ws.append([patient_id, m["hpo_term"], m["hpo_id"], verbatim])
+        status = "Absent" if m.get("negated", False) else "Present"
+        ws.append(
+            [
+                patient_id,
+                m["hpo_term"],
+                m["hpo_id"],
+                status,
+                _modifier_cell(m, "frequency"),
+                _modifier_cell(m, "onset"),
+                _modifier_cell(m, "severity"),
+                m.get("patient_verbatim", ""),
+            ]
+        )
         row = ws.max_row
-        ws.cell(row=row, column=1).alignment = _TOP_ALIGNMENT
-        ws.cell(row=row, column=2).alignment = _TOP_ALIGNMENT
-        ws.cell(row=row, column=3).alignment = _TOP_ALIGNMENT
-        ws.cell(row=row, column=4).alignment = _WRAP_ALIGNMENT
+        for col in range(1, 8):
+            ws.cell(row=row, column=col).alignment = _TOP_ALIGNMENT
+        ws.cell(row=row, column=8).alignment = _WRAP_ALIGNMENT
+
+
+def _format_entry(m: dict) -> str:
+    """'Name (HP:code) [verbatim]' with modifier annotations appended."""
+    entry = f"{m['hpo_term']} ({m['hpo_id']})"
+    mods = []
+    for field in ("frequency", "onset", "severity"):
+        cell = _modifier_cell(m, field)
+        if cell:
+            mods.append(cell)
+    if mods:
+        entry += " {" + "; ".join(mods) + "}"
+    if m.get("patient_verbatim"):
+        entry += f" [{m['patient_verbatim']}]"
+    return entry
 
 
 def _write_semicolon_format(ws, patient_id: str, matches: list[dict]) -> None:
-    """One row per patient, all matches semicolon-separated."""
-    parts = []
-    for m in matches:
-        entry = f"{m['hpo_term']} ({m['hpo_id']})"
-        if m.get("patient_verbatim"):
-            entry += f" [{m['patient_verbatim']}]"
-        parts.append(entry)
+    """One row per patient. Present codes and excluded codes in separate columns."""
+    present = [m for m in matches if not m.get("negated", False)]
+    absent = [m for m in matches if m.get("negated", False)]
 
-    observation = "; ".join(parts)
-    ws.append([patient_id, observation])
+    observation = "; ".join(_format_entry(m) for m in present)
+    excluded = "; ".join(_format_entry(m) for m in absent)
+    ws.append([patient_id, observation, excluded])
 
 
 def _write_purl_format(ws, patient_id: str, matches: list[dict]) -> None:
-    """One row per HPO term per patient, with PURL-style code links."""
+    """One row per present HPO term per patient, with PURL-style code links.
+
+    Absent findings are dropped here: this format feeds tools that expect a
+    list of phenotypes the patient has.
+    """
     for m in matches:
+        if m.get("negated", False):
+            continue
         purl = _hpo_id_to_purl(m["hpo_id"])
         verbatim = m.get("patient_verbatim", "")
         ws.append([patient_id, m["hpo_term"], purl, verbatim])
