@@ -3,7 +3,7 @@
 import json
 import logging
 
-from phenoscribe.hpo_index import search_hpo
+from phenoscribe.hpo_index import build_obsolete_map, resolve_obsolete, search_hpo
 from phenoscribe.llm import llm_call
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ def match_hpo(
     ollama_base_url: str = "http://localhost:11434",
     chroma_path: str = "data/chroma_db",
     k: int = 5,
+    obo_path: str | None = None,
 ) -> list[dict]:
     """Match extracted symptoms to HPO codes.
 
@@ -43,10 +44,14 @@ def match_hpo(
         ollama_base_url: Ollama URL.
         chroma_path: Path to ChromaDB persistent storage.
         k: Number of HPO candidates to retrieve.
+        obo_path: If given, the final selected code is run through
+            resolve_obsolete so a retired id (e.g. from a stale index) maps to
+            its active replacement. Defaults to None (no resolution).
 
     Returns:
         List of dicts with hpo_id, hpo_term, patient_verbatim, clinical_term.
     """
+    obsolete_map = build_obsolete_map(obo_path) if obo_path else {}
     results = []
 
     for symptom in symptoms:
@@ -81,6 +86,14 @@ def match_hpo(
         except Exception as e:
             logger.warning("LLM judge failed for '%s', using top candidate: %s", clinical_term, e)
             selected = {"hpo_id": candidates[0]["hpo_id"], "hpo_term": candidates[0]["name"]}
+
+        if obsolete_map:
+            resolved = resolve_obsolete(selected["hpo_id"], obsolete_map)
+            if resolved != selected["hpo_id"]:
+                logger.info(
+                    "resolved_obsolete: %s -> %s", selected["hpo_id"], resolved
+                )
+                selected["hpo_id"] = resolved
 
         results.append(
             {

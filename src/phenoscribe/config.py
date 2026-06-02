@@ -28,6 +28,13 @@ class OutputConfig:
 
 
 @dataclass
+class HpoConfig:
+    # The one pinned HPO release. Must match the data-version: header of the
+    # on-disk obo and the tag the Dockerfile downloads (v2026-02-16).
+    release: str = "hp/releases/2026-02-16"
+
+
+@dataclass
 class PathsConfig:
     chroma_db: str = "data/chroma_db"
     jobs_db: str = "data/jobs.db"
@@ -47,6 +54,7 @@ class Config:
     output: OutputConfig = field(default_factory=OutputConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
     diarization: DiarizationConfig = field(default_factory=DiarizationConfig)
+    hpo: HpoConfig = field(default_factory=HpoConfig)
 
 
 def load_config(path: str = "config.yaml") -> Config:
@@ -64,4 +72,5 @@ def load_config(path: str = "config.yaml") -> Config:
         output=OutputConfig(**raw.get("output", {})),
         paths=PathsConfig(**raw.get("paths", {})),
         diarization=DiarizationConfig(**raw.get("diarization", {})),
+        hpo=HpoConfig(**raw.get("hpo", {})),
     )

@@ -11,10 +11,13 @@ from collections import deque
 import hpotk
 
 from phenoscribe.aggregate import load_patient_codes
+from phenoscribe.config import load_config
+from phenoscribe.hpo_index import build_obsolete_map, resolve_obsolete
 
 logger = logging.getLogger(__name__)
 
 _HPO_CACHE = None
+_OBSOLETE_MAP_CACHE: dict[str, dict[str, str]] = {}
 
 
 def _get_hpo():
@@ -27,14 +30,35 @@ def _get_hpo():
     return _HPO_CACHE
 
 
-def load_codes_from_excel(path: str) -> dict[str, set[str]]:
+def _get_obsolete_map(obo_path: str) -> dict[str, str]:
+    """Load and cache the retired-id -> active-id map for an obo file."""
+    if obo_path not in _OBSOLETE_MAP_CACHE:
+        _OBSOLETE_MAP_CACHE[obo_path] = build_obsolete_map(obo_path)
+    return _OBSOLETE_MAP_CACHE[obo_path]
+
+
+def load_codes_from_excel(
+    path: str, obsolete_map: dict[str, str] | None = None
+) -> dict[str, set[str]]:
     """Extract HPO codes per patient from an Excel file (any output format).
 
     Wraps `aggregate.load_patient_codes` and discards term names.
     Returns dict of patient_id -> set of HP codes.
+
+    If ``obsolete_map`` is given, retired ids (obsolete-with-replaced_by, or
+    merged ids carried as alt_id) are resolved to their active id. This keeps an
+    obsolete ground-truth code from silently failing to match a current
+    prediction.
     """
     rich = load_patient_codes(path)
-    return {pid: {entry["hpo_id"] for entry in entries} for pid, entries in rich.items()}
+
+    def resolve(hpo_id: str) -> str:
+        return resolve_obsolete(hpo_id, obsolete_map) if obsolete_map else hpo_id
+
+    return {
+        pid: {resolve(entry["hpo_id"]) for entry in entries}
+        for pid, entries in rich.items()
+    }
 
 
 def hop_distance(hpo, a: str, b: str, max_hops: int = 2) -> int | None:
@@ -93,12 +117,21 @@ def score_match(predicted: str, ground_truth: set[str], hpo) -> float:
 def validate(
     ground_truth_path: str,
     pipeline_output_path: str,
-    _obo_path_ignored: str | None = None,
+    obo_path: str | None = None,
     **_legacy_kwargs,
 ) -> dict:
-    """Compare pipeline output against ground truth. Returns validation report dict."""
-    gt_codes = load_codes_from_excel(ground_truth_path)
-    pred_codes = load_codes_from_excel(pipeline_output_path)
+    """Compare pipeline output against ground truth. Returns validation report dict.
+
+    Retired HPO ids on either side are resolved to their active id (via the obo
+    at ``obo_path``, defaulting to config.paths.hpo_obo) so an obsolete
+    ground-truth code is scored against its replacement instead of being dropped.
+    """
+    if obo_path is None:
+        obo_path = load_config().paths.hpo_obo
+    obsolete_map = _get_obsolete_map(obo_path)
+
+    gt_codes = load_codes_from_excel(ground_truth_path, obsolete_map)
+    pred_codes = load_codes_from_excel(pipeline_output_path, obsolete_map)
     hpo = _get_hpo()
 
     patient_scores = {}

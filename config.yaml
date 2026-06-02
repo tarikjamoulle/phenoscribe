@@ -15,6 +15,9 @@ output:
   format: "detailed"          # detailed | semicolon | purl
   path: "output/results.xlsx"
 
+hpo:
+  release: "hp/releases/2026-02-16"  # pinned HPO release; must match the obo data-version: header and the Dockerfile HPO_VERSION tag (v2026-02-16)
+
 paths:
   chroma_db: "data/chroma_db"
   jobs_db: "data/jobs.db"

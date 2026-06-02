@@ -21,11 +21,15 @@ _WRAP_ALIGNMENT = Alignment(wrap_text=True, vertical="top")
 _TOP_ALIGNMENT = Alignment(vertical="top")
 
 
+PROVENANCE_SHEET = "Provenance"
+
+
 def write_excel(
     patient_id: str,
     matches: list[dict],
     output_path: str,
     fmt: str = "semicolon",
+    hpo_release: str | None = None,
 ) -> None:
     """Write HPO matches to Excel file.
 
@@ -34,13 +38,15 @@ def write_excel(
         matches: List of dicts with hpo_id, hpo_term, patient_verbatim.
         output_path: Path to output Excel file.
         fmt: Output format — "detailed", "semicolon", or "purl".
+        hpo_release: Pinned HPO release string (e.g. "hp/releases/2026-02-16").
+            Stamped into a Provenance sheet so the workbook is self-describing.
     """
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     if path.exists():
         wb = load_workbook(path)
-        ws = wb.active
+        ws = wb[wb.sheetnames[0]]
     else:
         wb = Workbook()
         ws = wb.active
@@ -56,8 +62,32 @@ def write_excel(
         _write_detailed_format(ws, patient_id, matches)
 
     _auto_fit_columns(ws)
+    if hpo_release:
+        _stamp_provenance(wb, hpo_release)
     wb.save(path)
     logger.info("Wrote %d matches for %s to %s (%s format)", len(matches), patient_id, path, fmt)
+
+
+def _stamp_provenance(wb, hpo_release: str) -> None:
+    """Write or refresh a Provenance sheet carrying the pinned HPO release.
+
+    Idempotent: re-running the pipeline against an existing workbook updates the
+    release cell rather than appending a second sheet.
+    """
+    if PROVENANCE_SHEET in wb.sheetnames:
+        ws = wb[PROVENANCE_SHEET]
+    else:
+        ws = wb.create_sheet(PROVENANCE_SHEET)
+        ws["A1"] = "Key"
+        ws["B1"] = "Value"
+        ws["A1"].font = _HEADER_FONT
+        ws["B1"].font = _HEADER_FONT
+        ws["A1"].fill = _HEADER_FILL
+        ws["B1"].fill = _HEADER_FILL
+        ws["A2"] = "hpo_release"
+        ws.column_dimensions["A"].width = 18
+        ws.column_dimensions["B"].width = 32
+    ws["B2"] = hpo_release
 
 
 def _style_header_row(ws, num_cols: int) -> None:

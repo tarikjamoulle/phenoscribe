@@ -6,6 +6,7 @@ from pathlib import Path
 
 from phenoscribe.config import Config
 from phenoscribe.extract_symptoms import extract_symptoms
+from phenoscribe.hpo_index import check_obo_version
 from phenoscribe.match_hpo import match_hpo
 from phenoscribe.output import write_excel
 from phenoscribe.pii import pseudonymize
@@ -41,6 +42,11 @@ def process_recording(
     Returns:
         List of HPO matches.
     """
+    # Startup guard: the obo on disk, the ChromaDB index and config must all
+    # agree on the HPO release before we produce any codes.
+    version = check_obo_version(config.paths.hpo_obo, config.hpo.release)
+    logger.info("[%s] HPO release verified: %s", patient_id, version)
+
     out = output_path or config.output.path
     out_dir = os.path.dirname(out) or "output"
     transcript_dir = os.path.join(out_dir, "transcripts")
@@ -146,11 +152,12 @@ def process_recording(
         model=config.llm.model,
         ollama_base_url=config.llm.ollama_base_url,
         chroma_path=config.paths.chroma_db,
+        obo_path=config.paths.hpo_obo,
     )
     logger.info("[%s] HPO codes matched: %d", patient_id, len(matches))
 
     # Step 6: Write output
     logger.info("[%s] Step 6: Writing output...", patient_id)
-    write_excel(patient_id, matches, out, fmt=config.output.format)
+    write_excel(patient_id, matches, out, fmt=config.output.format, hpo_release=version)
 
     return matches
