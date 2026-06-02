@@ -151,6 +151,13 @@ def process_recording(
 
     # Step 6: Write output
     logger.info("[%s] Step 6: Writing output...", patient_id)
-    write_excel(patient_id, matches, out, fmt=config.output.format)
+    write_excel(
+        patient_id,
+        matches,
+        out,
+        fmt=config.output.format,
+        propagate_ancestors=config.output.propagate_ancestors,
+        obo_path=config.paths.hpo_obo,
+    )
 
     return matches

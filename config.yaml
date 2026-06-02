@@ -14,6 +14,7 @@ transcription:
 output:
   format: "detailed"          # detailed | semicolon | purl
   path: "output/results.xlsx"
+  propagate_ancestors: false  # true-path rule: add an "Ancestor Closure" sheet with the is_a ancestor expansion for downstream tools (Exomiser, LIRICAL, Phen2Gene, Phenomizer)
 
 paths:
   chroma_db: "data/chroma_db"

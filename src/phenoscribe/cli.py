@@ -59,6 +59,11 @@ def main():
         default=None,
         help="Override LLM model (e.g. claude-sonnet-4-6, gpt-4o-mini)",
     )
+    proc.add_argument(
+        "--propagate-ancestors",
+        action="store_true",
+        help="Apply the HPO true-path rule: add an 'Ancestor Closure' sheet with the is_a ancestor expansion for downstream tools (Exomiser, LIRICAL, etc.)",
+    )
     proc.add_argument("--skip-transcription", action="store_true", help="Skip transcription, read from saved transcripts in output/transcripts/")
     proc.add_argument("--retry-failed", action="store_true", help="Retry previously failed jobs")
 
@@ -106,6 +111,8 @@ def _cmd_process(args):
             sys.exit(1)
     if args.model:
         config.llm.model = args.model
+    if args.propagate_ancestors:
+        config.output.propagate_ancestors = True
     output_path = args.output or config.output.path
     input_dir = Path(args.input_dir)
     db_path = config.paths.jobs_db

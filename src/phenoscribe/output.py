@@ -15,6 +15,10 @@ HEADERS = {
     "purl": ["CASE ID", "HPO TERM", "HPO Code Purl", "Verbatim"],
 }
 
+# Name of the worksheet that holds the true-path (ancestor-closed) set.
+CLOSURE_SHEET = "Ancestor Closure"
+CLOSURE_HEADERS = ["Patient_ID", "HPO Term", "HPO Code", "Origin", "Derived From"]
+
 _HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
 _HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
 _WRAP_ALIGNMENT = Alignment(wrap_text=True, vertical="top")
@@ -26,6 +30,8 @@ def write_excel(
     matches: list[dict],
     output_path: str,
     fmt: str = "semicolon",
+    propagate_ancestors: bool = False,
+    obo_path: str = "data/hpo/hp.obo",
 ) -> None:
     """Write HPO matches to Excel file.
 
@@ -34,13 +40,17 @@ def write_excel(
         matches: List of dicts with hpo_id, hpo_term, patient_verbatim.
         output_path: Path to output Excel file.
         fmt: Output format — "detailed", "semicolon", or "purl".
+        propagate_ancestors: If True, add an "Ancestor Closure" sheet holding
+            the true-path expansion (predicted terms plus all is_a ancestors).
+            The primary sheet keeps the leaf-level human view unchanged.
+        obo_path: HPO OBO release used to build the is_a graph for propagation.
     """
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     if path.exists():
         wb = load_workbook(path)
-        ws = wb.active
+        ws = wb[wb.sheetnames[0]]
     else:
         wb = Workbook()
         ws = wb.active
@@ -56,8 +66,44 @@ def write_excel(
         _write_detailed_format(ws, patient_id, matches)
 
     _auto_fit_columns(ws)
+
+    if propagate_ancestors:
+        _write_closure_sheet(wb, patient_id, matches, obo_path)
+
     wb.save(path)
     logger.info("Wrote %d matches for %s to %s (%s format)", len(matches), patient_id, path, fmt)
+
+
+def _write_closure_sheet(wb, patient_id: str, matches: list[dict], obo_path: str) -> None:
+    """Append the true-path (ancestor-closed) set to a dedicated sheet.
+
+    The closure sheet is one row per term per patient: leaves plus the
+    is_a ancestors they imply. Downstream phenotype tools consume this set.
+    """
+    # Lazy import: only pay the graph-build cost when propagation is requested.
+    from phenoscribe.ontology import propagate_matches
+
+    if CLOSURE_SHEET in wb.sheetnames:
+        ws = wb[CLOSURE_SHEET]
+    else:
+        ws = wb.create_sheet(CLOSURE_SHEET)
+        ws.append(CLOSURE_HEADERS)
+        _style_header_row(ws, len(CLOSURE_HEADERS))
+
+    closure = propagate_matches(matches, obo_path)
+    for row in closure:
+        derived = ", ".join(row["derived_from"]) if row["derived_from"] else ""
+        ws.append([patient_id, row["hpo_term"], row["hpo_id"], row["origin"], derived])
+        r = ws.max_row
+        for col in range(1, 5):
+            ws.cell(row=r, column=col).alignment = _TOP_ALIGNMENT
+        ws.cell(row=r, column=5).alignment = _WRAP_ALIGNMENT
+
+    _auto_fit_columns(ws)
+    logger.info(
+        "Wrote ancestor closure for %s: %d term(s) on sheet '%s'",
+        patient_id, len(closure), CLOSURE_SHEET,
+    )
 
 
 def _style_header_row(ws, num_cols: int) -> None:
