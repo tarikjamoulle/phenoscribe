@@ -10,10 +10,12 @@ AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac"}
 TEXT_EXTENSIONS = {".txt"}
 
 # Default HF repo when caller passes a bare faster-whisper model name to the mlx backend.
+# NOTE: distil-* variants are English-only — do not use them on non-English audio
+# (verified 2026-06-03: distil-large-v3 produced English-soup gibberish on French input).
 _MLX_MODEL_ALIASES = {
     "large-v3": "mlx-community/whisper-large-v3-mlx",
     "large-v3-turbo": "mlx-community/whisper-large-v3-turbo",
-    "distil-large-v3": "mlx-community/distil-whisper-large-v3",
+    "distil-large-v3": "mlx-community/distil-whisper-large-v3",  # English only
     "medium": "mlx-community/whisper-medium-mlx",
     "small": "mlx-community/whisper-small-mlx",
 }
