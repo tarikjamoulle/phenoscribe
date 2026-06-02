@@ -30,6 +30,9 @@ models/
 .env
 setup.sh
 
+# Scratch / gitignored work area (validation runs, temp ChromaDB, etc.)
+.tmp/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -35,6 +35,14 @@ class PathsConfig:
 
 
 @dataclass
+class PatientConfig:
+    # Prefix prepended to the filename stem to form the join key against the
+    # ground truth. The cohort GT uses "MGA.467"; the audio/transcript files
+    # are named "467". An empty string disables the prefix.
+    id_prefix: str = ""
+
+
+@dataclass
 class DiarizationConfig:
     enabled: bool = False
     num_speakers: int = 2
@@ -46,6 +54,7 @@ class Config:
     transcription: TranscriptionConfig = field(default_factory=TranscriptionConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
+    patient: PatientConfig = field(default_factory=PatientConfig)
     diarization: DiarizationConfig = field(default_factory=DiarizationConfig)
 
 
@@ -63,5 +72,6 @@ def load_config(path: str = "config.yaml") -> Config:
         transcription=TranscriptionConfig(**raw.get("transcription", {})),
         output=OutputConfig(**raw.get("output", {})),
         paths=PathsConfig(**raw.get("paths", {})),
+        patient=PatientConfig(**raw.get("patient", {})),
         diarization=DiarizationConfig(**raw.get("diarization", {})),
     )

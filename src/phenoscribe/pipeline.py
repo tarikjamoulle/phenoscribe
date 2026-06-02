@@ -21,6 +21,7 @@ def process_recording(
     output_path: str | None = None,
     skip_transcription: bool = False,
     skip_pii: bool = False,
+    transcript_stem: str | None = None,
 ) -> list[dict]:
     """Process a single recording through the full pipeline.
 
@@ -37,6 +38,9 @@ def process_recording(
         config: Pipeline configuration.
         output_path: Override output path (uses config default if None).
         skip_transcription: If True, read from saved transcript instead of running Whisper.
+        transcript_stem: Filename stem of the cached transcript. Defaults to
+            patient_id. Use this when the join key carries a prefix (MGA.467)
+            but the cached transcript is named by bare stem (467.txt).
 
     Returns:
         List of HPO matches.
@@ -46,12 +50,30 @@ def process_recording(
     transcript_dir = os.path.join(out_dir, "transcripts")
 
     if skip_transcription:
-        # Read from previously saved transcript
-        transcript_path = os.path.join(transcript_dir, f"{patient_id}.txt")
-        if not os.path.exists(transcript_path):
+        # Read from previously saved transcript. Prefer the explicit stem;
+        # fall back to the patient_id, then to the prefix-stripped id so a
+        # prefixed retry ("MGA.467") still finds "467.txt".
+        candidates = []
+        for name in (transcript_stem, patient_id):
+            if name and name not in candidates:
+                candidates.append(name)
+        prefix = config.patient.id_prefix
+        if prefix and patient_id.startswith(prefix):
+            stripped = patient_id[len(prefix):]
+            if stripped not in candidates:
+                candidates.append(stripped)
+
+        transcript_path = None
+        for name in candidates:
+            cand = os.path.join(transcript_dir, f"{name}.txt")
+            if os.path.exists(cand):
+                transcript_path = cand
+                break
+        if transcript_path is None:
+            tried = ", ".join(f"{n}.txt" for n in candidates)
             raise FileNotFoundError(
-                f"No saved transcript for {patient_id} at {transcript_path}. "
-                "Run the full pipeline first to generate transcripts."
+                f"No saved transcript for {patient_id} in {transcript_dir} "
+                f"(tried: {tried}). Run the full pipeline first to generate transcripts."
             )
         logger.info("[%s] Step 1: Skipped (reading saved transcript)", patient_id)
         raw_text = Path(transcript_path).read_text(encoding="utf-8").strip()

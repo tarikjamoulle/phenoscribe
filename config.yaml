@@ -20,6 +20,9 @@ paths:
   jobs_db: "data/jobs.db"
   hpo_obo: "data/hpo/hp.obo"
 
+patient:
+  id_prefix: "MGA."          # prepended to the filename stem (467 -> MGA.467) to match the ground-truth join key. Empty disables it.
+
 diarization:
   enabled: false              # enable speaker diarization (requires HF_TOKEN)
   num_speakers: 2             # expected number of speakers (e.g. doctor + patient)
