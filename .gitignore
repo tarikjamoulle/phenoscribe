@@ -26,6 +26,9 @@ chroma_db/
 # Local model caches (Whisper, HF transformers, etc.) — large, machine-local
 models/
 
+# Scratch space for benchmarks (downloaded corpora, built indexes)
+.tmp/
+
 # Environment
 .env
 setup.sh
