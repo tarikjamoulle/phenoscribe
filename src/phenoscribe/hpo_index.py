@@ -1,9 +1,26 @@
 """HPO ontology parser and ChromaDB index."""
 
 import re
-from pathlib import Path
 
 import chromadb
+
+# OBO synonym scopes (OBO 1.4 spec). EXACT means same meaning as the term;
+# NARROW is more specific than the term; BROAD is more general; RELATED is a
+# loose association used in the literature but not strictly correct.
+# An EXACT or NARROW synonym still denotes the term (or a subset of it), so it
+# is safe to embed. A BROAD synonym denotes a wider concept and a RELATED one
+# only an associated concept, so embedding them pulls the term's vector toward
+# neighbouring concepts and dilutes the match.
+# Spec: https://owlcollab.github.io/oboformat/doc/GO.format.obo-1_4.html
+SYNONYM_SCOPES = ("EXACT", "NARROW", "BROAD", "RELATED")
+
+# Scopes whose text we embed by default.
+EMBEDDED_SCOPES = frozenset({"EXACT", "NARROW"})
+
+# OBO syntax: synonym: "text" SCOPE [optional type] [dbxrefs]
+# The scope token follows the closing quote. It is required in practice across
+# the HPO release; if absent the OBO spec defaults it to RELATED.
+_SYNONYM_RE = re.compile(r'^synonym: "(.+?)"(?:\s+(EXACT|NARROW|BROAD|RELATED))?')
 
 
 def parse_obo(obo_path: str) -> list[dict]:
@@ -46,9 +63,12 @@ def parse_obo(obo_path: str) -> list[dict]:
                 if match:
                     current["definition"] = match.group(1)
             elif line.startswith("synonym: "):
-                match = re.match(r'^synonym: "(.+?)"', line)
+                match = _SYNONYM_RE.match(line)
                 if match:
-                    current["synonyms"].append(match.group(1))
+                    text = match.group(1)
+                    # Default to RELATED per OBO spec when scope is missing.
+                    scope = match.group(2) or "RELATED"
+                    current["synonyms"].append({"text": text, "scope": scope})
             elif line.startswith("is_a: "):
                 parent_id = line[6:].split("!")[0].strip()
                 current["parents"].append(parent_id)
@@ -63,11 +83,23 @@ def parse_obo(obo_path: str) -> list[dict]:
     return [t for t in terms if t["id"].startswith("HP:") and t["name"]]
 
 
-def build_enriched_text(term: dict) -> str:
-    """Build enriched text for embedding: name + synonyms + definition."""
+def build_enriched_text(
+    term: dict, embedded_scopes: frozenset[str] = EMBEDDED_SCOPES
+) -> str:
+    """Build enriched text for embedding: name + in-scope synonyms + definition.
+
+    Only synonyms whose scope is in ``embedded_scopes`` are included. The
+    default keeps EXACT and NARROW and drops BROAD and RELATED, which would
+    otherwise pull the term's embedding toward broader or merely-associated
+    concepts. Pass a wider set (e.g. all four scopes) to restore the old
+    behaviour.
+    """
     parts = [term["name"]]
-    if term["synonyms"]:
-        parts.append("Synonyms: " + ", ".join(term["synonyms"]))
+    syn_texts = [
+        s["text"] for s in term["synonyms"] if s["scope"] in embedded_scopes
+    ]
+    if syn_texts:
+        parts.append("Synonyms: " + ", ".join(syn_texts))
     if term["definition"]:
         parts.append("Definition: " + term["definition"])
     return ". ".join(parts)
@@ -105,7 +137,11 @@ def seed_chromadb(obo_path: str, chroma_path: str) -> int:
                 {
                     "name": t["name"],
                     "parents": ",".join(t["parents"]),
-                    "synonyms": "; ".join(t["synonyms"][:10]),
+                    "synonyms": "; ".join(
+                        s["text"]
+                        for s in t["synonyms"]
+                        if s["scope"] in EMBEDDED_SCOPES
+                    )[:500],
                 }
                 for t in batch
             ],
