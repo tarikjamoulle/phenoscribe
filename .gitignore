@@ -26,6 +26,9 @@ chroma_db/
 # Local model caches (Whisper, HF transformers, etc.) — large, machine-local
 models/
 
+# Scratch / local eval indexes (e.g. SapBERT recall eval)
+.tmp/
+
 # Environment
 .env
 setup.sh

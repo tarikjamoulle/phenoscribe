@@ -29,6 +29,7 @@ def match_hpo(
     ollama_base_url: str = "http://localhost:11434",
     chroma_path: str = "data/chroma_db",
     k: int = 5,
+    embedding_model: str | None = None,
 ) -> list[dict]:
     """Match extracted symptoms to HPO codes.
 
@@ -53,7 +54,9 @@ def match_hpo(
         clinical_term = symptom["clinical_term"]
 
         # Stage 1: Vector search
-        candidates = search_hpo(clinical_term, k=k, chroma_path=chroma_path)
+        candidates = search_hpo(
+            clinical_term, k=k, chroma_path=chroma_path, embedding_model=embedding_model
+        )
         if not candidates:
             logger.warning("No HPO candidates found for: %s", clinical_term)
             continue

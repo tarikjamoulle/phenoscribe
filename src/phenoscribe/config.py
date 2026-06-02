@@ -41,12 +41,20 @@ class DiarizationConfig:
 
 
 @dataclass
+class HpoIndexConfig:
+    # embedding model for the HPO vector index: default (all-MiniLM-L6-v2) or
+    # sapbert (cambridgeltl/SapBERT-from-PubMedBERT-fulltext).
+    embedding_model: str = "default"
+
+
+@dataclass
 class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
     transcription: TranscriptionConfig = field(default_factory=TranscriptionConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
     diarization: DiarizationConfig = field(default_factory=DiarizationConfig)
+    hpo_index: HpoIndexConfig = field(default_factory=HpoIndexConfig)
 
 
 def load_config(path: str = "config.yaml") -> Config:
@@ -64,4 +72,5 @@ def load_config(path: str = "config.yaml") -> Config:
         output=OutputConfig(**raw.get("output", {})),
         paths=PathsConfig(**raw.get("paths", {})),
         diarization=DiarizationConfig(**raw.get("diarization", {})),
+        hpo_index=HpoIndexConfig(**raw.get("hpo_index", {})),
     )
