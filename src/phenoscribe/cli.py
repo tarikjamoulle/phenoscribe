@@ -14,6 +14,28 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = AUDIO_EXTENSIONS | TEXT_EXTENSIONS
 
+PROVIDER_ALIASES = {
+    "claude": "anthropic",
+    "gpt": "openai",
+}
+CANONICAL_PROVIDERS = {"openai", "anthropic", "ollama"}
+
+
+def resolve_provider(name: str) -> str:
+    """Map a user-supplied provider name to its canonical form.
+
+    Accepts canonical names ("openai", "anthropic", "ollama") and friendly aliases
+    ("claude", "gpt"). Raises ValueError on anything else.
+    """
+    canonical = PROVIDER_ALIASES.get(name.lower(), name.lower())
+    if canonical not in CANONICAL_PROVIDERS:
+        raise ValueError(
+            f"Unknown provider '{name}'. "
+            f"Use one of: {sorted(CANONICAL_PROVIDERS)} "
+            f"(or aliases {sorted(PROVIDER_ALIASES)})."
+        )
+    return canonical
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -27,6 +49,16 @@ def main():
     proc.add_argument("input_dir", help="Directory containing audio/text files")
     proc.add_argument("--output", "-o", default=None, help="Output Excel file path")
     proc.add_argument("--config", "-c", default="config.yaml", help="Config file path")
+    proc.add_argument(
+        "--provider", "-p",
+        default=None,
+        help="Override LLM provider (openai|anthropic|ollama, or aliases claude|gpt)",
+    )
+    proc.add_argument(
+        "--model", "-m",
+        default=None,
+        help="Override LLM model (e.g. claude-sonnet-4-6, gpt-4o-mini)",
+    )
     proc.add_argument("--skip-transcription", action="store_true", help="Skip transcription, read from saved transcripts in output/transcripts/")
     proc.add_argument("--retry-failed", action="store_true", help="Retry previously failed jobs")
 
@@ -66,6 +98,14 @@ def main():
 
 def _cmd_process(args):
     config = load_config(args.config)
+    if args.provider:
+        try:
+            config.llm.provider = resolve_provider(args.provider)
+        except ValueError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+    if args.model:
+        config.llm.model = args.model
     output_path = args.output or config.output.path
     input_dir = Path(args.input_dir)
     db_path = config.paths.jobs_db
