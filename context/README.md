@@ -19,6 +19,7 @@ All files in `exports/` and `shipped/` are named `YYYY-MM-DD-<slug>.md` so they 
 - **`2026-03-01-adr-hpo-pipeline.md`** — Architecture Decision Record for the initial pipeline (transcription → PII → LLM → ChromaDB → Excel). Six-stage design, tech-stack rationale.
 - **`2026-03-01-client-report-architecture-validation.md`** — Pre-build technical validation report for Dr Jamoulle. Audits the previous manual ChatGPT-based coding (≈35% accurate), proposes the automated pipeline.
 - **`2026-05-30-ontogpt-benchmark.md`** — Head-to-head ontoGPT vs Phenoscribe on three pseudonymised transcripts. Verdict: keep Phenoscribe.
+- **`2026-06-02-email-coding-audit.md`** — Phenoscribe vs a manual Control coding on one long-COVID email. Control: 2/8 IDs resolve to the term written next to them. Phenoscribe: 14/15. One Phenoscribe misfire (HP:0033750) flagged as a regression case.
 
 ### `shipped/`
 - **`2026-03-01-hpo-pipeline-initial-build.md`** — The 11-task plan for the initial pipeline build. Shipped 2026-03-07. Includes post-ship additions (diarization, transcript caching, detailed output format).
