@@ -15,6 +15,15 @@ class HpoVersionMismatch(RuntimeError):
     """Raised when the on-disk obo data-version does not match the pinned release."""
 
 
+class EmbeddingModelMismatch(RuntimeError):
+    """Raised when the configured embedding_model differs from the one the index was seeded with.
+
+    Querying a collection seeded with encoder A using vectors from encoder B is a
+    geometry mismatch: the distances are meaningless and retrieval is garbage. We
+    fail loud instead of returning silently wrong codes.
+    """
+
+
 def read_obo_version(obo_path: str) -> str:
     """Return the ``data-version:`` header from an obo file (e.g. ``hp/releases/2026-02-16``).
 
@@ -319,12 +328,27 @@ def search_hpo(
 
     embedding_model must match the one the collection was seeded with. If
     None, it is read back from the collection metadata, so callers normally
-    do not need to pass it.
+    do not need to pass it. If an explicit embedding_model is passed and it
+    does not match the seeded collection, we raise EmbeddingModelMismatch
+    rather than querying with vectors from the wrong encoder.
     """
     client = chromadb.PersistentClient(path=chroma_path)
+    seeded_model = (client.get_collection("hpo_terms").metadata or {}).get(
+        "embedding_model", "default"
+    )
     if embedding_model is None:
-        meta = client.get_collection("hpo_terms").metadata or {}
-        embedding_model = meta.get("embedding_model", "default")
+        embedding_model = seeded_model
+    elif embedding_model != seeded_model:
+        raise EmbeddingModelMismatch(
+            f"Embedding model mismatch: config asks for "
+            f"hpo_index.embedding_model={embedding_model!r} but the ChromaDB "
+            f"collection at {chroma_path!r} was seeded with {seeded_model!r}. "
+            f"Querying a {seeded_model!r} index with {embedding_model!r} vectors "
+            f"is a geometry mismatch and returns garbage retrieval. Re-seed the "
+            f"index for {embedding_model!r} (e.g. "
+            f"`python scripts/build_sapbert_index.py` for sapbert), or set "
+            f"hpo_index.embedding_model back to {seeded_model!r} in config.yaml."
+        )
     collection = client.get_collection(
         "hpo_terms",
         embedding_function=get_embedding_function(embedding_model),

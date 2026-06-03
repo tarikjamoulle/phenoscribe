@@ -143,6 +143,29 @@ id carried as `alt_id:`, maps to its active id when loading ground truth and whe
 matching. On Marc Jamoulle's ground truth, 27 of 332 distinct codes were retired
 in this release; 24 now resolve to an active id instead of dropping out of search.
 
+### Embedding model
+
+`hpo_index.embedding_model` in `config.yaml` selects the encoder for vector
+search: `default` (ChromaDB's built-in all-MiniLM-L6-v2, what the shipped index
+is seeded with) or `sapbert` (the biomedical encoder). The collection stores the
+model it was seeded with on its metadata.
+
+The index and the config must agree. Querying an all-MiniLM index with SapBERT
+vectors (or vice versa) is a geometry mismatch: the two encoders put text in
+different vector spaces, so the distances are meaningless and retrieval is
+garbage. `search_hpo` compares the configured `embedding_model` against the
+collection's stored metadata and raises `EmbeddingModelMismatch` when they
+differ, rather than returning silently wrong codes.
+
+So switching to SapBERT is a two-step change, not a one-line config edit:
+
+1. Re-seed the index for the new encoder: `python scripts/build_sapbert_index.py`
+   (downloads SapBERT and rebuilds the collection with `embedding_model='sapbert'`).
+2. Set `hpo_index.embedding_model: sapbert` in `config.yaml`.
+
+Do them in either order; the guard just refuses to run the pipeline until they
+match.
+
 ## Project layout
 
 ```

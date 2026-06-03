@@ -114,6 +114,21 @@ Standardized triplets separated by `;`:
 - Each term has: ID (HP:XXXXXXX), name, synonyms, parent categories
 - Need both leaf-level (specific) and category-level output
 
+### Embedding model must match the seeded index
+
+The ChromaDB collection is seeded with one encoder and stores its name on the
+collection metadata (`embedding_model`). The shipped index is `default`
+(all-MiniLM-L6-v2); `sapbert` is the biomedical alternative. The two encoders
+map text into different vector spaces, so querying an index seeded with one
+using vectors from the other gives meaningless distances and garbage retrieval.
+
+`search_hpo` (the live `process` path: `pipeline.process_recording` →
+`match_hpo` → `search_hpo`) compares `config.hpo_index.embedding_model` against
+the collection's stored metadata and raises `EmbeddingModelMismatch` when they
+differ, instructing the user to re-seed. Switching encoders is a two-step change:
+re-seed (`python scripts/build_sapbert_index.py` for sapbert) and set
+`hpo_index.embedding_model` in config. The guard refuses to run until they agree.
+
 ## PII Strategy: Pseudonymization (not anonymization)
 
 Instead of destroying PII context (e.g., replacing "Dr. John" with "[REDACTED]"), use **pseudonymization**:
