@@ -6,6 +6,8 @@ from pathlib import Path
 
 import chromadb
 
+from phenoscribe.embeddings import get_embedding_function
+
 logger = logging.getLogger(__name__)
 
 
@@ -249,15 +251,23 @@ def build_hierarchy(terms: list[dict]) -> dict[str, list[str]]:
     return {t["id"]: t["parents"] for t in terms}
 
 
-def seed_chromadb(obo_path: str, chroma_path: str) -> int:
+def seed_chromadb(
+    obo_path: str, chroma_path: str, embedding_model: str = "default"
+) -> int:
     """Parse OBO and seed ChromaDB. Returns number of terms indexed.
 
     The obo release string is stored on the collection metadata so the index is
     self-describing and a later version guard can compare against it.
+
+    embedding_model selects the embedding function: "default" uses ChromaDB's
+    built-in ONNX model (all-MiniLM-L6-v2); "sapbert" uses the biomedical
+    SapBERT model. The choice is stored on the collection so search uses the
+    same function it was indexed with.
     """
     terms = parse_obo(obo_path)
     version = read_obo_version(obo_path)
     client = chromadb.PersistentClient(path=chroma_path)
+    embedding_function = get_embedding_function(embedding_model)
 
     # Delete existing collection if present
     try:
@@ -267,7 +277,12 @@ def seed_chromadb(obo_path: str, chroma_path: str) -> int:
 
     collection = client.get_or_create_collection(
         name="hpo_terms",
-        metadata={"hnsw:space": "cosine", "hpo_release": version},
+        metadata={
+            "hnsw:space": "cosine",
+            "hpo_release": version,
+            "embedding_model": embedding_model,
+        },
+        embedding_function=embedding_function,
     )
 
     # Batch insert (ChromaDB max batch is 41666)
@@ -295,11 +310,25 @@ def seed_chromadb(obo_path: str, chroma_path: str) -> int:
 
 
 def search_hpo(
-    clinical_term: str, k: int = 5, chroma_path: str = "data/chroma_db"
+    clinical_term: str,
+    k: int = 5,
+    chroma_path: str = "data/chroma_db",
+    embedding_model: str | None = None,
 ) -> list[dict]:
-    """Search HPO index for closest matches to a clinical term."""
+    """Search HPO index for closest matches to a clinical term.
+
+    embedding_model must match the one the collection was seeded with. If
+    None, it is read back from the collection metadata, so callers normally
+    do not need to pass it.
+    """
     client = chromadb.PersistentClient(path=chroma_path)
-    collection = client.get_collection("hpo_terms")
+    if embedding_model is None:
+        meta = client.get_collection("hpo_terms").metadata or {}
+        embedding_model = meta.get("embedding_model", "default")
+    collection = client.get_collection(
+        "hpo_terms",
+        embedding_function=get_embedding_function(embedding_model),
+    )
 
     results = collection.query(query_texts=[clinical_term], n_results=k)
 

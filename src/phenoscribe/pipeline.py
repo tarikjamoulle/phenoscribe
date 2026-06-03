@@ -175,6 +175,7 @@ def process_recording(
         ollama_base_url=config.llm.ollama_base_url,
         chroma_path=config.paths.chroma_db,
         obo_path=config.paths.hpo_obo,
+        embedding_model=config.hpo_index.embedding_model,
     )
     logger.info("[%s] HPO codes matched: %d", patient_id, len(matches))
 

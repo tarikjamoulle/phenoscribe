@@ -45,6 +45,7 @@ def match_hpo(
     chroma_path: str = "data/chroma_db",
     k: int = 5,
     obo_path: str | None = None,
+    embedding_model: str | None = None,
 ) -> list[dict]:
     """Match extracted symptoms to HPO codes.
 
@@ -80,7 +81,9 @@ def match_hpo(
         negated = bool(symptom.get("negated", False))
 
         # Stage 1: Vector search
-        candidates = search_hpo(clinical_term, k=k, chroma_path=chroma_path)
+        candidates = search_hpo(
+            clinical_term, k=k, chroma_path=chroma_path, embedding_model=embedding_model
+        )
         if not candidates:
             logger.warning("No HPO candidates found for: %s", clinical_term)
             continue
