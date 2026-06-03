@@ -1,4 +1,5 @@
-# Scratch / local build artefacts
+# Scratch / local work area (build artefacts, validation runs, eval indexes,
+# benchmark corpora, temp ChromaDB rebuilds)
 .tmp/
 
 # Python
@@ -29,15 +30,9 @@ chroma_db/
 # Local model caches (Whisper, HF transformers, etc.) — large, machine-local
 models/
 
-# Scratch space for local eval/benchmarks (SapBERT recall eval, downloaded corpora, built indexes)
-.tmp/
-
 # Environment
 .env
 setup.sh
-
-# Scratch / gitignored work area (validation runs, temp ChromaDB, etc.)
-.tmp/
 
 # OS
 .DS_Store
@@ -45,6 +40,3 @@ Thumbs.db
 
 # Microsoft Office lock files
 ~$*
-
-# Scratch (ChromaDB rebuilds, eval indexes)
-.tmp/
