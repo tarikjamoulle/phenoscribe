@@ -7,16 +7,17 @@ name = "phenoscribe"
 version = "0.1.0"
 description = "Automated HPO phenotype coding from patient interviews"
 requires-python = ">=3.10"
-# Upper bounds are deliberate. This is a clinical tool: a major release of
-# torch/transformers can change the OpenMed PII model's tokenisation or NER
+# Upper bounds are deliberate. This is a clinical tool: a minor/major release of
+# torch/transformers can change the French NER and PII model tokenisation or NER
 # output, which changes what reaches the LLM and therefore the codes emitted.
-# Caps below the next major prevent a silent breaking upgrade. The bounds sit
-# above what is currently installed (torch 2.12, transformers 5.9); raise the
-# cap deliberately after re-validating PII output on a known transcript.
+# The caps are pinned to releases that actually exist on PyPI so `uv sync`
+# resolves on a clean machine: torch tops out below 2.7 and transformers below
+# 4.50. Raise a cap deliberately after re-validating PII/NER output on a known
+# transcript, and regenerate uv.lock in the same change.
 dependencies = [
     "faster-whisper>=1.0.0,<2",
-    "transformers>=4.40.0,<6",
-    "torch>=2.0.0,<3",
+    "transformers>=4.40.0,<4.50",
+    "torch>=2.2,<2.7",
     "chromadb>=0.5.0,<2",
     "openpyxl>=3.1.0,<4",
     "openai>=1.0.0,<3",

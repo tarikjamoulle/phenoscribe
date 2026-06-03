@@ -1,0 +1,74 @@
+name: CI
+
+# Robinson round-2, section C: the test suite and the HPO release guard had only
+# ever run on the author's laptop. This runs them on a clean GitHub runner on
+# every push and PR, which is exactly what would have caught a uv.lock pinning
+# torch 2.12 / transformers 5.9 (versions that do not exist on PyPI) in the
+# first minute.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install project (locked)
+        # --frozen fails if uv.lock and pyproject.toml disagree, so a lockfile
+        # that pins non-existent versions can never go green here.
+        run: uv sync --frozen
+
+      - name: HPO release guard
+        # The real hp.obo is gitignored (it may carry patient-adjacent data and
+        # is large), so the runner has no ontology on disk. We exercise the
+        # check_obo_version guard against a synthetic obo instead: it must pass
+        # when the data-version header matches and raise HpoVersionMismatch when
+        # it does not. This proves the seed/startup guard mechanism without the
+        # gitignored release.
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          uv run python - <<'PY'
+          import tempfile, pathlib
+          from phenoscribe.hpo_index import check_obo_version, HpoVersionMismatch
+
+          release = "hp/releases/2026-02-16"
+          obo = pathlib.Path(tempfile.mkdtemp()) / "guard.obo"
+          obo.write_text(
+              "format-version: 1.2\n"
+              f"data-version: {release}\n\n"
+              "[Term]\nid: HP:0000001\nname: Live term\n"
+          )
+
+          assert check_obo_version(str(obo), release) == release, "guard rejected a matching release"
+
+          try:
+              check_obo_version(str(obo), "hp/releases/2099-12-31")
+          except HpoVersionMismatch:
+              pass
+          else:
+              raise SystemExit("guard did NOT raise on a release mismatch")
+
+          print(f"HPO release guard OK: {release}")
+          PY
+
+      - name: Run tests
+        # The full suite needs gitignored fixtures (the real hp.obo, models,
+        # benchmark corpora) and network model downloads, none of which exist on
+        # a clean runner. We run the data-independent tests and skip the
+        # network-marked ones; data-backed tests run locally where data/ exists.
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: uv run python -m pytest -q -m "not network"
