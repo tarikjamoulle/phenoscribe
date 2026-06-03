@@ -40,9 +40,11 @@ class OutputConfig:
     path: str = "output/results.xlsx"
     # True-path rule: also emit the ancestor closure of the predicted terms
     # so downstream tools (Exomiser, LIRICAL, Phen2Gene, Phenomizer) get an
-    # annotation-propagated set. Off by default; the leaf list stays the
-    # human-facing view.
-    propagate_ancestors: bool = False
+    # annotation-propagated set. ON by default — the true-path rule is the
+    # definition of what an HPO annotation means, so a default run must honor
+    # it. The leaf list stays the human-facing view; the closure lands on a
+    # separate "Ancestor Closure" sheet. Set false to suppress that sheet.
+    propagate_ancestors: bool = True
 
 
 @dataclass

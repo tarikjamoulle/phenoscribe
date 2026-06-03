@@ -123,3 +123,72 @@ def test_write_excel_with_propagation_adds_closure_sheet(tmp_path):
     assert EPISODIC_ATAXIA in closure_codes
     assert ATAXIA in closure_codes
     assert PHENOTYPIC_ABNORMALITY in closure_codes
+
+
+def test_default_process_run_emits_ancestor_closure(tmp_path, monkeypatch):
+    """Robinson round-2 #3: a DEFAULT 'process' run honors the true-path rule.
+
+    No flags, no config overrides — a plain Config() is what `phenoscribe
+    process` builds before any CLI flag is applied. The default run must emit
+    the ancestor closure for a coded term, on its own machine-readable sheet,
+    while the human leaf sheet stays leaf-only.
+    """
+    from phenoscribe.config import Config
+    from phenoscribe.pipeline import process_recording
+
+    cfg = Config()
+    cfg.output.path = str(tmp_path / "results.xlsx")
+    cfg.output.format = "detailed"
+    cfg.paths.hpo_obo = OBO_PATH
+
+    # The closure default lives in OutputConfig, not in any CLI flag.
+    assert cfg.output.propagate_ancestors is True
+
+    # Seed a cached transcript so we exercise the real pipeline body without
+    # transcription, PII, or any network call.
+    tdir = tmp_path / "transcripts"
+    tdir.mkdir(parents=True, exist_ok=True)
+    (tdir / "P1.txt").write_text("seizure", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "phenoscribe.pipeline.check_obo_version",
+        lambda *a, **k: "hp/releases/2026-02-16",
+    )
+    monkeypatch.setattr(
+        "phenoscribe.pipeline.extract_symptoms",
+        lambda *a, **k: [{"symptom": "seizure"}],
+    )
+    # Episodic ataxia is a deep leaf, so the closure adds several ancestors.
+    monkeypatch.setattr(
+        "phenoscribe.pipeline.match_hpo",
+        lambda *a, **k: [
+            {"hpo_id": EPISODIC_ATAXIA, "hpo_term": "Episodic ataxia",
+             "patient_verbatim": "seizure"}
+        ],
+    )
+
+    matches = process_recording(
+        input_path="unused",
+        patient_id="P1",
+        config=cfg,
+        skip_transcription=True,
+        skip_pii=True,
+    )
+    assert matches  # the pipeline produced a coded term
+
+    wb = openpyxl.load_workbook(cfg.output.path)
+
+    # Human leaf sheet unchanged: only the leaf term.
+    primary = wb[wb.sheetnames[0]]
+    primary_codes = [row[2] for row in primary.iter_rows(min_row=2, values_only=True)]
+    assert primary_codes == [EPISODIC_ATAXIA]
+
+    # Default run honored the true-path rule: closure sheet, ancestor-closed.
+    assert CLOSURE_SHEET in wb.sheetnames
+    closure = wb[CLOSURE_SHEET]
+    closure_codes = {row[2] for row in closure.iter_rows(min_row=2, values_only=True)}
+    assert ATAXIA in closure_codes
+    assert PHENOTYPIC_ABNORMALITY in closure_codes
+    # And at least one row is explicitly tagged as an inferred ancestor.
+    origins = {row[3] for row in closure.iter_rows(min_row=2, values_only=True)}
+    assert "ancestor" in origins
