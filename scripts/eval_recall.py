@@ -8,6 +8,21 @@ The top-k shortlist is the ceiling on the whole pipeline: if the gold code is
 not retrieved, the downstream LLM judge can never pick it. That is exactly the
 ceiling Robinson asked us to measure (issue #8, Robinson Test Q4).
 
+Two recalls, reported side by side
+----------------------------------
+- **Per-mention** (micro): every (label, code) pair counts once. A common
+  symptom with many synonymous labels contributes many pairs, so frequent
+  concepts dominate the average. This is the "how often does a query string
+  retrieve its code" number.
+- **Per-concept** (macro): each unique gold HP code counts once. For a code
+  with several labels, it is a hit at k iff ANY of its labels retrieves it at
+  k. This weighs a 50-synonym symptom and a 1-synonym rare finding equally —
+  "what fraction of distinct concepts can the index reach at all".
+
+They diverge materially on this label set, which is Robinson's "per-mention
+recall wearing a per-concept label" objection. Both are printed so neither is
+read as the other.
+
 Usage:
     PYTHONPATH=src python scripts/eval_recall.py
 """
@@ -62,24 +77,51 @@ def codes_present(codes: set[str], chroma_path: str) -> set[str]:
     return found
 
 
+def score_recall(pairs, present: set[str], rank_fn, ks=KS) -> dict:
+    """Compute per-mention (micro) and per-concept (macro) recall@k.
+
+    `rank_fn(label) -> list[str]` returns the ranked HP ids for a query label.
+    Only pairs whose gold code is in `present` are scored, so a code that is not
+    in the index is never silently counted as a retrieval miss.
+
+    Per-mention: each (label, code) pair is a hit at k iff the code is in the
+    top-k for that label. Recall = hits / pairs.
+
+    Per-concept: each unique code is a hit at k iff ANY of its labels retrieves
+    it in the top-k. Recall = concept hits / unique concepts. This is a macro
+    average over concepts; concepts with many synonyms no longer dominate.
+    """
+    scorable = [(lbl, code) for (lbl, code) in pairs if code in present]
+    mention_hits = {k: 0 for k in ks}
+    # code -> {k: bool} hit-by-any-label
+    concept_hit = {code: {k: False for k in ks} for _, code in scorable}
+    for label, code in scorable:
+        ranked = rank_fn(label)
+        for k in ks:
+            if code in ranked[:k]:
+                mention_hits[k] += 1
+                concept_hit[code][k] = True
+    n_mentions = len(scorable)
+    n_concepts = len(concept_hit)
+    out = {"n_mentions": n_mentions, "n_concepts": n_concepts}
+    for k in ks:
+        out[f"per_mention_recall@{k}"] = (
+            mention_hits[k] / n_mentions if n_mentions else 0.0
+        )
+        concept_hits_k = sum(1 for c in concept_hit if concept_hit[c][k])
+        out[f"per_concept_recall@{k}"] = (
+            concept_hits_k / n_concepts if n_concepts else 0.0
+        )
+    return out
+
+
 def eval_index(name: str, chroma_path: str, pairs, present: set[str]) -> dict:
     max_k = max(KS)
-    hits = {k: 0 for k in KS}
-    # Only score pairs whose gold code is actually in the index, so a missing
-    # code is not silently counted as a retrieval miss.
-    scorable = [(lbl, code) for (lbl, code) in pairs if code in present]
-    for label, code in scorable:
-        results = search_hpo(label, k=max_k, chroma_path=chroma_path)
-        ranked = [r["hpo_id"] for r in results]
-        for k in KS:
-            if code in ranked[:k]:
-                hits[k] += 1
-    n = len(scorable)
-    return {
-        "name": name,
-        "n": n,
-        **{f"recall@{k}": hits[k] / n if n else 0.0 for k in KS},
-    }
+
+    def rank_fn(label: str) -> list[str]:
+        return [r["hpo_id"] for r in search_hpo(label, k=max_k, chroma_path=chroma_path)]
+
+    return {"name": name, **score_recall(pairs, present, rank_fn)}
 
 
 def main() -> None:
@@ -109,12 +151,24 @@ def main() -> None:
         eval_index("sapbert (PubMedBERT-fulltext, 768d)", SAPBERT_INDEX, pairs, common),
     ]
 
-    hdr = f"{'index':<40} {'n':>5} {'recall@5':>10} {'recall@10':>10}"
+    print("Per-mention (micro: every label+code pair counts once)")
+    hdr = f"{'index':<40} {'mentions':>9} {'recall@5':>10} {'recall@10':>10}"
     print(hdr)
     print("-" * len(hdr))
     for r in rows:
         print(
-            f"{r['name']:<40} {r['n']:>5} {r['recall@5']:>10.3f} {r['recall@10']:>10.3f}"
+            f"{r['name']:<40} {r['n_mentions']:>9} "
+            f"{r['per_mention_recall@5']:>10.3f} {r['per_mention_recall@10']:>10.3f}"
+        )
+
+    print("\nPer-concept (macro: each unique HP code counts once; hit if ANY label finds it)")
+    hdr = f"{'index':<40} {'concepts':>9} {'recall@5':>10} {'recall@10':>10}"
+    print(hdr)
+    print("-" * len(hdr))
+    for r in rows:
+        print(
+            f"{r['name']:<40} {r['n_concepts']:>9} "
+            f"{r['per_concept_recall@5']:>10.3f} {r['per_concept_recall@10']:>10.3f}"
         )
 
 

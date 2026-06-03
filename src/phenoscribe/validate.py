@@ -14,8 +14,11 @@ which had two faults Robinson flagged:
       specificity, a precision problem). Errors are now classified by
       direction and reported separately.
 
-`hop_distance` is retained for the ontogpt benchmark script, which uses it
-directly; the validation score no longer depends on it.
+`hop_distance` is retained (and tested) as a graph utility, but no scorer
+depends on it any more: the validation score uses IC, and the GSC+ and ontoGPT
+benchmarks now credit near-hits by Lin IC similarity too. The undirected hop
+count is the retired primitive; it is kept only so existing callers do not
+break and is no longer wired into any reported metric.
 """
 
 import logging

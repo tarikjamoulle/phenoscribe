@@ -8,7 +8,9 @@ two behaviours Robinson asked for:
   - a near-root prediction against a specific truth scores ~0 (not 0.75);
   - ancestor-vs-descendant predictions land on opposite error sides.
 
-`hop_distance` is retained for the ontogpt benchmark script and still tested.
+`hop_distance` is the retired undirected primitive: no scorer uses it any more
+(the benchmarks now credit near-hits by Lin IC similarity), but it is kept as a
+graph utility and still tested here.
 """
 
 import math
@@ -161,7 +163,7 @@ def test_ic_distribution_empty(ic):
     assert dist["low_ic_dominated"] is False
 
 
-# --- hop_distance still works (used by the ontogpt benchmark) ---------------
+# --- hop_distance still works (retired primitive, kept as a graph utility) --
 
 
 def test_hop_distance_parent_is_one(hpo):

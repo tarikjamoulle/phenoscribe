@@ -37,7 +37,13 @@ from pathlib import Path
 
 from phenoscribe.aggregate import load_patient_codes
 from phenoscribe.llm import llm_call
-from phenoscribe.validate import _get_hpo, hop_distance
+from phenoscribe.semantic_similarity import get_ic_map, lin_similarity
+from phenoscribe.validate import _get_hpo
+
+# Lin IC-similarity threshold for "close" credit. Replaces the retired
+# undirected "<=2 hops" rule, which let a near-root term count as a near-hit to
+# a specific code. Under Lin similarity a near-root prediction scores ~0.
+CLOSE_TAU = 0.7
 
 PSEUDO_DIR = Path("output/pseudo")
 ONTOGPT_BIN = Path(".venv-ontogpt/bin/ontogpt")
@@ -149,15 +155,23 @@ def find_unknown_codes(codes: set[str], hpo) -> set[str]:
     return unknown
 
 
-def categorise(predicted: set[str], reference: set[str], hpo, max_hops: int = 2):
-    """Split `predicted` into exact / close / unique with respect to `reference`."""
+def categorise(predicted: set[str], reference: set[str], hpo, ic_map,
+               tau: float = CLOSE_TAU):
+    """Split `predicted` into exact / close / unique with respect to `reference`.
+
+    "close" is IC-based: a predicted code is close to a reference code if their
+    Lin (1998) information-content similarity is >= `tau` (the same primitive
+    `validate.py` uses). This replaces the undirected "<=2 hops" rule, which
+    counted a near-root term as a near-hit to a specific code; under Lin
+    similarity that prediction scores ~0 because their most informative common
+    ancestor carries almost no information.
+    """
     exact = predicted & reference
     remaining = predicted - exact
     close = set()
     for p in remaining:
         for r in reference:
-            d = hop_distance(hpo, p, r, max_hops=max_hops)
-            if d is not None and d <= max_hops:
+            if lin_similarity(ic_map, hpo, p, r) >= tau:
                 close.add(p)
                 break
     unique = remaining - close
@@ -182,6 +196,7 @@ def main():
         transcripts = transcripts[: args.limit]
 
     hpo = _get_hpo()
+    ic_map = get_ic_map(hpo)
     per_patient = []
 
     for tx in transcripts:
@@ -191,8 +206,8 @@ def main():
         logger.info("[%s] running ontoGPT extract%s", pid, " (cached)" if (TMP_DIR / f"{pid}.json").exists() and not args.force else "")
         ontogpt_ids = run_ontogpt(en, pid, force=args.force)
         ph_ids = {row["hpo_id"] for row in phenoscribe_codes.get(pid, [])}
-        ph_exact, ph_close, ph_unique = categorise(ph_ids, ontogpt_ids, hpo)
-        og_exact, og_close, og_unique = categorise(ontogpt_ids, ph_ids, hpo)
+        ph_exact, ph_close, ph_unique = categorise(ph_ids, ontogpt_ids, hpo, ic_map)
+        og_exact, og_close, og_unique = categorise(ontogpt_ids, ph_ids, hpo, ic_map)
         logger.info(
             "[%s] phenoscribe=%d ontogpt=%d exact=%d ph_close=%d og_close=%d ph_unique=%d og_unique=%d",
             pid, len(ph_ids), len(ontogpt_ids),
@@ -253,7 +268,7 @@ def write_report(per_patient: list[dict]) -> None:
         lines += [
             "### Note on HPO release skew",
             "",
-            f"{len(all_unknown)} of the {total_ph} Phenoscribe codes ({(len(all_unknown)/total_ph*100):.0f}%) are unknown to the hpo-toolkit ontology snapshot used by the scorer (e.g. `{sorted(all_unknown)[:5]}`). These are likely newer additions to HPO than the cached release; they fall straight into the \"unique\" column because `hop_distance` can't compute a neighbour. Worth checking that Phenoscribe's ChromaDB and `hpo-toolkit`'s cache are on similar release dates before treating the unique counts as final.",
+            f"{len(all_unknown)} of the {total_ph} Phenoscribe codes ({(len(all_unknown)/total_ph*100):.0f}%) are unknown to the hpo-toolkit ontology snapshot used by the scorer (e.g. `{sorted(all_unknown)[:5]}`). These are likely newer additions to HPO than the cached release; they fall straight into the \"unique\" column because the IC similarity can't be computed for a code the graph doesn't know. Worth checking that Phenoscribe's ChromaDB and `hpo-toolkit`'s cache are on similar release dates before treating the unique counts as final.",
             "",
         ]
     lines += [
@@ -273,7 +288,7 @@ def write_report(per_patient: list[dict]) -> None:
         "2. Run `ontogpt extract -t human_phenotype -m gpt-4o -O json` on the English text.",
         "3. Collect the set of grounded `HP:` IDs from `named_entities`.",
         "4. Compare against Phenoscribe's HP IDs for the same patient (from `output/results.xlsx`).",
-        "5. Classify each predicted code as **exact overlap**, **close** (≤2 hops in HPO via `hpo-toolkit`), or **unique** to that tool.",
+        f"5. Classify each predicted code as **exact overlap**, **close** (Lin information-content similarity ≥ {CLOSE_TAU:g} to a code on the other side, via the MICA in `hpo-toolkit`), or **unique** to that tool. The earlier undirected \"≤2 hops\" rule is retired here: it counted near-root terms as near-hits to specific codes, which Lin similarity scores ~0.",
         "",
         "Ground-truth F1 was not computed because the patient-ID format mismatch between pipeline output (`038`) and the GP's manual codes (`MGA.038`) still blocks joining. Comparing the two tools head-to-head on the same input is a useful intermediate signal.",
         "",

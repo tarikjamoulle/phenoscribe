@@ -28,9 +28,27 @@ ignored):
 Scoring
 -------
 Primary: exact HP-ID match at document level (P / R / F1), same as the
-FastHPOCR paper. Secondary: lenient match where a predicted code counts if
-it is within `--lenient-hops` of a gold code in the HPO graph (hpo-toolkit),
-reported separately so it is never confused with the exact number.
+FastHPOCR paper.
+
+Secondary: IC-based near-hit credit. A predicted code earns near-hit credit
+against a gold code by the Lin (1998) information-content similarity of their
+most informative common ancestor (the same primitive `validate.py` uses), not
+by undirected hop count. Undirected hop-count let a near-root term such as
+"Phenotypic abnormality" count as a near-hit to a specific gold term because
+intermediate hops kept being added; under IC such a prediction scores ~0
+because the shared ancestor carries almost no information. A predicted code is
+a near-hit only if its Lin similarity to some gold code is >= `--lenient-tau`.
+
+The near-hit view reports precision-side and recall-side credit as SEPARATE
+numbers, never folded into a single P/R/F1. The old lenient F1 double-counted:
+the precision TP counted predictions-within-hops while the recall TP counted
+golds-covered — two different quantities reported as one TP. Here:
+
+  - near-hit precision = (predictions with a gold near-hit) / (predictions)
+  - near-hit recall    = (golds with a prediction near-hit) / (golds)
+
+They are reported side by side, each with its own numerator, and there is no
+combined "lenient F1" to be mistaken for the exact number.
 
 Usage
 -----
@@ -119,45 +137,41 @@ def load_gsc(gsc_dir: Path) -> list[GscDoc]:
 # --------------------------------------------------------------------------
 
 
-def _lenient_hit(pred: str, gold: set[str], hpo, max_hops: int) -> bool:
-    from phenoscribe.validate import hop_distance
+def _ic_near_hit(pred: str, gold: set[str], hpo, ic_map, tau: float) -> bool:
+    """True if `pred` is an exact gold or has Lin IC-similarity >= tau to some gold.
+
+    Uses the same Lin (1998) information-content similarity as `validate.py`.
+    A near-root prediction scores ~0 against a specific gold term (their most
+    informative common ancestor carries almost no information), so it does not
+    earn near-hit credit the way an undirected hop count would.
+    """
+    from phenoscribe.semantic_similarity import lin_similarity
 
     if pred in gold:
         return True
     for g in gold:
-        d = hop_distance(hpo, pred, g, max_hops=max_hops)
-        if d is not None and d <= max_hops:
+        if lin_similarity(ic_map, hpo, pred, g) >= tau:
             return True
     return False
 
 
-def score_documents(per_doc_pred: dict[str, set[str]], docs: list[GscDoc],
-                    hpo=None, lenient_hops: int = 0) -> dict:
-    """Document-level micro P/R/F1 over a set of documents.
+def score_documents(per_doc_pred: dict[str, set[str]], docs: list[GscDoc]) -> dict:
+    """Document-level micro P/R/F1, exact HP-ID match only.
 
-    Exact mode (lenient_hops=0): a predicted ID is a TP iff it is in the gold
-    set for that document. Lenient mode: a predicted ID is a TP iff it is
-    within `lenient_hops` of any gold ID; recall credits a gold ID if any
-    prediction is within range.
+    A predicted ID is a TP iff it is in the gold set for that document. This is
+    the FastHPOCR paper's primary metric. For the IC-based near-hit view (which
+    keeps precision-side and recall-side credit separate), see
+    `score_near_hits`.
     """
     tp = fp = fn = 0
     per_doc = {}
     for d in docs:
         pred = per_doc_pred.get(d.pmid, set())
         gold = d.gold_ids
-        if lenient_hops and hpo is not None:
-            doc_tp = sum(1 for p in pred if _lenient_hit(p, gold, hpo, lenient_hops))
-            doc_fp = len(pred) - doc_tp
-            matched_gold = sum(
-                1 for g in gold
-                if any(_lenient_hit(p, {g}, hpo, lenient_hops) for p in pred)
-            )
-            doc_fn = len(gold) - matched_gold
-        else:
-            inter = pred & gold
-            doc_tp = len(inter)
-            doc_fp = len(pred - gold)
-            doc_fn = len(gold - pred)
+        inter = pred & gold
+        doc_tp = len(inter)
+        doc_fp = len(pred - gold)
+        doc_fn = len(gold - pred)
         tp += doc_tp
         fp += doc_fp
         fn += doc_fn
@@ -174,6 +188,55 @@ def score_documents(per_doc_pred: dict[str, set[str]], docs: list[GscDoc],
     return {
         "tp": tp, "fp": fp, "fn": fn,
         "precision": precision, "recall": recall, "f1": f1,
+        "per_doc": per_doc,
+    }
+
+
+def score_near_hits(per_doc_pred: dict[str, set[str]], docs: list[GscDoc],
+                    hpo, ic_map, tau: float) -> dict:
+    """IC-based near-hit credit, precision and recall side reported separately.
+
+    A predicted code is a near-hit if it is an exact gold or has Lin IC
+    similarity >= `tau` to some gold code (`semantic_similarity.lin_similarity`).
+
+    Two quantities are tracked and NOT folded into a single TP:
+
+      - precision side: how many PREDICTIONS have a near-hit to some gold.
+        near_hit_precision = pred_near / total_pred.
+      - recall side: how many GOLDS have a near-hit from some prediction.
+        near_hit_recall = gold_near / total_gold.
+
+    There is no combined near-hit F1. The old lenient F1 summed
+    predictions-within-hops as its TP for precision and golds-covered as its TP
+    for recall, then reported one number; those are different counts and folded
+    together they overstate agreement.
+    """
+    total_pred = total_gold = pred_near = gold_near = 0
+    per_doc = {}
+    for d in docs:
+        pred = per_doc_pred.get(d.pmid, set())
+        gold = d.gold_ids
+        doc_pred_near = sum(1 for p in pred if _ic_near_hit(p, gold, hpo, ic_map, tau))
+        doc_gold_near = sum(
+            1 for g in gold
+            if any(_ic_near_hit(p, {g}, hpo, ic_map, tau) for p in pred)
+        )
+        total_pred += len(pred)
+        total_gold += len(gold)
+        pred_near += doc_pred_near
+        gold_near += doc_gold_near
+        per_doc[d.pmid] = {
+            "pred": len(pred), "gold": len(gold),
+            "pred_near": doc_pred_near, "gold_near": doc_gold_near,
+        }
+    near_hit_precision = pred_near / total_pred if total_pred else 0.0
+    near_hit_recall = gold_near / total_gold if total_gold else 0.0
+    return {
+        "tau": tau,
+        "total_pred": total_pred, "total_gold": total_gold,
+        "pred_near": pred_near, "gold_near": gold_near,
+        "near_hit_precision": near_hit_precision,
+        "near_hit_recall": near_hit_recall,
         "per_doc": per_doc,
     }
 
@@ -281,11 +344,17 @@ def _row(name, s):
             f"{s['f1']:.3f} | {s['tp']} | {s['fp']} | {s['fn']} |")
 
 
+def _near_row(name, s):
+    return (f"| {name} | {s['near_hit_precision']:.3f} | "
+            f"{s['near_hit_recall']:.3f} | {s['pred_near']}/{s['total_pred']} | "
+            f"{s['gold_near']}/{s['total_gold']} |")
+
+
 def write_report(out_path: Path, *, all_docs, eval_docs, full_docs,
-                retr, retr_exact, retr_len,
-                fh, fh_exact, fh_len,
-                full, full_exact, full_len,
-                k, lenient_hops, provider, model, hpo_version):
+                retr, retr_exact, retr_near,
+                fh, fh_exact, fh_near,
+                full, full_exact, full_near,
+                k, lenient_tau, provider, model, hpo_version):
     n_all = len(all_docs)
     n_eval = len(eval_docs)
     n_full = len(full_docs)
@@ -349,20 +418,29 @@ def write_report(out_path: Path, *, all_docs, eval_docs, full_docs,
                          full_exact))
     lines += [
         "",
-        "## Results — lenient match "
-        f"(predicted within {lenient_hops} HPO hops of a gold code)",
+        "## Results — IC-based near-hit credit "
+        f"(Lin similarity >= {lenient_tau:g} to a gold code)",
         "",
-        "Reported separately. The FastHPOCR paper uses exact IDs; lenient "
-        "credit is shown so near-misses (parent/child/sibling) are visible, "
-        "never folded into the exact number.",
+        "Reported separately. The FastHPOCR paper uses exact IDs; near-hit "
+        "credit shows hierarchy-near predictions (parent/child/sibling) without "
+        "ever folding them into the exact number. Credit is the Lin (1998) "
+        "information-content similarity of the most informative common ancestor "
+        "(the same primitive `validate.py` uses), so a near-root prediction "
+        "scores ~0 instead of borrowing credit from intermediate hops.",
         "",
-        "| System | Precision | Recall | F1 | TP | FP | FN |",
-        "|---|---|---|---|---|---|---|",
-        _row("FastHPOCR (this run)", fh_len),
-        _row(f"Phenoscribe retrieval top-1 (k={k})", retr_len),
+        "Precision-side and recall-side credit are kept as separate columns; "
+        "there is no combined near-hit F1. The precision column asks 'what "
+        "fraction of predictions land near a gold code', the recall column asks "
+        "'what fraction of gold codes have a near prediction' — different "
+        "quantities, not a single TP.",
+        "",
+        "| System | Near-hit precision | Near-hit recall | pred-near/pred | gold-near/gold |",
+        "|---|---|---|---|---|",
+        _near_row("FastHPOCR (this run)", fh_near),
+        _near_row(f"Phenoscribe retrieval top-1 (k={k})", retr_near),
     ]
-    if full_len is not None:
-        lines.append(_row(f"Phenoscribe full pipeline (sample n={n_full})", full_len))
+    if full_near is not None:
+        lines.append(_near_row(f"Phenoscribe full pipeline (sample n={n_full})", full_near))
     lines += [
         "",
         "## Retriever ceiling (no LLM)",
@@ -414,14 +492,18 @@ def write_report(out_path: Path, *, all_docs, eval_docs, full_docs,
         "gold code was anywhere in the shortlist (recall@k).",
         "4. Phenoscribe full pipeline (sampled): run extract_symptoms (LLM call "
         "1) then match_hpo (ChromaDB + LLM judge, call 2) on the raw abstract.",
-        "5. Score document-level micro P/R/F1, exact and lenient.",
+        "5. Score document-level micro P/R/F1 (exact) plus IC-based near-hit "
+        "credit (precision- and recall-side reported separately, no combined "
+        "F1).",
         "",
         "## Reproduce",
         "",
         "```",
         "pip install FastHPOCR pronto",
-        "# download GSC-2024:",
-        "#   github.com/tudorgroza/code-for-papers/tree/main/gsc-2024",
+        "# fetch + checksum-verify the GSC+ corpus and phenotype.hpoa:",
+        "#   python scripts/fetch_benchmark_data.py",
+        "#   python scripts/fetch_benchmark_data.py --hpoa --gsc",
+        "# (verifies SHA-256 against benchmarks/CHECKSUMS.txt)",
         "PYTHONPATH=$PWD/src python scripts/benchmark_gsc.py \\",
         "    --gsc-dir .tmp/GSC_2024 \\",
         "    --fasthpocr-index .tmp/fasthpocr_index/hp.index \\",
@@ -486,7 +568,9 @@ def main():
     ap.add_argument("--fasthpocr-index", required=True)
     ap.add_argument("--chroma-path", required=True)
     ap.add_argument("--k", type=int, default=5)
-    ap.add_argument("--lenient-hops", type=int, default=2)
+    ap.add_argument("--lenient-tau", type=float, default=0.7,
+                    help="Lin IC-similarity threshold for near-hit credit "
+                         "(replaces the retired undirected hop count)")
     ap.add_argument("--doc-limit", type=int, default=None,
                     help="Evaluate only the first N documents (for a quick run)")
     ap.add_argument("--full-sample", type=int, default=0,
@@ -504,22 +588,24 @@ def main():
     logger.info("loaded %d GSC+ documents", len(all_docs))
     eval_docs = all_docs[: args.doc_limit] if args.doc_limit else all_docs
 
+    from phenoscribe.semantic_similarity import get_ic_map
     from phenoscribe.validate import _get_hpo
     hpo = _get_hpo()
     hpo_version = hpo.version
+    ic_map = get_ic_map(hpo)
 
     logger.info("running FastHPOCR ...")
     fh = run_fasthpocr(eval_docs, args.fasthpocr_index)
     fh_exact = score_documents(fh["per_doc_pred"], eval_docs)
-    fh_len = score_documents(fh["per_doc_pred"], eval_docs, hpo, args.lenient_hops)
+    fh_near = score_near_hits(fh["per_doc_pred"], eval_docs, hpo, ic_map, args.lenient_tau)
 
     logger.info("running Phenoscribe retrieval ...")
     retr = run_phenoscribe_retrieval(eval_docs, args.chroma_path, args.k)
     retr_exact = score_documents(retr["per_doc_pred"], eval_docs)
-    retr_len = score_documents(retr["per_doc_pred"], eval_docs, hpo, args.lenient_hops)
+    retr_near = score_near_hits(retr["per_doc_pred"], eval_docs, hpo, ic_map, args.lenient_tau)
 
     full_docs: list[GscDoc] = []
-    full_exact = full_len = None
+    full_exact = full_near = None
     if args.full_sample > 0:
         rng = random.Random(args.seed)
         full_docs = rng.sample(eval_docs, min(args.full_sample, len(eval_docs)))
@@ -528,16 +614,16 @@ def main():
         full = run_phenoscribe_full(full_docs, args.chroma_path, args.k,
                                     args.provider, args.model)
         full_exact = score_documents(full["per_doc_pred"], full_docs)
-        full_len = score_documents(full["per_doc_pred"], full_docs, hpo,
-                                   args.lenient_hops)
+        full_near = score_near_hits(full["per_doc_pred"], full_docs, hpo, ic_map,
+                                    args.lenient_tau)
 
     write_report(
         Path(args.out),
         all_docs=all_docs, eval_docs=eval_docs, full_docs=full_docs,
-        retr=retr, retr_exact=retr_exact, retr_len=retr_len,
-        fh=fh, fh_exact=fh_exact, fh_len=fh_len,
-        full=None, full_exact=full_exact, full_len=full_len,
-        k=args.k, lenient_hops=args.lenient_hops,
+        retr=retr, retr_exact=retr_exact, retr_near=retr_near,
+        fh=fh, fh_exact=fh_exact, fh_near=fh_near,
+        full=None, full_exact=full_exact, full_near=full_near,
+        k=args.k, lenient_tau=args.lenient_tau,
         provider=args.provider, model=args.model, hpo_version=hpo_version,
     )
 

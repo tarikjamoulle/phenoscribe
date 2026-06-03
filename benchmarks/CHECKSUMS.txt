@@ -1,0 +1,17 @@
+# SHA-256 checksums for the benchmark corpora, keyed to HPO release
+# hp/releases/2026-02-16. Format: `sha256  name` (the `shasum -a 256` format).
+# Regenerate / verify with: python scripts/fetch_benchmark_data.py --hpoa --gsc
+#
+# The corpora themselves are large and NOT vendored. This file plus
+# scripts/fetch_benchmark_data.py is what makes the benchmarks reproducible:
+# the fetch script downloads each artefact and checks it against these lines.
+#
+# phenotype.hpoa: every IC score (semantic_similarity) depends on this exact
+# file. SHA-256 below is of the v2026-02-16 release asset, 35,261,380 bytes.
+5d7aedee5f6218e9952fceba5f883df2cc4a0c1938e55d8d2616c15c517964fb  phenotype.hpoa@v2026-02-16
+#
+# GSC-2024 corpus: digest is over the sorted (relpath, file-sha256) manifest of
+# the unpacked Text/ + Annotations/ tree (see sha256_tree in the fetch script),
+# so it is independent of unpack location. Recorded on first fetch; until then
+# the fetch script prints and records the value it computes.
+# GSC-2024@v2026-02-16  (recorded on first run of fetch_benchmark_data.py --gsc)
