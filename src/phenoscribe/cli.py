@@ -95,6 +95,20 @@ def main():
     agg.add_argument("--top", type=int, default=20, help="Number of top terms to show in the chart")
     agg.add_argument("--no-chart", action="store_true", help="Skip the chart (CSV only)")
 
+    # Validate command
+    val = subparsers.add_parser(
+        "validate",
+        help="Score a results workbook against ground truth (term-level F1 + IC distribution of predicted terms)",
+    )
+    val.add_argument("results", help="Path to the pipeline-output Excel file (predicted codes)")
+    val.add_argument("ground_truth", help="Path to the ground-truth Excel file")
+    val.add_argument(
+        "--obo",
+        default=None,
+        help="HPO OBO file for obsolete-id resolution (default: config.paths.hpo_obo)",
+    )
+    val.add_argument("--config", "-c", default="config.yaml", help="Config file path")
+
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -109,6 +123,8 @@ def main():
         _cmd_status(args)
     elif args.command == "aggregate":
         _cmd_aggregate(args)
+    elif args.command == "validate":
+        _cmd_validate(args)
     else:
         parser.print_help()
         sys.exit(1)
@@ -273,6 +289,32 @@ def _cmd_aggregate(args):
     print(f"\nCSV:   {args.csv}")
     if not args.no_chart:
         print(f"Chart: {args.chart}")
+
+
+def _cmd_validate(args):
+    """Score predicted codes against ground truth from the CLI.
+
+    Runs the IC-based validation scorer (validate.validate) and prints the
+    term-level F1 plus the IC distribution of the predicted terms. The IC
+    machinery (Resnik MICA / Lin normalisation, built from phenotype.hpoa) is
+    used here for measurement only. The match-time ranker in the `process`
+    pipeline still selects on ChromaDB cosine distance plus the LLM judge; this
+    subcommand does not change that.
+    """
+    from phenoscribe.validate import print_report, validate
+
+    for label, path in (("results", args.results), ("ground truth", args.ground_truth)):
+        if not Path(path).is_file():
+            print(f"Error: {label} file '{path}' is not a file.")
+            sys.exit(1)
+
+    obo_path = args.obo
+    if obo_path is None:
+        obo_path = load_config(args.config).paths.hpo_obo
+
+    # validate(ground_truth_path, pipeline_output_path, obo_path)
+    report = validate(args.ground_truth, args.results, obo_path)
+    print_report(report)
 
 
 def _identify_failed_step(error: Exception) -> str:

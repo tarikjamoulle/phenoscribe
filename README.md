@@ -190,9 +190,11 @@ tests/                  Unit + integration tests
 
 ## Validation
 
-Ground truth: 1003 manually coded rows. Scoring is hierarchy-aware via [hpo-toolkit](https://pypi.org/project/hpo-toolkit/): exact match = 1.0, one hop = 0.75, two hops = 0.5. Sibling matches via a shared parent get credit; the earlier hand-rolled walker scored those at zero.
+Ground truth: 1003 manually coded rows. Scoring uses information content (IC) of the most informative common ancestor — Resnik (1995) MICA and Lin (1998) normalisation — built from `phenotype.hpoa` via [hpo-toolkit](https://pypi.org/project/hpo-toolkit/). An exact ID match scores 1.0; a near-root prediction against a specific truth scores ~0 because the shared ancestor carries almost no information. The report also gives a strict document-level F1 (exact HPO ID match only, the convention in HPO concept-recognition benchmarks).
 
-Run `phenoscribe validate <results.xlsx> <ground_truth.xlsx>` to score a batch.
+Run `phenoscribe validate <results.xlsx> <ground_truth.xlsx>` to score a batch. It prints the term-level (strict and partial-credit) precision/recall/F1 and the IC distribution of the predicted terms (the Q9 check: are predictions dominated by low-IC near-root terms?).
+
+The IC machinery is used for validation only. Match-time ranking inside `process` selects from the ChromaDB cosine shortlist with the LLM judge (steps 4–5 above); it does not rank on IC. Routing the live ranker through IC would be an unmeasured behaviour change, so it is kept out of the pipeline until measured.
 
 ## Benchmarks
 
