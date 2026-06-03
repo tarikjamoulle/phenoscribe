@@ -16,6 +16,7 @@ if __name__ == "__main__":
     version = check_obo_version(obo_path, config.hpo.release)
     print(f"HPO release verified: {version}")
 
-    print("Seeding HPO ontology into ChromaDB...")
-    count = seed_chromadb(obo_path, chroma_path)
+    embedding_model = config.hpo_index.embedding_model
+    print(f"Seeding HPO ontology into ChromaDB (embedding: {embedding_model})...")
+    count = seed_chromadb(obo_path, chroma_path, embedding_model=embedding_model)
     print(f"Indexed {count} HPO terms.")
