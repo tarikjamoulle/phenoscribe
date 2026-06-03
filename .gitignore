@@ -1,3 +1,6 @@
+# Scratch / local build artefacts
+.tmp/
+
 # Python
 __pycache__/
 *.py[cod]
