@@ -80,6 +80,22 @@ def match_hpo(
         clinical_term = symptom["clinical_term"]
         negated = bool(symptom.get("negated", False))
 
+        # A denied finding ("je n'ai pas de fievre") must not be coded as a
+        # phenotype the patient has. We do NOT vector-search or mint a present
+        # HPO code for it: minting one and relabelling the column "Absent" still
+        # puts a present code in the workbook. The finding is kept as an absent
+        # record (clinical term + verbatim) so it stays visible, just not coded.
+        if negated:
+            result = _absent_record(symptom)
+            _attach_modifier_codes(result)
+            results.append(result)
+            logger.info(
+                "Absent (not coded): '%s' [NEGATED] verbatim=%r",
+                clinical_term,
+                result["patient_verbatim"],
+            )
+            continue
+
         # Stage 1: Vector search
         candidates = search_hpo(
             clinical_term, k=k, chroma_path=chroma_path, embedding_model=embedding_model
@@ -177,13 +193,39 @@ def match_hpo(
     return results
 
 
+def _absent_record(symptom: dict) -> dict:
+    """Build a match row for a denied finding without a present HPO code.
+
+    Negated findings are recorded so the excluded set stays visible, but they
+    carry no ``hpo_id`` — minting a present code for a symptom the patient
+    denied is exactly the bug ("je n'ai pas de fievre" -> a fever code) this
+    avoids. The clinical term and verbatim describe the absent finding.
+    """
+    return {
+        "hpo_id": None,
+        "hpo_term": symptom["clinical_term"],
+        "patient_verbatim": symptom.get("patient_verbatim", ""),
+        "clinical_term": symptom["clinical_term"],
+        "confidence": None,
+        "needs_review": False,
+        "negated": True,
+        "frequency": symptom.get("frequency", ""),
+        "onset": symptom.get("onset", ""),
+        "severity": symptom.get("severity", ""),
+    }
+
+
 def present_codes(matches: list[dict]) -> list[dict]:
     """Return only findings the patient has. Negated findings are dropped.
 
     Use this when emitting present phenotype codes. Negated findings stay in
     the full ``matches`` list so they can be reported in a separate column.
+    Present rows are those that both are not negated and carry an HPO code.
     """
-    return [m for m in matches if not m.get("negated", False)]
+    return [
+        m for m in matches
+        if not m.get("negated", False) and m.get("hpo_id")
+    ]
 
 
 def absent_codes(matches: list[dict]) -> list[dict]:

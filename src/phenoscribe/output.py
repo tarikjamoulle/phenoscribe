@@ -7,7 +7,12 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from phenoscribe.match_hpo import absent_codes, present_codes
+
 logger = logging.getLogger(__name__)
+
+# Shown in code cells for an absent finding, which carries no present HPO code.
+_ABSENT_CODE_PLACEHOLDER = "(absent — not coded)"
 
 HEADERS = {
     "detailed": [
@@ -146,7 +151,9 @@ def _write_closure_sheet(wb, patient_id: str, matches: list[dict], obo_path: str
         ws.append(CLOSURE_HEADERS)
         _style_header_row(ws, len(CLOSURE_HEADERS))
 
-    closure = propagate_matches(matches, obo_path)
+    # Only present codes have a true-path closure; denied findings carry no
+    # HPO code, so they contribute nothing to the ancestor-closed set.
+    closure = propagate_matches(present_codes(matches), obo_path)
     for row in closure:
         derived = ", ".join(row["derived_from"]) if row["derived_from"] else ""
         ws.append([patient_id, row["hpo_term"], row["hpo_id"], row["origin"], derived])
@@ -200,13 +207,17 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
     findings are documented, not silently dropped.
     """
     for m in matches:
-        status = "Absent" if m.get("negated", False) else "Present"
+        absent = m.get("negated", False)
+        status = "Absent" if absent else "Present"
         verbatim = m.get("patient_verbatim", "")
+        # An absent finding has no present HPO code; show the placeholder so the
+        # cell never reads as a code the patient was assigned.
+        code_cell = m.get("hpo_id") or (_ABSENT_CODE_PLACEHOLDER if absent else m.get("hpo_id"))
         ws.append(
             [
                 patient_id,
                 m["hpo_term"],
-                m["hpo_id"],
+                code_cell,
                 status,
                 _modifier_cell(m, "frequency"),
                 _modifier_cell(m, "onset"),
@@ -243,13 +254,26 @@ def _format_entry(m: dict) -> str:
     return entry
 
 
+def _absent_entry(m: dict) -> str:
+    """Render an excluded finding by term/verbatim, with no present HPO code."""
+    label = m.get("hpo_term") or m.get("clinical_term") or ""
+    if m.get("patient_verbatim"):
+        label += f" [{m['patient_verbatim']}]"
+    return label
+
+
 def _write_semicolon_format(ws, patient_id: str, matches: list[dict]) -> None:
-    """One row per patient. Present codes and excluded codes in separate columns."""
-    present = [m for m in matches if not m.get("negated", False)]
-    absent = [m for m in matches if m.get("negated", False)]
+    """One row per patient. Present codes and excluded findings in separate columns.
+
+    Present codes go in observation_source_value; denied findings go in
+    excluded_source_value as plain term + verbatim, carrying no HPO code so a
+    denied symptom never appears with a minted present code.
+    """
+    present = present_codes(matches)
+    absent = absent_codes(matches)
 
     observation = "; ".join(_format_entry(m) for m in present)
-    excluded = "; ".join(_format_entry(m) for m in absent)
+    excluded = "; ".join(_absent_entry(m) for m in absent)
     ws.append([patient_id, observation, excluded])
 
 

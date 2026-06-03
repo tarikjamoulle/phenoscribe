@@ -9,6 +9,7 @@ present code. We feed stub extraction records (no live LLM) and assert:
 """
 
 import os
+import re
 
 import openpyxl
 import pytest
@@ -74,13 +75,42 @@ def test_negated_finding_excluded_from_present_codes(monkeypatch):
     absent = absent_codes(matches)
 
     present_ids = {m["hpo_id"] for m in present}
-    absent_ids = {m["hpo_id"] for m in absent}
 
     # Joint pain (Arthralgia) is present; fever is NOT emitted as present.
     assert present_ids == {"HP:0002829"}
     assert "HP:0001945" not in present_ids
-    # Fever is still reported, marked absent — denied findings are not dropped.
-    assert absent_ids == {"HP:0001945"}
+    # Fever is still reported as absent — denied findings are not dropped —
+    # but it carries NO present HPO code (it was never vector-searched).
+    assert len(absent) == 1
+    fever = absent[0]
+    assert fever["negated"] is True
+    assert fever["hpo_id"] is None
+    assert fever["clinical_term"] == "fever"
+    assert fever["patient_verbatim"] == "je n'ai pas de fievre"
+
+
+def test_negated_symptom_never_vector_searched(monkeypatch):
+    """The denied symptom must not even reach the index or the judge."""
+    searched: list[str] = []
+
+    def tracking_search(clinical_term, k=5, chroma_path="", **kwargs):
+        searched.append(clinical_term)
+        hit = _FAKE_INDEX.get(clinical_term.lower())
+        return [hit] if hit else []
+
+    def fake_llm(system_prompt, user_prompt, **kwargs):
+        for hit in _FAKE_INDEX.values():
+            if hit["name"] in user_prompt:
+                return f'{{"hpo_id": "{hit["hpo_id"]}", "hpo_term": "{hit["name"]}"}}'
+        return "{}"
+
+    monkeypatch.setattr(match_hpo, "search_hpo", tracking_search)
+    monkeypatch.setattr(match_hpo, "llm_call", fake_llm)
+
+    run_match(SYMPTOMS, chroma_path="")
+
+    # Only the present "joint pain" was searched; "fever" was never queried.
+    assert searched == ["joint pain"]
 
 
 def test_modifiers_mapped_to_hpo_leaves(monkeypatch):
@@ -126,8 +156,107 @@ def test_semicolon_excel_splits_present_and_excluded(monkeypatch, tmp_path):
     excluded = row[headers.index("excluded_source_value")] or ""
 
     assert "HP:0002829" in present
+    # The denied fever carries no present HPO code anywhere in the workbook.
     assert "HP:0001945" not in present
-    assert "HP:0001945" in excluded
+    assert "HP:0001945" not in excluded
+    # It is still visible as an excluded finding (term + verbatim).
+    assert "fever" in excluded
+    assert "je n'ai pas de fievre" in excluded
+
+
+_REAL_CHROMA = "data/chroma_db"
+
+
+@pytest.mark.skipif(
+    not os.path.isdir(_REAL_CHROMA),
+    reason="needs the seeded HPO ChromaDB index at data/chroma_db",
+)
+def test_end_to_end_real_index_no_present_code_for_negated(monkeypatch, tmp_path):
+    """True end-to-end: real ChromaDB + real present/absent routing + real Excel.
+
+    The extractor is NOT stubbed — we hand match_hpo the records the real
+    extractor produces for "je n'ai pas de fievre, mais des douleurs aux
+    articulations". The present symptom is vector-searched against the live HPO
+    index; the denied symptom is short-circuited (no search, no judge). Only the
+    LLM judge (Call 2) is replaced with a deterministic top-candidate pick so the
+    test stays offline. We then write the DEFAULT (semicolon) workbook and assert
+    the denied "fievre" never receives a present HPO code, while staying visible
+    as an excluded finding.
+    """
+    # Judge: pick the first candidate id present in the prompt. The present
+    # symptom still goes through real retrieval; this only stands in for Call 2.
+    def offline_judge(system_prompt, user_prompt, **kwargs):
+        m = re.search(r"\((HP:\d{7})\)", user_prompt)
+        if not m:
+            return '{"match": false, "confidence": 0.0}'
+        hpo_id = m.group(1)
+        return (
+            f'{{"hpo_id": "{hpo_id}", "hpo_term": "x", '
+            f'"match": true, "confidence": 0.9}}'
+        )
+
+    monkeypatch.setattr(match_hpo, "llm_call", offline_judge)
+
+    # Exactly the shape extract_symptoms emits (clinical_term in English, the
+    # French verbatim and the negated flag), for the canonical Robinson case.
+    extracted = [
+        {
+            "patient_verbatim": "je n'ai pas de fievre",
+            "clinical_term": "fever",
+            "context": "",
+            "negated": True,
+            "frequency": "",
+            "onset": "",
+            "severity": "",
+        },
+        {
+            "patient_verbatim": "des douleurs aux articulations",
+            "clinical_term": "joint pain",
+            "context": "",
+            "negated": False,
+            "frequency": "",
+            "onset": "",
+            "severity": "",
+        },
+    ]
+
+    matches = run_match(extracted, chroma_path=_REAL_CHROMA)
+
+    # The present finding got a real code off the live index; the denied one did not.
+    present = present_codes(matches)
+    absent = absent_codes(matches)
+    assert present, "the non-negated symptom should still be coded"
+    assert all(m["hpo_id"] for m in present)
+    assert len(absent) == 1 and absent[0]["clinical_term"] == "fever"
+    assert absent[0]["hpo_id"] is None
+
+    # Whatever HPO code the live index would have returned for "fever" must NOT
+    # appear among the present codes (the denied symptom was never searched).
+    fever_hits = match_hpo.search_hpo("fever", k=5, chroma_path=_REAL_CHROMA)
+    fever_ids = {c["hpo_id"] for c in fever_hits}
+    present_ids = {m["hpo_id"] for m in present}
+    assert fever_ids.isdisjoint(present_ids), (
+        f"a denied fever leaked a present code: {fever_ids & present_ids}"
+    )
+
+    # Default workbook (semicolon). The fever code must be in neither column.
+    out = tmp_path / "e2e.xlsx"
+    write_excel("MGA.E2E", matches, str(out), fmt="semicolon")
+
+    ws = openpyxl.load_workbook(out).active
+    headers = [c.value for c in ws[1]]
+    row = [c.value for c in ws[2]]
+    observation = row[headers.index("observation_source_value")] or ""
+    excluded = row[headers.index("excluded_source_value")] or ""
+
+    for hp_id in fever_ids:
+        assert hp_id not in observation
+        assert hp_id not in excluded
+    # No present HP code at all in the excluded column.
+    assert not re.search(r"HP:\d{7}", excluded)
+    # The denied finding is still documented (visible as excluded).
+    assert "fever" in excluded
+    assert "je n'ai pas de fievre" in excluded
 
 
 @pytest.mark.skipif(
