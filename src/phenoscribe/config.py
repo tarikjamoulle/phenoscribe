@@ -25,6 +25,11 @@ class TranscriptionConfig:
 class OutputConfig:
     format: str = "semicolon"
     path: str = "output/results.xlsx"
+    # True-path rule: also emit the ancestor closure of the predicted terms
+    # so downstream tools (Exomiser, LIRICAL, Phen2Gene, Phenomizer) get an
+    # annotation-propagated set. Off by default; the leaf list stays the
+    # human-facing view.
+    propagate_ancestors: bool = False
 
 
 @dataclass

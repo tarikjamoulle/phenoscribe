@@ -14,6 +14,7 @@ transcription:
 output:
   format: "detailed"          # detailed | semicolon | purl
   path: "output/results.xlsx"
+  propagate_ancestors: false  # true-path rule: add an "Ancestor Closure" sheet with the is_a ancestor expansion for downstream tools (Exomiser, LIRICAL, Phen2Gene, Phenomizer)
 
 hpo:
   release: "hp/releases/2026-02-16"  # pinned HPO release; must match the obo data-version: header and the Dockerfile HPO_VERSION tag (v2026-02-16)
