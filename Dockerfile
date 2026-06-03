@@ -3,8 +3,11 @@ FROM python:3.11-slim
 # Pinned versions — bump deliberately, then re-validate against ground truth.
 # HPO_VERSION must match a tag at
 #   https://github.com/obophenotype/human-phenotype-ontology/releases
+# and must match hpo.release in config.yaml. The v<date> tag downloads an obo
+# whose data-version: header reads hp/releases/<date>; the startup guard
+# (check_obo_version) fails loudly if the two disagree.
 # WHISPER_MODEL is the faster-whisper model that gets baked into the image.
-ARG HPO_VERSION=v2025-05-06
+ARG HPO_VERSION=v2026-02-16
 ARG WHISPER_MODEL=large-v3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

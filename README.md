@@ -103,6 +103,20 @@ phenoscribe status
 
 API keys live in `.env` or in the web app's password box. Never written to disk by the GUI.
 
+### HPO release
+
+One pinned release drives everything: `hpo.release` in `config.yaml` is
+`hp/releases/2026-02-16`, the Dockerfile downloads the matching `v2026-02-16`
+tag, and the seeded ChromaDB index is built from that obo. Startup verifies the
+`data-version:` header of the on-disk obo against `hpo.release` and fails loudly
+on a mismatch, so build host and run host can't disagree. Every results workbook
+carries the release on a `Provenance` sheet, so any output is self-describing.
+
+Retired codes resolve forward: an obsolete term with `replaced_by:`, or a merged
+id carried as `alt_id:`, maps to its active id when loading ground truth and when
+matching. On Marc Jamoulle's ground truth, 27 of 332 distinct codes were retired
+in this release; 24 now resolve to an active id instead of dropping out of search.
+
 ## Project layout
 
 ```
