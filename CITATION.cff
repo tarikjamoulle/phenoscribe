@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use Phenoscribe, please cite it using this metadata."
+title: "Phenoscribe: Automated HPO phenotype coding from patient interviews"
+abstract: >-
+  Phenoscribe turns French GP-patient audio interviews into Human Phenotype
+  Ontology (HPO) codes. It transcribes on-device, pseudonymises PII, extracts
+  symptoms with an LLM, shortlists HPO candidates from a local vector index,
+  and selects codes with an LLM judge that flags low-confidence matches for
+  clinician review.
+type: software
+authors:
+  - family-names: Jamoulle
+    given-names: Tarik
+version: 0.1.0
+license: Apache-2.0
+repository-code: "https://github.com/dataminded/phenoscribe"
+keywords:
+  - human phenotype ontology
+  - HPO
+  - phenotyping
+  - clinical natural language processing
+  - speech to text
