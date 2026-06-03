@@ -42,3 +42,6 @@ Thumbs.db
 
 # Microsoft Office lock files
 ~$*
+
+# Scratch (ChromaDB rebuilds, eval indexes)
+.tmp/
