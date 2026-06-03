@@ -19,9 +19,11 @@ directly; the validation score no longer depends on it.
 """
 
 import logging
+import re
 from collections import deque
 
 import hpotk
+import openpyxl
 
 from phenoscribe.aggregate import load_patient_codes
 from phenoscribe.config import load_config
@@ -42,6 +44,7 @@ from phenoscribe.semantic_similarity import (
 logger = logging.getLogger(__name__)
 
 _IC_CACHE = None
+_HP_CODE = re.compile(r"HP:\d{7}")
 
 _HPO_CACHE = None
 _OBSOLETE_MAP_CACHE: dict[str, dict[str, str]] = {}
@@ -72,12 +75,38 @@ def _get_ic(hpo) -> dict[str, float]:
     return _IC_CACHE
 
 
+def _raw_codes_by_patient(path: str) -> dict[str, set[str]]:
+    """Scan a two-column (Patient_ID, observation) workbook for bare HP codes.
+
+    Marc Jamoulle's ground truth mixes delimiter styles between patients:
+    "Term (HP:0001279)", "Term|HP:0001279|verbatim", and
+    "Term/HP:0001279[verbatim]" all appear. The structured semicolon parser
+    only reads the parenthesised style. For scoring we need the set of HP
+    codes per patient, so pull every HP:####### token from the row regardless
+    of the surrounding format.
+    """
+    wb = openpyxl.load_workbook(path, read_only=True)
+    ws = wb.active
+    result: dict[str, set[str]] = {}
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row or not row[0]:
+            continue
+        pid = str(row[0])
+        text = " ".join(str(c) for c in row[1:] if c)
+        codes = set(_HP_CODE.findall(text))
+        if codes:
+            result.setdefault(pid, set()).update(codes)
+    return result
+
+
 def load_codes_from_excel(
     path: str, obsolete_map: dict[str, str] | None = None
 ) -> dict[str, set[str]]:
     """Extract HPO codes per patient from an Excel file (any output format).
 
-    Wraps `aggregate.load_patient_codes` and discards term names.
+    Wraps `aggregate.load_patient_codes` and discards term names. Falls back
+    to a raw HP-code scan for any patient the structured parser missed, so
+    mixed-delimiter ground-truth rows still score.
     Returns dict of patient_id -> set of HP codes.
 
     If ``obsolete_map`` is given, retired ids (obsolete-with-replaced_by, or
@@ -90,10 +119,18 @@ def load_codes_from_excel(
     def resolve(hpo_id: str) -> str:
         return resolve_obsolete(hpo_id, obsolete_map) if obsolete_map else hpo_id
 
-    return {
+    codes = {
         pid: {resolve(entry["hpo_id"]) for entry in entries}
         for pid, entries in rich.items()
     }
+
+    # Fall back to a raw HP-code scan for any patient the structured parser
+    # missed (mixed-delimiter ground-truth rows), resolving obsolete ids too.
+    raw = _raw_codes_by_patient(path)
+    for pid, raw_codes in raw.items():
+        if not codes.get(pid):
+            codes[pid] = {resolve(c) for c in raw_codes}
+    return codes
 
 
 def hop_distance(hpo, a: str, b: str, max_hops: int = 2) -> int | None:
@@ -275,8 +312,25 @@ def validate(
             "over_specific": over_specific,
         }
 
+    # Partial-credit score: close (hierarchy-near) predictions count toward
+    # precision; recall counts only exact hits. This is the lenient view.
     precision = (total_exact + total_close) / total_pred if total_pred else 0.0
     recall = total_exact / total_gt if total_gt else 0.0
+
+    # Strict document-level F1: a true positive is an exact HPO ID match,
+    # no hierarchy expansion. This is the convention used in HPO
+    # concept-recognition benchmarks (Groza et al., FastHPOCR), where a
+    # document-level TP is "the gold HPO ID is found at least once".
+    # TP = |pred ∩ gt| summed over patients (== total_exact, since each
+    # exact prediction matched a distinct GT code).
+    strict_tp = total_exact
+    strict_precision = strict_tp / total_pred if total_pred else 0.0
+    strict_recall = strict_tp / total_gt if total_gt else 0.0
+    strict_f1 = (
+        2 * strict_precision * strict_recall / (strict_precision + strict_recall)
+        if (strict_precision + strict_recall)
+        else 0.0
+    )
 
     return {
         "patients_evaluated": len(all_patients),
@@ -292,6 +346,11 @@ def validate(
         "recall": recall,
         "f1": 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0,
         "ic_distribution": ic_distribution(ic_map, all_pred_codes),
+        # Strict exact-match document-level metrics.
+        "strict_precision": strict_precision,
+        "strict_recall": strict_recall,
+        "strict_f1": strict_f1,
+        "strict_tp": strict_tp,
         "per_patient": patient_scores,
     }
 
@@ -314,9 +373,15 @@ def print_report(report: dict) -> None:
     print(f"  Non-specific (predicted ancestor of truth, recall side):    {report.get('non_specific', 0)}")
     print(f"  Over-specific (predicted descendant of truth, precision side): {report.get('over_specific', 0)}")
     print()
-    print(f"Precision: {report['precision']:.1%}")
-    print(f"Recall:    {report['recall']:.1%}")
-    print(f"F1:        {report['f1']:.1%}")
+    print("Strict (exact HPO ID match, document-level):")
+    print(f"  Precision: {report['strict_precision']:.1%}")
+    print(f"  Recall:    {report['strict_recall']:.1%}")
+    print(f"  F1:        {report['strict_f1']:.1%}")
+    print()
+    print("Partial credit (hierarchy-near within 2 hops counts for precision):")
+    print(f"  Precision: {report['precision']:.1%}")
+    print(f"  Recall:    {report['recall']:.1%}")
+    print(f"  F1:        {report['f1']:.1%}")
     print()
 
     ic = report.get("ic_distribution")

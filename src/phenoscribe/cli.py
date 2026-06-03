@@ -21,6 +21,19 @@ PROVIDER_ALIASES = {
 CANONICAL_PROVIDERS = {"openai", "anthropic", "ollama"}
 
 
+def derive_patient_id(stem: str, prefix: str) -> str:
+    """Build the join key from a filename stem and the configured prefix.
+
+    The transcript/audio files are named by bare stem (e.g. "467"); the
+    ground truth keys patients as "MGA.467". Prepend the prefix so pipeline
+    output joins against the GT. If the stem already carries the prefix, it
+    is left untouched so re-runs stay idempotent.
+    """
+    if not prefix or stem.startswith(prefix):
+        return stem
+    return f"{prefix}{stem}"
+
+
 def resolve_provider(name: str) -> str:
     """Map a user-supplied provider name to its canonical form.
 
@@ -142,8 +155,10 @@ def _cmd_process(args):
     failed = 0
 
     for filepath in files:
-        # Extract patient ID from filename (e.g., "MGA.014.txt" -> "MGA.014")
-        patient_id = filepath.stem
+        # Filename stem locates the cached transcript ("467.txt"); the join key
+        # adds the configured prefix to match the ground truth ("MGA.467").
+        stem = filepath.stem
+        patient_id = derive_patient_id(stem, config.patient.id_prefix)
 
         # Create job
         job_id = create_job(db_path, str(filepath), patient_id)
@@ -158,6 +173,7 @@ def _cmd_process(args):
                 config,
                 output_path=output_path,
                 skip_transcription=args.skip_transcription,
+                transcript_stem=stem,
             )
             update_job(db_path, job_id, "completed")
             completed += 1
