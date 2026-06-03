@@ -27,7 +27,7 @@ _FAKE_INDEX = {
 
 
 def _stub_pipeline(monkeypatch):
-    def fake_search(clinical_term, k=5, chroma_path=""):
+    def fake_search(clinical_term, k=5, chroma_path="", **kwargs):
         hit = _FAKE_INDEX.get(clinical_term.lower())
         return [hit] if hit else []
 

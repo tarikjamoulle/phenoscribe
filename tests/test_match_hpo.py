@@ -132,7 +132,7 @@ def test_match_hpo_surfaces_confidence_and_review(monkeypatch):
     import phenoscribe.match_hpo as mod
 
     monkeypatch.setattr(
-        mod, "search_hpo", lambda term, k, chroma_path: list(CANDIDATES)
+        mod, "search_hpo", lambda term, k, chroma_path, **kw: list(CANDIDATES)
     )
     monkeypatch.setattr(
         mod, "llm_call", lambda **kw: _json("HP:0012378", "Fatigue", confidence=0.9)
@@ -152,7 +152,7 @@ def test_match_hpo_judge_exception_flags_review(monkeypatch):
     import phenoscribe.match_hpo as mod
 
     monkeypatch.setattr(
-        mod, "search_hpo", lambda term, k, chroma_path: list(CANDIDATES)
+        mod, "search_hpo", lambda term, k, chroma_path, **kw: list(CANDIDATES)
     )
 
     def boom(**kw):
@@ -172,7 +172,7 @@ def test_match_hpo_weak_shortlist_flags_review(monkeypatch):
     import phenoscribe.match_hpo as mod
 
     weak = [{"hpo_id": "HP:0012378", "name": "Fatigue", "distance": 0.9}]
-    monkeypatch.setattr(mod, "search_hpo", lambda term, k, chroma_path: list(weak))
+    monkeypatch.setattr(mod, "search_hpo", lambda term, k, chroma_path, **kw: list(weak))
     monkeypatch.setattr(
         mod, "llm_call", lambda **kw: _json("HP:0012378", "Fatigue", confidence=0.95)
     )
