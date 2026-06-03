@@ -145,7 +145,12 @@ def process_recording(
         pii_mapping: dict = {}
     else:
         logger.info("[%s] Step 2: Pseudonymizing PII...", patient_id)
-        safe_text, pii_mapping = pseudonymize(raw_text)
+        safe_text, pii_mapping = pseudonymize(
+            raw_text,
+            model=config.pii.model,
+            fallback_model=config.pii.fallback_model,
+            min_score=config.pii.min_score,
+        )
         logger.info("[%s] PII entities replaced: %d", patient_id, len(pii_mapping))
 
         # Save pseudonymized transcript

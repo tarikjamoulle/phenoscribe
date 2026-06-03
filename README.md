@@ -11,7 +11,7 @@ Automated HPO phenotype coding from patient interviews. Built for a GP doing lon
 A recorded GP–patient conversation in, an Excel of standardized HPO codes out. Six steps:
 
 1. **Transcribe** the recording with faster-whisper, on the laptop. The audio file never leaves the machine.
-2. **Pseudonymise PII** with OpenMed (French medical NER, 97.97% F1). Names, places, and dates get stable placeholders: "Dr. Martin" → "Dr. 1", "Erasme hospital" → "Hospital 1". The mapping stays local.
+2. **Pseudonymise PII** locally with a French NER model plus regex. Names, places, dates, phones, emails and national IDs get stable placeholders: "Dr. Martin" → "PERSON_1", "Bruxelles" → "LOCATION_1". The mapping stays on the machine. Default model: [`Anonym-IA/V2-camembert-ner-pii-french`](https://huggingface.co/Anonym-IA/V2-camembert-ner-pii-french) (CamemBERT-base, MIT, validation micro-F1 0.9327). See [Privacy](#privacy) for what it catches and what it misses.
 3. **Extract symptoms** with an LLM: each complaint becomes a clinical English label plus the patient's own French verbatim.
 4. **Shortlist five HPO candidates** per symptom from a local ChromaDB index of ~17,000 HPO terms.
 5. **Pick the best code** from that shortlist with an LLM. The term name is re-read from the official ontology so the AI can't mis-label a valid code (Peter Robinson's caveat).
@@ -24,6 +24,32 @@ Cohort summaries with `phenoscribe aggregate` — counts per HPO term plus a hor
 - Audio and the mapping table never leave the machine.
 - Only pseudonymised text is sent to the LLM provider.
 - Designed under GDPR + Belgian health-data law.
+
+### PII model: what it catches, what it misses
+
+Step 2 runs entirely on the local machine. Two layers:
+
+- **NER head** (configurable via `pii.model` in `config.yaml`). Default is
+  [`Anonym-IA/V2-camembert-ner-pii-french`](https://huggingface.co/Anonym-IA/V2-camembert-ner-pii-french):
+  CamemBERT-base (110M params, ~445 MB), MIT licence, fully local. It tags 39
+  French PII entity types (names, street/city/postal, email, phone,
+  social-security number, IBAN, dates, job titles, ...). Reported validation
+  micro-F1 is 0.9327 (`best_metrics.json` on the model card). A general 4-label
+  French NER, [`Jean-Baptiste/camembert-ner`](https://huggingface.co/Jean-Baptiste/camembert-ner)
+  (PER/LOC/ORG/MISC, WikiNER F1 0.8914), ships as the offline `pii.fallback_model`
+  and is loaded automatically if the default cannot be fetched.
+- **Regex** for structured PII: dates, Belgian/French phone numbers, emails,
+  Belgian national numbers. Deterministic, runs regardless of the NER head.
+
+Known limitation. Any general or PII NER under-redacts rare proper nouns it
+never saw in training: hospital and clinic names, drug eponyms, uncommon
+surnames, and bare first names. On our pseudonymised sample transcripts the
+PII model caught residual person names (e.g. "Madame de Simon") while leaving
+drug and condition names (Zaldiar, Ivabradine, Paxlovid, "Covid long") in
+place — which is what you want, since those carry clinical meaning. The
+general fallback model flags those drug/condition tokens as MISC and would
+over-redact them, and it also catches some first names the PII model misses.
+Neither model is a complete de-identifier. Spot-check the first batch.
 
 ## Two ways to run
 
@@ -122,7 +148,7 @@ in this release; 24 now resolve to an active id instead of dropping out of searc
 ```
 src/phenoscribe/        Pipeline source
   transcribe.py         Step 1: faster-whisper
-  pii.py                Step 2: OpenMed pseudonymisation
+  pii.py                Step 2: local French NER + regex pseudonymisation
   extract_symptoms.py   Step 3: LLM symptom extraction
   hpo_index.py          Step 4: ChromaDB vector search
   match_hpo.py          Step 5: LLM judging + canonical name resolution
