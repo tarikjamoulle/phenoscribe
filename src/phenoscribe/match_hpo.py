@@ -6,6 +6,7 @@ import re
 
 from phenoscribe.hpo_index import build_obsolete_map, resolve_obsolete, search_hpo
 from phenoscribe.llm import llm_call
+from phenoscribe.modifiers import map_frequency, map_onset, map_severity
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +68,16 @@ def match_hpo(
         confidence (float in [0, 1]), and needs_review (bool). When the judge
         cannot justify a match the row is still returned, flagged for review,
         so a code is never silently dressed up as one the model endorsed.
+        Also carries negated, frequency, onset, severity, and the mapped HPO
+        subontology codes (frequency_hpo_id, onset_hpo_id, severity_hpo_id)
+        where the modifier text resolved to an HPO leaf.
     """
     obsolete_map = build_obsolete_map(obo_path) if obo_path else {}
     results = []
 
     for symptom in symptoms:
         clinical_term = symptom["clinical_term"]
+        negated = bool(symptom.get("negated", False))
 
         # Stage 1: Vector search
         candidates = search_hpo(clinical_term, k=k, chroma_path=chroma_path)
@@ -135,26 +140,68 @@ def match_hpo(
                 )
                 selected["hpo_id"] = resolved
 
-        results.append(
-            {
-                "hpo_id": selected["hpo_id"],
-                "hpo_term": selected["hpo_term"],
-                "patient_verbatim": symptom.get("patient_verbatim", ""),
-                "clinical_term": clinical_term,
-                "confidence": round(selected["confidence"], 2),
-                "needs_review": selected["needs_review"],
-            }
-        )
+        result = {
+            "hpo_id": selected["hpo_id"],
+            "hpo_term": selected["hpo_term"],
+            "patient_verbatim": symptom.get("patient_verbatim", ""),
+            "clinical_term": clinical_term,
+            "confidence": round(selected["confidence"], 2),
+            "needs_review": selected["needs_review"],
+            "negated": negated,
+            "frequency": symptom.get("frequency", ""),
+            "onset": symptom.get("onset", ""),
+            "severity": symptom.get("severity", ""),
+        }
+        _attach_modifier_codes(result)
+        results.append(result)
         logger.info(
-            "Matched '%s' -> %s (%s) confidence=%.2f needs_review=%s",
+            "Matched '%s' -> %s (%s) confidence=%.2f needs_review=%s%s",
             clinical_term,
             selected["hpo_term"],
             selected["hpo_id"],
             selected["confidence"],
             selected["needs_review"],
+            " [NEGATED/absent]" if negated else "",
         )
 
+    n_negated = sum(1 for r in results if r["negated"])
+    logger.info(
+        "Matched %d findings (%d present coded, %d negated/absent).",
+        len(results),
+        len(results) - n_negated,
+        n_negated,
+    )
     return results
+
+
+def present_codes(matches: list[dict]) -> list[dict]:
+    """Return only findings the patient has. Negated findings are dropped.
+
+    Use this when emitting present phenotype codes. Negated findings stay in
+    the full ``matches`` list so they can be reported in a separate column.
+    """
+    return [m for m in matches if not m.get("negated", False)]
+
+
+def absent_codes(matches: list[dict]) -> list[dict]:
+    """Return only the negated/absent findings."""
+    return [m for m in matches if m.get("negated", False)]
+
+
+def _attach_modifier_codes(result: dict) -> None:
+    """Resolve frequency/onset/severity text to HPO subontology leaves.
+
+    Adds *_hpo_id / *_hpo_term keys when a value maps to an HPO leaf. Leaves
+    the original text in place so unmapped values are not lost.
+    """
+    for field, mapper in (
+        ("frequency", map_frequency),
+        ("onset", map_onset),
+        ("severity", map_severity),
+    ):
+        mapped = mapper(result.get(field, ""))
+        if mapped:
+            result[f"{field}_hpo_id"], result[f"{field}_hpo_term"] = mapped
 
 
 def _parse_judge_response(response: str, candidates: list[dict]) -> dict:
