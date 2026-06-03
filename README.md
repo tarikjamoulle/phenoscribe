@@ -171,6 +171,11 @@ Ground truth: 1003 manually coded rows. Scoring is hierarchy-aware via [hpo-tool
 
 Run `phenoscribe validate <results.xlsx> <ground_truth.xlsx>` to score a batch.
 
+## Benchmarks
+
+- `scripts/benchmark_ontogpt.py` — head-to-head vs OntoGPT on the pseudonymised French transcripts.
+- `scripts/benchmark_gsc.py` — Phenoscribe on the GSC+ gold standard (Groza et al.), with FastHPOCR run on the same 228 documents and the published GSC+ matrix for context. Document-level precision/recall/F1, exact and lenient. On this English-abstract corpus FastHPOCR's offline dictionary wins (exact F1 0.78 vs Phenoscribe retrieval top-1 0.45); the retriever's recall@5 is 73%. See `context/exports/2026-06-03-gold-standard-benchmark.md` for the honest read.
+
 ## Where to read more
 
 - **`context/architecture-notes.md`** — live design reference. The first thing to read if you want to understand or modify the pipeline.

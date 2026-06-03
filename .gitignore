@@ -29,7 +29,7 @@ chroma_db/
 # Local model caches (Whisper, HF transformers, etc.) — large, machine-local
 models/
 
-# Scratch / local eval indexes (e.g. SapBERT recall eval)
+# Scratch space for local eval/benchmarks (SapBERT recall eval, downloaded corpora, built indexes)
 .tmp/
 
 # Environment
