@@ -5,6 +5,8 @@ offline and deterministically. One test loads the real configured model to
 guard against drift between config.yaml, the docs, and the model pii.py loads.
 """
 
+import re
+
 import pytest
 
 from phenoscribe import pii
@@ -126,6 +128,50 @@ def test_low_confidence_dropped(monkeypatch):
     out, mapping = pii.pseudonymize(text, min_score=0.6)
     assert "Machin" in out
     assert mapping == {}
+
+
+# --- subword/offset mapping (privacy: no leaked fragments) -------------------
+
+def test_subword_spans_replace_full_entity_no_leftover(monkeypatch):
+    """NER subword spans must map back to full character offsets.
+
+    Real CamemBERT NER with aggregation_strategy="simple" can return spans
+    that cover only the first subword token of a multi-subword or accented
+    name, and that butt directly against an adjacent entity. The pseudonymiser
+    must still replace each entity fully: no placeholder may sit next to a
+    leftover letter, and no fragment of the original name may survive.
+    """
+    text = "Mme Héloïse au CHU Erasme Bruxelles voit le gynéco de l'X."
+
+    # Deliberately truncated / boundary-misaligned spans, the way the model's
+    # tokenizer reports them for accented and multi-subword entities.
+    def entities(t):
+        def trunc(sub, n, label):
+            start = t.index(sub)
+            return {"entity_group": label, "word": sub[:n],
+                    "start": start, "end": start + n, "score": 0.99}
+        return [
+            trunc("Héloïse", 2, "NOM_PERSONNE"),   # only "Hé" -> would leak "loïse"
+            trunc("Erasme", 3, "NOM_SOCIETE"),
+            # two adjacent locations
+            trunc("Erasme Bruxelles", len("Erasme"), "VILLE"),
+            trunc("Bruxelles", 4, "VILLE"),
+            trunc("gynéco", 1, "JOBTITLE"),        # only "g" -> would leak "ynéco"
+            trunc("X", 1, "NOM_SOCIETE"),
+        ]
+
+    _install_fake_ner(monkeypatch, entities)
+    out, _ = pii.pseudonymize(text)
+
+    # A placeholder (CATEGORY_N) must never be glued to a leftover letter on
+    # either side. Match the whole placeholder token and check its neighbours.
+    placeholder = r"(?:PERSON|LOCATION|ORGANIZATION|JOB)_\d+"
+    assert not re.search(r"[A-Za-zÀ-ÿ]" + placeholder, out), out  # letter before
+    assert not re.search(placeholder + r"[A-Za-zÀ-ÿ]", out), out  # letter after
+
+    # The original name fragments must be gone entirely.
+    for frag in ("Héloïse", "loïse", "gynéco", "ynéco", "Bruxelles", "Erasme"):
+        assert frag not in out, (frag, out)
 
 
 # --- no-drift guard: config vs code vs docs ----------------------------------

@@ -177,7 +177,12 @@ def pseudonymize(
         if category is None:
             # Unknown label: keep it as its own category rather than drop PII.
             category = label
-        spans.append({"start": e["start"], "end": e["end"], "category": category})
+        # NER subword tokenisation (esp. for accented or multi-subword names)
+        # often reports a span that covers only part of a word. Snap the span
+        # out to whole-word boundaries so we never leave a leaked fragment such
+        # as "PERSON_1loïse" or "JOB_1ynéco".
+        start, end = _snap_to_word_boundaries(text, e["start"], e["end"])
+        spans.append({"start": start, "end": end, "category": category})
 
     # Add regex-detected entities (deterministic, model-independent)
     for match in DATE_PATTERN.finditer(text):
@@ -273,6 +278,34 @@ def _split_into_chunks(text: str, max_chars: int = 1200) -> list[str]:
         chunks.append(text[start:])
 
     return chunks
+
+
+# A "word" for the purpose of span snapping: Latin letters (incl. accented),
+# digits and underscore. Apostrophes and hyphens are treated as boundaries so
+# that "l'X" snaps to just "X" and adjacent hyphen-joined names are not merged
+# beyond what the NER reported.
+_WORD_CHAR = re.compile(r"[0-9A-Za-zÀ-ÖØ-öø-ÿ]")
+
+
+def _snap_to_word_boundaries(text: str, start: int, end: int) -> tuple[int, int]:
+    """Expand an entity span outward to cover whole words.
+
+    NER models return offsets aligned to subword tokens, which for accented or
+    multi-subword names can cut a word in half (covering only "Hé" of
+    "Héloïse"). Replacing just that slice leaks the rest ("PERSON_1loïse").
+    We grow the span left and right while the neighbouring character is part of
+    the same word, so the full identifier is replaced.
+    """
+    start = max(0, min(start, len(text)))
+    end = max(start, min(end, len(text)))
+
+    # Grow left while the previous char continues a word.
+    while start > 0 and _WORD_CHAR.match(text[start - 1]):
+        start -= 1
+    # Grow right while the next char continues a word.
+    while end < len(text) and _WORD_CHAR.match(text[end]):
+        end += 1
+    return start, end
 
 
 def _remove_overlaps(spans: list[dict]) -> list[dict]:
