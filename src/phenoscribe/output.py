@@ -59,6 +59,49 @@ _TOP_ALIGNMENT = Alignment(vertical="top")
 PROVENANCE_SHEET = "Provenance"
 
 
+def dedup_by_code(matches: list[dict], fmt: str = "semicolon") -> list[dict]:
+    """Collapse restated findings to one match per (HPO code, negation status).
+
+    Each transcript is one document for one patient, so a symptom restated
+    several times must not produce several rows. We key on (hpo_id, negated):
+    a code asserted present and the same code asserted absent stay as two rows,
+    since collapsing them would hide a contradiction.
+
+    Verbatim handling follows the format's intent (D1 in the dedup plan):
+      - "detailed": concatenate the distinct verbatims with "; " (evidence view).
+      - everything else ("semicolon"/"purl"): keep the single longest verbatim.
+
+    Input order is preserved: the first occurrence of a key fixes a match's
+    position and its non-verbatim fields; later occurrences only feed verbatims.
+    """
+    by_key: dict[tuple, dict] = {}
+    order: list[tuple] = []
+    # Per key, the verbatims seen, in first-seen order, de-duplicated.
+    verbatims: dict[tuple, list[str]] = {}
+
+    for m in matches:
+        key = (m["hpo_id"], bool(m.get("negated", False)))
+        if key not in by_key:
+            by_key[key] = dict(m)
+            order.append(key)
+            verbatims[key] = []
+        v = m.get("patient_verbatim") or ""
+        if v and v not in verbatims[key]:
+            verbatims[key].append(v)
+
+    result = []
+    for key in order:
+        out = by_key[key]
+        seen = verbatims[key]
+        if seen:
+            if fmt == "detailed":
+                out["patient_verbatim"] = "; ".join(seen)
+            else:
+                out["patient_verbatim"] = max(seen, key=len)
+        result.append(out)
+    return result
+
+
 def write_excel(
     patient_id: str,
     matches: list[dict],
@@ -95,22 +138,28 @@ def write_excel(
         ws.append(headers)
         _style_header_row(ws, len(headers))
 
+    # One row per (patient, HPO code) is the default. Restated symptoms must
+    # not produce duplicate rows, and must not leak duplicate leaves into the
+    # closure either. Dedup once, then both the primary sheet and the closure
+    # read from the same collapsed set.
+    deduped = dedup_by_code(matches, fmt)
+
     if fmt == "purl":
-        _write_purl_format(ws, patient_id, matches)
+        _write_purl_format(ws, patient_id, deduped)
     elif fmt == "semicolon":
-        _write_semicolon_format(ws, patient_id, matches)
+        _write_semicolon_format(ws, patient_id, deduped)
     else:
-        _write_detailed_format(ws, patient_id, matches)
+        _write_detailed_format(ws, patient_id, deduped)
 
     _auto_fit_columns(ws)
     if hpo_release:
         _stamp_provenance(wb, hpo_release)
 
     if propagate_ancestors:
-        _write_closure_sheet(wb, patient_id, matches, obo_path)
+        _write_closure_sheet(wb, patient_id, deduped, obo_path)
 
     wb.save(path)
-    logger.info("Wrote %d matches for %s to %s (%s format)", len(matches), patient_id, path, fmt)
+    logger.info("Wrote %d matches for %s to %s (%s format)", len(deduped), patient_id, path, fmt)
 
 
 def _stamp_provenance(wb, hpo_release: str) -> None:
