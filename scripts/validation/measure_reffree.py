@@ -30,7 +30,38 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from phenoscribe import validate as V  # noqa: E402
 from phenoscribe.semantic_similarity import get_ic_map  # noqa: E402
 
-HP_RE = re.compile(r"HP:\d{7}")
+# Marc writes some codes with the 'HPO:' prefix; accept both, normalise to HP:#######.
+HP_RE = re.compile(r"HPO?:(\d{7})")
+
+
+def _normalise_codes(text):
+    return {"HP:" + m.group(1) for m in HP_RE.finditer(text)}
+
+
+# 'Needs Review' carries string flags ('REVIEW', 'Yes', 'true', '1'), not bools.
+_TRUTHY_FLAGS = {"true", "yes", "y", "1", "review", "needs review", "x"}
+
+
+def _is_truthy_flag(v):
+    if v is True:
+        return True
+    if v is False or v is None:
+        return False
+    if isinstance(v, (int, float)):
+        return v != 0
+    return str(v).strip().lower() in _TRUTHY_FLAGS
+
+
+def _as_float(v):
+    """Coerce numeric cells AND numeric strings ('0.83') to float; else None."""
+    if isinstance(v, bool) or v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        return float(str(v).strip())
+    except (TypeError, ValueError):
+        return None
 
 
 def load_results(path):
@@ -50,11 +81,12 @@ def load_results(path):
         pid = str(r[idx["Patient_ID"]]).strip()
         code = r[idx["HPO Code"]]
         pa = (r[idx["Present/Absent"]] or "").strip().lower()
-        if r[idx.get("Needs Review", -1)] in (True, "True", "TRUE", 1):
+        if "Needs Review" in idx and _is_truthy_flag(r[idx["Needs Review"]]):
             needs_review += 1
-        conf = r[idx.get("Confidence", -1)] if "Confidence" in idx else None
-        if isinstance(conf, (int, float)):
-            confidences.append(conf)
+        if "Confidence" in idx:
+            conf = _as_float(r[idx["Confidence"]])
+            if conf is not None:
+                confidences.append(conf)
         if not code:
             continue
         code = str(code).strip()
@@ -85,7 +117,7 @@ def load_gt(path):
             continue
         pid = str(r[0]).strip()
         joined = " ".join(str(c) for c in r if c is not None)
-        codes = set(HP_RE.findall(joined))
+        codes = _normalise_codes(joined)
         if codes:
             out[pid] = codes
     return out
