@@ -14,6 +14,7 @@ MATCHES = [
         "hpo_id": "HP:0012378",
         "hpo_term": "Fatigue",
         "patient_verbatim": "fatigué",
+        "clinical_term": "fatigue",
         "confidence": 0.92,
         "needs_review": False,
     },
@@ -21,6 +22,7 @@ MATCHES = [
         "hpo_id": "HP:0002027",
         "hpo_term": "Abdominal pain",
         "patient_verbatim": "mal au ventre",
+        "clinical_term": "abdominal pain",
         "confidence": 0.0,
         "needs_review": True,
     },
@@ -74,6 +76,38 @@ def test_semicolon_format_marks_review_inline(tmp_path):
     # Marker attaches to the flagged code, not the endorsed one.
     assert "Fatigue (HP:0012378) [fatigué] {REVIEW}" not in observation
     assert "{REVIEW}" in observation.split("Abdominal pain")[1]
+
+
+def test_detailed_format_persists_clinical_term(tmp_path):
+    """The English clinical_term must reach the workbook as its own column.
+
+    Without it, French-path retrieval recall@5 is unmeasurable after the fact:
+    the row only carries the French verbatim and the chosen HPO code.
+    """
+    path = tmp_path / "out.xlsx"
+    write_excel("MGA.014", MATCHES, str(path), fmt="detailed")
+
+    headers, rows = _read(path)
+    assert "Clinical Term" in headers
+    term_col = headers.index("Clinical Term")
+    verbatim_col = headers.index("Patient Verbatim")
+
+    # Every present row carries a populated clinical_term.
+    assert rows[0][term_col] == "fatigue"
+    assert rows[1][term_col] == "abdominal pain"
+    # It sits alongside the patient verbatim, distinct from it.
+    assert rows[0][verbatim_col] == "fatigué"
+
+
+def test_purl_format_persists_clinical_term(tmp_path):
+    path = tmp_path / "out.xlsx"
+    write_excel("MGA.014", MATCHES, str(path), fmt="purl")
+
+    headers, rows = _read(path)
+    assert "Clinical Term" in headers
+    term_col = headers.index("Clinical Term")
+    for row in rows:
+        assert row[term_col]
 
 
 def test_matches_without_flags_still_write(tmp_path):

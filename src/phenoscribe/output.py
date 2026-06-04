@@ -24,11 +24,20 @@ HEADERS = {
         "Onset",
         "Severity",
         "Patient Verbatim",
+        "Clinical Term",
         "Needs Review",
         "Confidence",
     ],
     "semicolon": ["Patient_ID", "observation_source_value", "excluded_source_value"],
-    "purl": ["CASE ID", "HPO TERM", "HPO Code Purl", "Verbatim", "Needs Review", "Confidence"],
+    "purl": [
+        "CASE ID",
+        "HPO TERM",
+        "HPO Code Purl",
+        "Verbatim",
+        "Clinical Term",
+        "Needs Review",
+        "Confidence",
+    ],
 }
 
 # Light amber fill for rows the GP should double-check.
@@ -262,6 +271,7 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
         # An absent finding has no present HPO code; show the placeholder so the
         # cell never reads as a code the patient was assigned.
         code_cell = m.get("hpo_id") or (_ABSENT_CODE_PLACEHOLDER if absent else m.get("hpo_id"))
+        clinical_term = m.get("clinical_term", "")
         ws.append(
             [
                 patient_id,
@@ -272,16 +282,17 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
                 _modifier_cell(m, "onset"),
                 _modifier_cell(m, "severity"),
                 verbatim,
+                clinical_term,
                 _review_label(m),
                 _confidence_cell(m),
             ]
         )
         row = ws.max_row
-        for col in range(1, 11):
+        for col in range(1, 12):
             ws.cell(row=row, column=col).alignment = _TOP_ALIGNMENT
         ws.cell(row=row, column=8).alignment = _WRAP_ALIGNMENT
         if m.get("needs_review"):
-            for col in range(1, 11):
+            for col in range(1, 12):
                 ws.cell(row=row, column=col).fill = _REVIEW_FILL
 
 
@@ -337,12 +348,21 @@ def _write_purl_format(ws, patient_id: str, matches: list[dict]) -> None:
             continue
         purl = _hpo_id_to_purl(m["hpo_id"])
         verbatim = m.get("patient_verbatim", "")
+        clinical_term = m.get("clinical_term", "")
         ws.append(
-            [patient_id, m["hpo_term"], purl, verbatim, _review_label(m), _confidence_cell(m)]
+            [
+                patient_id,
+                m["hpo_term"],
+                purl,
+                verbatim,
+                clinical_term,
+                _review_label(m),
+                _confidence_cell(m),
+            ]
         )
         if m.get("needs_review"):
             row = ws.max_row
-            for col in range(1, 7):
+            for col in range(1, 8):
                 ws.cell(row=row, column=col).fill = _REVIEW_FILL
 
 
