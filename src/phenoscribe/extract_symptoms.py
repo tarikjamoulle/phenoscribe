@@ -79,8 +79,19 @@ def extract_symptoms(
     return _parse_response(response)
 
 
+class ExtractionParseError(ValueError):
+    """The extractor's response is not a JSON array of findings.
+
+    Raised so the job fails and --retry-failed picks it up. An empty list here
+    once let MGA.466 "complete" with zero rows (truncated JSON, 2026-10-21).
+    """
+
+
 def _parse_response(response: str) -> list[dict]:
-    """Parse LLM JSON response, handling common formatting issues."""
+    """Parse LLM JSON response, handling common formatting issues.
+
+    Raises ExtractionParseError when no JSON array can be recovered.
+    """
     text = response.strip()
 
     # Strip markdown code fences if present
@@ -99,15 +110,16 @@ def _parse_response(response: str) -> list[dict]:
             try:
                 data = json.loads(text[start : end + 1])
             except json.JSONDecodeError:
-                logger.error("Failed to parse LLM response as JSON: %s", text[:200])
-                return []
+                raise ExtractionParseError(
+                    f"symptom extraction: response is not valid JSON: {text[:200]}"
+                )
         else:
-            logger.error("No JSON array found in LLM response: %s", text[:200])
-            return []
+            raise ExtractionParseError(
+                f"symptom extraction: no JSON array in response: {text[:200]}"
+            )
 
     if not isinstance(data, list):
-        logger.error("LLM response is not a list: %s", type(data))
-        return []
+        raise ExtractionParseError(f"symptom extraction: response is a {type(data).__name__}, not a list")
 
     # Validate each item has required keys
     valid = []
