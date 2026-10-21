@@ -21,9 +21,15 @@ You are an HPO (Human Phenotype Ontology) coding expert. Given a clinical concep
 list of candidate HPO terms, select the BEST matching HPO term.
 
 Rules:
-- Pick the most specific term that accurately describes the clinical concept
+- Pick the most specific term that the patient's words support. Do NOT pick a child \
+term that adds a detail the patient did not state: "tinnitus" is Tinnitus, not \
+Pulsatile tinnitus, unless the patient describes a pulse.
+- Match on meaning, not on shared words. In HPO, "concentration" in a term name is \
+the chemical level of a substance. A patient who cannot concentrate has a mental \
+finding, so an enzyme or blood "concentration" term is NOT a match.
 - Only choose from the candidates provided. Do NOT invent or modify HPO codes.
-- If NONE of the candidates is a defensible match, say so by setting "match" to false.
+- If NONE of the candidates is a defensible match, say so by setting "match" to false. \
+A row with no code is better than a wrong code.
 - Report your confidence in [0.0, 1.0]: how well the chosen term captures the concept.
 - Return ONLY a JSON object with keys "hpo_id", "hpo_term", "match", "confidence".
 
@@ -35,6 +41,10 @@ Example (no candidate fits):
 
 # Below this self-reported confidence the match is surfaced for review.
 LOW_CONFIDENCE_THRESHOLD = 0.5
+
+# hpo_term shown when no candidate is a defensible match. The row stays in the
+# output (flagged for review) but carries no code, so a guess never reads as one.
+NO_MATCH_TERM = "(no good match)"
 
 
 def match_hpo(
@@ -68,7 +78,8 @@ def match_hpo(
         List of dicts with hpo_id, hpo_term, patient_verbatim, clinical_term,
         confidence (float in [0, 1]), and needs_review (bool). When the judge
         cannot justify a match the row is still returned, flagged for review,
-        so a code is never silently dressed up as one the model endorsed.
+        with hpo_id=None and hpo_term=NO_MATCH_TERM, so a guess never passes as
+        a code. Denied findings are coded too and carry negated=True.
         Also carries negated, frequency, onset, severity, and the mapped HPO
         subontology codes (frequency_hpo_id, onset_hpo_id, severity_hpo_id)
         where the modifier text resolved to an HPO leaf.
@@ -80,21 +91,10 @@ def match_hpo(
         clinical_term = symptom["clinical_term"]
         negated = bool(symptom.get("negated", False))
 
-        # A denied finding ("je n'ai pas de fievre") must not be coded as a
-        # phenotype the patient has. We do NOT vector-search or mint a present
-        # HPO code for it: minting one and relabelling the column "Absent" still
-        # puts a present code in the workbook. The finding is kept as an absent
-        # record (clinical term + verbatim) so it stays visible, just not coded.
-        if negated:
-            result = _absent_record(symptom)
-            _attach_modifier_codes(result)
-            results.append(result)
-            logger.info(
-                "Absent (not coded): '%s' [NEGATED] verbatim=%r",
-                clinical_term,
-                result["patient_verbatim"],
-            )
-            continue
+        # A denied finding ("je n'ai pas de fievre") is coded like any other and
+        # carries negated=True: an excluded phenotype, as in Phenopackets. It never
+        # reaches the present code set (present_codes, the ancestor closure, the
+        # purl sheet, prevalence), which is the Robinson #6 guarantee.
 
         # Stage 1: Vector search
         candidates = search_hpo(
@@ -102,14 +102,22 @@ def match_hpo(
         )
         if not candidates:
             logger.warning("No HPO candidates found for: %s", clinical_term)
+            if negated:
+                # Keep the denied finding visible even without a code.
+                result = _uncoded_record(symptom)
+                _attach_modifier_codes(result)
+                results.append(result)
             continue
 
         # Stage 2: LLM judge
         candidates_text = "\n".join(
             f"  {i+1}. {c['name']} ({c['hpo_id']})" for i, c in enumerate(candidates)
         )
+        # The judge codes the finding itself; negation is carried separately,
+        # so a denied symptom is judged on the same terms as a present one.
         user_prompt = (
             f"Clinical concept: \"{clinical_term}\"\n"
+            f"Patient's words: \"{symptom.get('patient_verbatim', '')}\"\n"
             f"Context: {symptom.get('context', 'none')}\n\n"
             f"Candidate HPO terms:\n{candidates_text}\n\n"
             f"Which HPO term is the best match?"
@@ -126,21 +134,16 @@ def match_hpo(
             selected = _parse_judge_response(response, candidates)
         except Exception as e:
             logger.warning(
-                "LLM judge failed for '%s', falling back to top candidate (needs review): %s",
+                "LLM judge failed for '%s', leaving it uncoded (needs review): %s",
                 clinical_term,
                 e,
             )
-            selected = {
-                "hpo_id": candidates[0]["hpo_id"],
-                "hpo_term": candidates[0]["name"],
-                "confidence": 0.0,
-                "needs_review": True,
-            }
+            selected = _no_match()
 
         # A weak vector shortlist drags confidence down even when the judge is
         # sure: it can only be sure relative to candidates that may all be wrong.
         top_distance = candidates[0].get("distance")
-        if top_distance is not None and top_distance > WEAK_MATCH_DISTANCE:
+        if selected["hpo_id"] and top_distance is not None and top_distance > WEAK_MATCH_DISTANCE:
             if not selected["needs_review"]:
                 logger.info(
                     "weak_shortlist: term=%r top_distance=%.3f > %.2f -> needs_review",
@@ -151,7 +154,7 @@ def match_hpo(
             selected["needs_review"] = True
             selected["confidence"] = min(selected["confidence"], 0.4)
 
-        if obsolete_map:
+        if obsolete_map and selected["hpo_id"]:
             resolved = resolve_obsolete(selected["hpo_id"], obsolete_map)
             if resolved != selected["hpo_id"]:
                 logger.info(
@@ -193,21 +196,19 @@ def match_hpo(
     return results
 
 
-def _absent_record(symptom: dict) -> dict:
-    """Build a match row for a denied finding without a present HPO code.
+def _uncoded_record(symptom: dict) -> dict:
+    """Build a match row for a denied finding the index returned nothing for.
 
-    Negated findings are recorded so the excluded set stays visible, but they
-    carry no ``hpo_id`` — minting a present code for a symptom the patient
-    denied is exactly the bug ("je n'ai pas de fievre" -> a fever code) this
-    avoids. The clinical term and verbatim describe the absent finding.
+    The finding stays visible as excluded, described by its clinical term and
+    verbatim, with no ``hpo_id``.
     """
     return {
         "hpo_id": None,
-        "hpo_term": symptom["clinical_term"],
+        "hpo_term": NO_MATCH_TERM,
         "patient_verbatim": symptom.get("patient_verbatim", ""),
         "clinical_term": symptom["clinical_term"],
         "confidence": None,
-        "needs_review": False,
+        "needs_review": True,
         "negated": True,
         "frequency": symptom.get("frequency", ""),
         "onset": symptom.get("onset", ""),
@@ -277,10 +278,8 @@ def _parse_judge_response(response: str, candidates: list[dict]) -> dict:
         hpo_id = data.get("hpo_id")
         # Explicit abstention: the model says no candidate fits.
         if data.get("match") is False:
-            logger.warning(
-                "Judge declined the shortlist (match=false); top candidate flagged for review."
-            )
-            return _fallback_top_candidate(candidates)
+            logger.warning("Judge declined the shortlist (match=false); left uncoded for review.")
+            return _no_match()
 
         if hpo_id in candidate_by_id:
             # LLMs reliably produce HPO labels but can drift on identifiers
@@ -331,16 +330,21 @@ def _parse_judge_response(response: str, candidates: list[dict]) -> dict:
                 "needs_review": True,
             }
 
-    # Final fallback: top candidate, surfaced for review (never silent).
-    logger.warning("Could not parse judge response; top candidate flagged for review.")
-    return _fallback_top_candidate(candidates)
+    # Final fallback: no code, surfaced for review (never silent).
+    logger.warning("Could not parse judge response; left uncoded for review.")
+    return _no_match()
 
 
-def _fallback_top_candidate(candidates: list[dict]) -> dict:
-    """Return the top vector candidate, always flagged for human review."""
+def _no_match() -> dict:
+    """Return an uncoded decision, always flagged for human review.
+
+    The top vector candidate is NOT used as a stand-in: Marc's review showed a
+    flagged fallback (post-concussion -> Exploding head syndrome) still reads as
+    a code. An empty code cell says "nothing in HPO fit" without a guess.
+    """
     return {
-        "hpo_id": candidates[0]["hpo_id"],
-        "hpo_term": candidates[0]["name"],
+        "hpo_id": None,
+        "hpo_term": NO_MATCH_TERM,
         "confidence": 0.0,
         "needs_review": True,
     }

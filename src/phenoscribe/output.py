@@ -11,7 +11,8 @@ from phenoscribe.match_hpo import absent_codes, present_codes
 
 logger = logging.getLogger(__name__)
 
-# Shown in code cells for an absent finding, which carries no present HPO code.
+# Code cell of pre-2026-10 workbooks for a denied finding. Denied findings are
+# coded now; the constant stays for scripts that read the older workbooks.
 _ABSENT_CODE_PLACEHOLDER = "(absent — not coded)"
 
 HEADERS = {
@@ -74,7 +75,8 @@ def dedup_by_code(matches: list[dict], fmt: str = "semicolon") -> list[dict]:
     Each transcript is one document for one patient, so a symptom restated
     several times must not produce several rows. We key on (hpo_id, negated):
     a code asserted present and the same code asserted absent stay as two rows,
-    since collapsing them would hide a contradiction.
+    since collapsing them would hide a contradiction. Uncoded findings key on
+    their clinical term instead, so two different unmatched symptoms stay apart.
 
     Verbatim handling follows the format's intent (D1 in the dedup plan):
       - "detailed": concatenate the distinct verbatims with "; " (evidence view).
@@ -89,7 +91,8 @@ def dedup_by_code(matches: list[dict], fmt: str = "semicolon") -> list[dict]:
     verbatims: dict[tuple, list[str]] = {}
 
     for m in matches:
-        key = (m["hpo_id"], bool(m.get("negated", False)))
+        code = m["hpo_id"] or ("uncoded", (m.get("clinical_term") or "").lower())
+        key = (code, bool(m.get("negated", False)))
         if key not in by_key:
             by_key[key] = dict(m)
             order.append(key)
@@ -261,16 +264,14 @@ def _modifier_cell(m: dict, field: str) -> str:
 def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
     """One row per finding with present/absent and modifier columns.
 
-    Negated findings stay in the sheet marked 'Absent' so the excluded
-    findings are documented, not silently dropped.
+    Negated findings stay in the sheet marked 'Absent', with their code, so
+    the excluded findings are documented. A finding with no defensible match
+    has an empty code cell.
     """
     for m in matches:
-        absent = m.get("negated", False)
-        status = "Absent" if absent else "Present"
+        status = "Absent" if m.get("negated", False) else "Present"
         verbatim = m.get("patient_verbatim", "")
-        # An absent finding has no present HPO code; show the placeholder so the
-        # cell never reads as a code the patient was assigned.
-        code_cell = m.get("hpo_id") or (_ABSENT_CODE_PLACEHOLDER if absent else m.get("hpo_id"))
+        code_cell = m.get("hpo_id") or ""
         clinical_term = m.get("clinical_term", "")
         ws.append(
             [
@@ -314,38 +315,43 @@ def _format_entry(m: dict) -> str:
     return entry
 
 
-def _absent_entry(m: dict) -> str:
-    """Render an excluded finding by term/verbatim, with no present HPO code."""
-    label = m.get("hpo_term") or m.get("clinical_term") or ""
+def _uncoded_entry(m: dict) -> str:
+    """'clinical term (no HPO match) [verbatim] {REVIEW}' for a finding with no code."""
+    entry = f"{m.get('clinical_term') or ''} (no HPO match)"
     if m.get("patient_verbatim"):
-        label += f" [{m['patient_verbatim']}]"
-    return label
+        entry += f" [{m['patient_verbatim']}]"
+    if m.get("needs_review"):
+        entry += " {REVIEW}"
+    return entry
+
+
+def _cell_entry(m: dict) -> str:
+    return _format_entry(m) if m.get("hpo_id") else _uncoded_entry(m)
 
 
 def _write_semicolon_format(ws, patient_id: str, matches: list[dict]) -> None:
     """One row per patient. Present codes and excluded findings in separate columns.
 
-    Present codes go in observation_source_value; denied findings go in
-    excluded_source_value as plain term + verbatim, carrying no HPO code so a
-    denied symptom never appears with a minted present code.
+    Present findings go in observation_source_value; denied findings go in
+    excluded_source_value, each as 'Name (HP:code) [verbatim]'. A denied code
+    never appears in the observation column. Findings with no HPO match keep
+    their place in their column, marked '(no HPO match)'.
     """
-    present = present_codes(matches)
+    present = [m for m in matches if not m.get("negated", False)]
     absent = absent_codes(matches)
 
-    observation = "; ".join(_format_entry(m) for m in present)
-    excluded = "; ".join(_absent_entry(m) for m in absent)
+    observation = "; ".join(_cell_entry(m) for m in present)
+    excluded = "; ".join(_cell_entry(m) for m in absent)
     ws.append([patient_id, observation, excluded])
 
 
 def _write_purl_format(ws, patient_id: str, matches: list[dict]) -> None:
     """One row per present HPO term per patient, with PURL-style code links.
 
-    Absent findings are dropped here: this format feeds tools that expect a
-    list of phenotypes the patient has.
+    Absent and uncoded findings are dropped here: this format feeds tools that
+    expect a list of coded phenotypes the patient has.
     """
-    for m in matches:
-        if m.get("negated", False):
-            continue
+    for m in present_codes(matches):
         purl = _hpo_id_to_purl(m["hpo_id"])
         verbatim = m.get("patient_verbatim", "")
         clinical_term = m.get("clinical_term", "")

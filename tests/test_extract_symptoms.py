@@ -4,7 +4,9 @@ Robinson issue #6: the schema must carry negation and the frequency/onset/
 severity modifiers, and the parser must read them back reliably.
 """
 
-from phenoscribe.extract_symptoms import _parse_response, _coerce_bool
+import pytest
+
+from phenoscribe.extract_symptoms import ExtractionParseError, _parse_response, _coerce_bool
 
 
 def test_parser_reads_new_fields():
@@ -59,3 +61,17 @@ def test_coerce_bool_variants():
     assert _coerce_bool("false") is False
     assert _coerce_bool("") is False
     assert _coerce_bool(None) is False
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        '[\n  {"clinical_term": "malaise", "negated": false},\n  {"patie',  # truncated
+        "Sorry, I cannot help with that.",
+        '{"clinical_term": "cough"}',
+    ],
+)
+def test_unparseable_response_raises(response):
+    """A broken response must fail the job, never pass as zero findings."""
+    with pytest.raises(ExtractionParseError, match="symptom extraction"):
+        _parse_response(response)

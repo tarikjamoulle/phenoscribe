@@ -1,9 +1,11 @@
 """Negation handling end to end through match_hpo and output.
 
 Robinson issue #6 + Robinson Test Q5/Q6: a denied finding must not become a
-present code. We feed stub extraction records (no live LLM) and assert:
+present code. Since Marc's 2026-10 review a denied finding IS coded, as an
+excluded phenotype ("no chest pain" -> HP:0100749, Absent). We feed stub
+extraction records (no live LLM) and assert:
 - negated findings are excluded from the present code set
-- negated findings are still reported as absent, not dropped
+- negated findings are reported as absent with their code, not dropped
 - frequency/onset/severity are carried and mapped to HPO subontology leaves
 - the detailed Excel marks absent rows and prevalence skips them
 """
@@ -79,18 +81,17 @@ def test_negated_finding_excluded_from_present_codes(monkeypatch):
     # Joint pain (Arthralgia) is present; fever is NOT emitted as present.
     assert present_ids == {"HP:0002829"}
     assert "HP:0001945" not in present_ids
-    # Fever is still reported as absent — denied findings are not dropped —
-    # but it carries NO present HPO code (it was never vector-searched).
+    # Fever is reported as absent with its own code: an excluded phenotype.
     assert len(absent) == 1
     fever = absent[0]
     assert fever["negated"] is True
-    assert fever["hpo_id"] is None
+    assert fever["hpo_id"] == "HP:0001945"
     assert fever["clinical_term"] == "fever"
     assert fever["patient_verbatim"] == "je n'ai pas de fievre"
 
 
-def test_negated_symptom_never_vector_searched(monkeypatch):
-    """The denied symptom must not even reach the index or the judge."""
+def test_negated_symptom_is_coded_like_a_present_one(monkeypatch):
+    """The denied symptom goes through the same search and judge as a present one."""
     searched: list[str] = []
 
     def tracking_search(clinical_term, k=5, chroma_path="", **kwargs):
@@ -109,8 +110,7 @@ def test_negated_symptom_never_vector_searched(monkeypatch):
 
     run_match(SYMPTOMS, chroma_path="")
 
-    # Only the present "joint pain" was searched; "fever" was never queried.
-    assert searched == ["joint pain"]
+    assert searched == ["fever", "joint pain"]
 
 
 def test_modifiers_mapped_to_hpo_leaves(monkeypatch):
@@ -156,11 +156,9 @@ def test_semicolon_excel_splits_present_and_excluded(monkeypatch, tmp_path):
     excluded = row[headers.index("excluded_source_value")] or ""
 
     assert "HP:0002829" in present
-    # The denied fever carries no present HPO code anywhere in the workbook.
+    # The denied fever code sits in the excluded column only.
     assert "HP:0001945" not in present
-    assert "HP:0001945" not in excluded
-    # It is still visible as an excluded finding (term + verbatim).
-    assert "fever" in excluded
+    assert "Fever (HP:0001945)" in excluded
     assert "je n'ai pas de fievre" in excluded
 
 
@@ -176,12 +174,10 @@ def test_end_to_end_real_index_no_present_code_for_negated(monkeypatch, tmp_path
 
     The extractor is NOT stubbed — we hand match_hpo the records the real
     extractor produces for "je n'ai pas de fievre, mais des douleurs aux
-    articulations". The present symptom is vector-searched against the live HPO
-    index; the denied symptom is short-circuited (no search, no judge). Only the
-    LLM judge (Call 2) is replaced with a deterministic top-candidate pick so the
-    test stays offline. We then write the DEFAULT (semicolon) workbook and assert
-    the denied "fievre" never receives a present HPO code, while staying visible
-    as an excluded finding.
+    articulations". Both symptoms are vector-searched against the live HPO
+    index. Only the LLM judge (Call 2) is replaced with a deterministic
+    top-candidate pick so the test stays offline. We then write the semicolon
+    workbook and assert the denied "fievre" code is only in the excluded column.
     """
     # Judge: pick the first candidate id present in the prompt. The present
     # symptom still goes through real retrieval; this only stands in for Call 2.
@@ -222,24 +218,17 @@ def test_end_to_end_real_index_no_present_code_for_negated(monkeypatch, tmp_path
 
     matches = run_match(extracted, chroma_path=_REAL_CHROMA)
 
-    # The present finding got a real code off the live index; the denied one did not.
+    # Both findings got a real code off the live index; only one is present.
     present = present_codes(matches)
     absent = absent_codes(matches)
     assert present, "the non-negated symptom should still be coded"
     assert all(m["hpo_id"] for m in present)
     assert len(absent) == 1 and absent[0]["clinical_term"] == "fever"
-    assert absent[0]["hpo_id"] is None
+    fever_id = absent[0]["hpo_id"]
+    assert fever_id and fever_id.startswith("HP:")
+    assert fever_id not in {m["hpo_id"] for m in present}
 
-    # Whatever HPO code the live index would have returned for "fever" must NOT
-    # appear among the present codes (the denied symptom was never searched).
-    fever_hits = match_hpo.search_hpo("fever", k=5, chroma_path=_REAL_CHROMA)
-    fever_ids = {c["hpo_id"] for c in fever_hits}
-    present_ids = {m["hpo_id"] for m in present}
-    assert fever_ids.isdisjoint(present_ids), (
-        f"a denied fever leaked a present code: {fever_ids & present_ids}"
-    )
-
-    # Default workbook (semicolon). The fever code must be in neither column.
+    # Semicolon workbook. The fever code is excluded, never observed.
     out = tmp_path / "e2e.xlsx"
     write_excel("MGA.E2E", matches, str(out), fmt="semicolon")
 
@@ -249,13 +238,8 @@ def test_end_to_end_real_index_no_present_code_for_negated(monkeypatch, tmp_path
     observation = row[headers.index("observation_source_value")] or ""
     excluded = row[headers.index("excluded_source_value")] or ""
 
-    for hp_id in fever_ids:
-        assert hp_id not in observation
-        assert hp_id not in excluded
-    # No present HP code at all in the excluded column.
-    assert not re.search(r"HP:\d{7}", excluded)
-    # The denied finding is still documented (visible as excluded).
-    assert "fever" in excluded
+    assert fever_id not in observation
+    assert fever_id in excluded
     assert "je n'ai pas de fievre" in excluded
 
 

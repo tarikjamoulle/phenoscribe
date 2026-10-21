@@ -296,7 +296,7 @@ def run_phenoscribe_full(docs: list[GscDoc], chroma_path: str, k: int,
                         provider: str, model: str) -> dict:
     """Run the real two-call pipeline on each abstract. Live LLM calls."""
     from phenoscribe.extract_symptoms import extract_symptoms
-    from phenoscribe.match_hpo import match_hpo
+    from phenoscribe.match_hpo import match_hpo, present_codes
 
     per_doc_pred: dict[str, set[str]] = {}
     for d in docs:
@@ -304,7 +304,7 @@ def run_phenoscribe_full(docs: list[GscDoc], chroma_path: str, k: int,
             symptoms = extract_symptoms(d.text, provider=provider, model=model)
             matched = match_hpo(symptoms, provider=provider, model=model,
                                 chroma_path=chroma_path, k=k)
-            per_doc_pred[d.pmid] = {m["hpo_id"] for m in matched}
+            per_doc_pred[d.pmid] = {m["hpo_id"] for m in present_codes(matched)}
         except Exception as e:
             logger.error("[%s] full pipeline failed: %s", d.pmid, e)
             per_doc_pred[d.pmid] = set()
