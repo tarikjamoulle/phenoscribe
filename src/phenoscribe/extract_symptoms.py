@@ -37,6 +37,10 @@ Rules:
 - For frequency, onset, severity: only fill them when the text states it; otherwise use an empty string
 - If the same finding is mentioned multiple times, include it once with combined detail
 - Do NOT include diagnoses (e.g., "COVID-19"), treatments, or procedures — only symptoms and findings
+- A comparison to a past event or illness is not a finding. "comme après ma commotion cérébrale" \
+is not "post-concussion syndrome": extract the symptoms the patient describes, not the comparison
+- When the patient ties a daily activity to a symptom ("me déplacer en voiture, est-ce que c'est \
+lié au vertige ?"), extract the symptom (vertigo), not the activity ("difficulty driving")
 - Do NOT invent findings not mentioned in the text
 
 Output ONLY a JSON array. No other text. Example:

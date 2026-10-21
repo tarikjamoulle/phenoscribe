@@ -5,15 +5,17 @@ Two failure modes from Peter Robinson's review drive these tests:
 1. The LLM emits a valid HP ID but a mislabeled term — the parser should trust
    the candidate's canonical name once the ID passes the shortlist check.
 2. The judge cannot justify a match (declines, hallucinates, or returns junk)
-   — the parser must never ship that as an endorsed code. It falls back to the
-   top candidate but flags needs_review so the GP sees what to check.
+   — the parser must never ship that as an endorsed code. It leaves the row
+   uncoded and flags needs_review so the GP sees what to check. A flagged top
+   candidate still read as a code in Marc's review (post-concussion -> Exploding
+   head syndrome), so no candidate stands in.
 """
 
 import logging
 
 import pytest
 
-from phenoscribe.match_hpo import _parse_judge_response, match_hpo
+from phenoscribe.match_hpo import NO_MATCH_TERM, _parse_judge_response, match_hpo
 
 
 CANDIDATES = [
@@ -67,10 +69,11 @@ def test_low_confidence_flags_needs_review(caplog):
 
 def test_judge_declines_shortlist_flags_review(caplog):
     caplog.set_level(logging.WARNING, logger="phenoscribe.match_hpo")
-    # The model says no candidate fits. We keep the top candidate but flag it.
+    # The model says no candidate fits. No code, flagged for review.
     result = _parse_judge_response(_json(None, None, match=False, confidence=0.1), CANDIDATES)
 
-    assert result["hpo_id"] == "HP:0012378"
+    assert result["hpo_id"] is None
+    assert result["hpo_term"] == NO_MATCH_TERM
     assert result["confidence"] == 0.0
     assert result["needs_review"] is True
     assert "declined" in caplog.text
@@ -81,7 +84,7 @@ def test_id_not_in_candidates_flags_review(caplog):
     # LLM hallucinates an ID not in the shortlist. Never ship a non-candidate ID.
     result = _parse_judge_response(_json("HP:9999999", "Made-up term"), CANDIDATES)
 
-    assert result["hpo_id"] == "HP:0012378"
+    assert result["hpo_id"] is None
     assert result["needs_review"] is True
     assert "not in candidates" in caplog.text
     assert "HP:9999999" in caplog.text
@@ -98,11 +101,11 @@ def test_regex_fallback_recovers_candidate_but_flags_review():
     assert result["needs_review"] is True
 
 
-def test_unparseable_response_falls_back_and_flags_review(caplog):
+def test_unparseable_response_left_uncoded_and_flags_review(caplog):
     caplog.set_level(logging.WARNING, logger="phenoscribe.match_hpo")
     result = _parse_judge_response("I have no idea, sorry.", CANDIDATES)
 
-    assert result["hpo_id"] == "HP:0012378"
+    assert result["hpo_id"] is None
     assert result["confidence"] == 0.0
     assert result["needs_review"] is True
     assert "Could not parse" in caplog.text
@@ -148,7 +151,7 @@ def test_match_hpo_surfaces_confidence_and_review(monkeypatch):
 
 
 def test_match_hpo_judge_exception_flags_review(monkeypatch):
-    """If the LLM call raises, the top candidate is kept and flagged for review."""
+    """If the LLM call raises, the row is left uncoded and flagged for review."""
     import phenoscribe.match_hpo as mod
 
     monkeypatch.setattr(
@@ -162,7 +165,9 @@ def test_match_hpo_judge_exception_flags_review(monkeypatch):
 
     out = match_hpo([{"clinical_term": "tiredness"}])
 
-    assert out[0]["hpo_id"] == "HP:0012378"
+    assert out[0]["hpo_id"] is None
+    assert out[0]["hpo_term"] == NO_MATCH_TERM
+    assert out[0]["clinical_term"] == "tiredness"
     assert out[0]["needs_review"] is True
     assert out[0]["confidence"] == 0.0
 
@@ -181,3 +186,23 @@ def test_match_hpo_weak_shortlist_flags_review(monkeypatch):
 
     assert out[0]["needs_review"] is True
     assert out[0]["confidence"] <= 0.4
+
+
+def test_judge_prompt_carries_patient_words(monkeypatch):
+    """The judge sees the verbatim, so it can refuse a detail the patient never said."""
+    import phenoscribe.match_hpo as mod
+
+    prompts: list[str] = []
+    monkeypatch.setattr(
+        mod, "search_hpo", lambda term, k, chroma_path, **kw: list(CANDIDATES)
+    )
+
+    def capture(**kw):
+        prompts.append(kw["user_prompt"])
+        return _json("HP:0012378", "Fatigue", confidence=0.9)
+
+    monkeypatch.setattr(mod, "llm_call", capture)
+
+    match_hpo([{"clinical_term": "tinnitus", "patient_verbatim": "les acouphènes"}])
+
+    assert "les acouphènes" in prompts[0]

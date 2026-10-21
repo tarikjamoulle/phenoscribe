@@ -1,0 +1,111 @@
+{
+  "source": "Marc Jamoulle, e-mail reply to the 2026-06-04 results.xlsx (100 rows checked, 8 flagged)",
+  "hpo_release": "hp/releases/2026-02-16",
+  "note": "Marc's reading is an agreement target, not ground truth. 'accept' lists the codes we treat as agreeing with his reading after checking each code in the pinned release and on ontology.jax.org (2026-10-21). null in 'accept' means an uncoded row is acceptable.",
+  "rows": [
+    {
+      "patient_id": "MGA.061",
+      "patient_verbatim": "mes oreilles se bouchent complètement",
+      "clinical_term": "ear fullness",
+      "negated": false,
+      "tool_code": "HP:0031704",
+      "tool_term": "Abnormal ear physiology",
+      "marc_comment": "limit",
+      "marc_code": null,
+      "accept": ["HP:0040269", "HP:0031704"],
+      "finding": "too_vague",
+      "why": "HPO has no ear-fullness term. Blocked Eustachian tube (HP:0040269) is closer but the search does not shortlist it."
+    },
+    {
+      "patient_id": "MGA.404",
+      "patient_verbatim": "les acouphènes, ils me réveillent la nuit",
+      "clinical_term": "tinnitus",
+      "negated": false,
+      "tool_code": "HP:0008629",
+      "tool_term": "Pulsatile tinnitus",
+      "marc_comment": "wrong the right code for Tinnitus is HP:0000360",
+      "marc_code": "HP:0000360",
+      "accept": ["HP:0000360"],
+      "finding": "too_specific",
+      "why": "Tinnitus was the top candidate. The judge rule 'pick the most specific term' chose a child the patient never described."
+    },
+    {
+      "patient_id": "MGA.404",
+      "patient_verbatim": "J'ai l'impression de me retrouver comme après mon accident de voiture.",
+      "clinical_term": "post-concussion syndrome",
+      "negated": false,
+      "tool_code": "HP:5200290",
+      "tool_term": "Exploding head syndrome",
+      "marc_comment": "wrong code, HP:5200290 = Difficulty processing information",
+      "marc_code": null,
+      "accept": [null],
+      "finding": "fallback_shown_as_code",
+      "why": "The judge declined the shortlist; the top candidate was shown with REVIEW and confidence 0. The verbatim is a comparison, not a finding. HP:5200290 is Exploding head syndrome in HPO; HPO has no 'Difficulty processing information' term."
+    },
+    {
+      "patient_id": "MGA.404",
+      "patient_verbatim": "Me déplacer en voiture, mais est-ce que c'est lié au vertige ?",
+      "clinical_term": "difficulty driving",
+      "negated": false,
+      "tool_code": "HP:0007772",
+      "tool_term": "Impaired smooth pursuit",
+      "marc_comment": "wrong code, Photophobia et Vertige pas pris en compte",
+      "marc_code": null,
+      "accept": [null, "HP:0002321"],
+      "finding": "fallback_shown_as_code",
+      "why": "Same fallback as above. Vertigo (HP:0002321) is already a separate MGA.404 row. The transcript has no light-sensitivity words."
+    },
+    {
+      "patient_id": "MGA.404",
+      "patient_verbatim": "Un poids sur la poitrine ? Une douleur au niveau du sternum ? Non, ça, ça va.",
+      "clinical_term": "chest pain",
+      "negated": true,
+      "tool_code": null,
+      "tool_term": "chest pain",
+      "marc_comment": "the correct code for Chest pain is HP:0100749",
+      "marc_code": "HP:0100749",
+      "accept": ["HP:0100749"],
+      "finding": "absent_not_coded",
+      "why": "Denied findings were deliberately left uncoded (Robinson #6). Marc wants the code with Absent."
+    },
+    {
+      "patient_id": "MGA.404",
+      "patient_verbatim": "Parfois, j'ai des douleurs au rein.",
+      "clinical_term": "flank pain",
+      "negated": false,
+      "tool_code": "HP:0030157",
+      "tool_term": "Flank pain",
+      "marc_comment": "good semantic, wrong code HP:0002907 Flank pain",
+      "marc_code": "HP:0002907",
+      "accept": ["HP:0030157"],
+      "finding": "reviewer_code_differs",
+      "why": "HP:0030157 is Flank pain in HPO. HP:0002907 is Microscopic hematuria."
+    },
+    {
+      "patient_id": "MGA.406",
+      "patient_verbatim": "La capacité de concentration ? Oui, ça a été affecté, c'est sûr.",
+      "clinical_term": "impaired concentration",
+      "negated": false,
+      "tool_code": "HP:0034684",
+      "tool_term": "Abnormal enzyme concentration or activity",
+      "marc_comment": "wrong semantics, mental concentration and not chemical one",
+      "marc_code": "HP:0031987",
+      "accept": ["HP:0031987", null],
+      "finding": "retrieval_miss",
+      "why": "HP:0031987 is not in the top 5 for 'impaired concentration' (all five are chemical). The judge declined; the top candidate was shown."
+    },
+    {
+      "patient_id": "MGA.406",
+      "patient_verbatim": "j'ai la langue blanche",
+      "clinical_term": "white tongue",
+      "negated": false,
+      "tool_code": "HP:0033026",
+      "tool_term": "White oral mucosal macule",
+      "marc_comment": "HP:0031466 = White tongue",
+      "marc_code": "HP:0031466",
+      "accept": ["HP:0033026", null],
+      "finding": "reviewer_code_differs",
+      "why": "HPO has no white-tongue term. HP:0031466 is Impairment in personality functioning."
+    }
+  ]
+}

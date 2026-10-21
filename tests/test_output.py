@@ -121,3 +121,75 @@ def test_matches_without_flags_still_write(tmp_path):
     conf_col = headers.index("Confidence")
     assert rows[0][review_col] in ("", None)
     assert rows[0][conf_col] in ("", None)
+
+
+UNCODED = [
+    {
+        "hpo_id": "HP:0012378",
+        "hpo_term": "Fatigue",
+        "patient_verbatim": "fatigué",
+        "clinical_term": "fatigue",
+        "confidence": 0.92,
+        "needs_review": False,
+    },
+    {
+        "hpo_id": None,
+        "hpo_term": "(no good match)",
+        "patient_verbatim": "comme après mon accident",
+        "clinical_term": "post-concussion syndrome",
+        "confidence": 0.0,
+        "needs_review": True,
+    },
+    {
+        "hpo_id": None,
+        "hpo_term": "(no good match)",
+        "patient_verbatim": "me déplacer en voiture",
+        "clinical_term": "difficulty driving",
+        "confidence": 0.0,
+        "needs_review": True,
+    },
+]
+
+
+def test_detailed_format_leaves_uncoded_code_cell_empty(tmp_path):
+    """A finding with no defensible match keeps its row, flagged, with no code."""
+    path = tmp_path / "out.xlsx"
+    write_excel("MGA.404", UNCODED, str(path), fmt="detailed")
+
+    headers, rows = _read(path)
+    code_col = headers.index("HPO Code")
+    term_col = headers.index("HPO Term")
+    # Two different uncoded symptoms stay two rows after dedup.
+    assert len(rows) == 3
+    for row in rows[1:]:
+        assert row[code_col] is None
+        assert row[term_col] == "(no good match)"
+        assert row[headers.index("Needs Review")] == "REVIEW"
+
+
+def test_semicolon_format_marks_uncoded_inline(tmp_path):
+    path = tmp_path / "out.xlsx"
+    write_excel("MGA.404", UNCODED, str(path), fmt="semicolon")
+
+    headers, rows = _read(path)
+    observation = rows[0][headers.index("observation_source_value")]
+    assert "Fatigue (HP:0012378)" in observation
+    assert "difficulty driving (no HPO match)" in observation
+
+
+def test_purl_format_drops_uncoded(tmp_path):
+    path = tmp_path / "out.xlsx"
+    write_excel("MGA.404", UNCODED, str(path), fmt="purl")
+
+    _, rows = _read(path)
+    assert len(rows) == 1
+
+
+def test_prevalence_ignores_uncoded(tmp_path):
+    from phenoscribe.aggregate import load_patient_codes
+
+    for fmt in ("detailed", "semicolon"):
+        path = tmp_path / f"{fmt}.xlsx"
+        write_excel("MGA.404", UNCODED, str(path), fmt=fmt)
+        codes = load_patient_codes(str(path))
+        assert [e["hpo_id"] for e in codes["MGA.404"]] == ["HP:0012378"]
