@@ -44,24 +44,35 @@ The browser opens on the Phenoscribe page (<http://127.0.0.1:7860>).
 
 ![The Phenoscribe page](install-images/page.png)
 
-1. Paste your key in the **API key** box. The app selects OpenAI or Anthropic from the key.
-2. Click **Test key**. It says "Key works" or "Key rejected".
+Paste your key in the **API key** box, then click anywhere outside the box. The app
+makes one small call to check the key. When the key works, the box folds into one line
+("OpenAI key works"). If the key is wrong, the page says "Key rejected".
 
-With **Remember this key in this browser** ticked, you paste the key one time only.
-The browser keeps it as plain data in your browser profile. The app writes no key to disk.
+The app selects OpenAI or Anthropic from the key. With **Remember this key in this
+browser** ticked, you paste the key one time only. The browser keeps it as plain data in
+your browser profile. The app writes no key to disk. Click **Change key** to use another key.
 
-## 4. Drop your files and click Start
+## 4. Add your files and click Start
 
-1. Drag your recordings (`.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`) onto the box.
+1. Drag your files onto the box, or click **Choose a folder** to add a whole folder.
+   - Audio files (`.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`) are transcribed, then coded.
+   - Transcripts (`.txt`) are coded as they are. A `467.txt` next to `467.mp3` is used in
+     place of the audio.
+   - A recording that the app already transcribed is not transcribed again. To make a new
+     transcript, tick the file under **Transcribe again**.
+   - Other files are skipped. The list under the box says what happens to each file.
 2. Check the language. French is the default.
-3. Click **Start**. The progress bar shows the file and the step.
-4. When the run ends, the page shows the codes in a table. Click the Excel file to download it.
+3. Click **Start coding**. The progress bar shows the file and the step.
+4. When the run ends, the page shows the number of codes, one line for each file, and the
+   coded findings. Click **Download Excel**, or click **To review** to see only the codes
+   to check.
 
 Each run makes a new Excel file, for example `results_2026-10-22_1405.xlsx`, in the
 folder `Documents/Phenoscribe`. A file named only with a number (`467.mp3`) gets the patient
 ID `MGA.467`. Any other file name gets a code such as `pt-7a4b3c8e`, because file names can
 hold patient names. The file `filename_mapping.json` in the same folder links each code to
-its file name.
+its file name. Two files that give the same patient ID in one run (for example `467.mp3`
+from two folders) are both skipped. Rename one of them.
 
 If a file fails, the page shows one short line for it ("Key rejected", "No internet",
 "Audio format not supported"). The full details go to `Documents/Phenoscribe/phenoscribe.log`.

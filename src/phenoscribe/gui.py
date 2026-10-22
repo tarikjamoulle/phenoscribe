@@ -1,12 +1,16 @@
 """Gradio web UI for Phenoscribe.
 
-The user drags audio files onto the page, pastes an API key one time and
-clicks Start. Results go to a new dated Excel in `PHENOSCRIBE_OUTPUT_DIR`
-(default `/app/output`; the start scripts set `Documents/Phenoscribe`).
+Three steps on one calm page: a key, the files, Start. The app decides the work
+for each file (plan_batch): audio is transcribed, a .txt is coded as it is, and a
+saved transcript of the same audio is reused. Results go to a new dated Excel in
+`PHENOSCRIBE_OUTPUT_DIR` (default `/app/output`; the start scripts set
+`Documents/Phenoscribe`).
 """
 
+import html
 import logging
 import os
+from datetime import datetime
 from pathlib import Path
 
 import anthropic
@@ -17,8 +21,7 @@ import requests
 from phenoscribe.config import load_config
 from phenoscribe.llm import use_api_key
 from phenoscribe.output import dedup_by_code
-from phenoscribe.pipeline import BatchResult, run_batch
-from phenoscribe.transcribe import AUDIO_EXTENSIONS, TEXT_EXTENSIONS
+from phenoscribe.pipeline import BatchResult, FilePlan, plan_batch, run_batch
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -26,8 +29,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
-
-SUPPORTED_EXTENSIONS = AUDIO_EXTENSIONS | TEXT_EXTENSIONS
 
 OUTPUT_DIR = Path(os.environ.get("PHENOSCRIBE_OUTPUT_DIR", "/app/output"))
 CONFIG_PATH = os.environ.get("PHENOSCRIBE_CONFIG", "config.yaml")
@@ -43,6 +44,7 @@ LANGUAGE_CHOICES = [
 ]
 
 PROVIDER_CHOICES = [("OpenAI", "openai"), ("Anthropic", "anthropic")]
+PROVIDER_NAMES = dict((value, label) for label, value in PROVIDER_CHOICES)
 
 # Model for a provider that config.yaml does not name. The configured
 # provider uses config.llm.model.
@@ -56,12 +58,130 @@ PROVIDER_ENV_VAR = {
     "anthropic": "ANTHROPIC_API_KEY",
 }
 
-RESULT_HEADERS = ["Patient", "HPO term", "HPO code", "Present/Absent", "Review"]
+RESULT_HEADERS = ["Patient", "Symptom (patient words)", "HPO term", "Code", "Status"]
 
 # The browser keeps the key in local storage. Gradio encrypts the stored value
 # with this secret; it must stay the same across restarts, or the saved key is
-# lost. It protects nothing, so the page calls it plain storage.
+# lost. It protects nothing, so the page calls it local to this browser only.
 KEY_STORAGE = {"storage_key": "phenoscribe_api_key", "secret": "phenoscribe-local"}
+
+ACTION_TEXT = {
+    "transcribe": ("Audio", "Transcribe, then code"),
+    "reuse": ("Audio", "Saved transcript found, code only"),
+    "transcript": ("Transcript", "Code only"),
+}
+
+
+# --- look -----------------------------------------------------------------------
+
+THEME = gr.themes.Base(
+    primary_hue=gr.themes.Color(
+        c50="#EEF4F3", c100="#D5E5E2", c200="#ABCBC6", c300="#7FAEA8", c400="#4F8C85",
+        c500="#1F5C55", c600="#1A4F49", c700="#16443F", c800="#113632", c900="#0C2724",
+        c950="#081A18",
+    ),
+    neutral_hue="gray",
+    radius_size=gr.themes.sizes.radius_lg,
+    font=[gr.themes.GoogleFont("Instrument Sans"), "system-ui", "sans-serif"],
+    font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
+).set(
+    body_background_fill="#F4F5F2",
+    body_background_fill_dark="#111614",
+    body_text_color="#18201D",
+    body_text_color_dark="#E6EAE7",
+    block_background_fill="transparent",
+    block_background_fill_dark="transparent",
+    block_border_width="0px",
+    block_shadow="none",
+    block_label_background_fill="transparent",
+    block_label_background_fill_dark="transparent",
+    input_background_fill="#FFFFFF",
+    input_background_fill_dark="#1B2220",
+    input_border_width="1px",
+    input_border_color="#C9D3CE",
+    input_border_color_dark="#34403B",
+    button_primary_background_fill="#1F5C55",
+    button_primary_background_fill_hover="#16443F",
+    button_primary_background_fill_dark="#2E7A71",
+    button_primary_background_fill_hover_dark="#358A80",
+    button_primary_text_color="#FFFFFF",
+    table_even_background_fill="#FFFFFF",
+    table_even_background_fill_dark="#1A201E",
+    table_odd_background_fill="#F8FAF8",
+    table_odd_background_fill_dark="#1E2523",
+    table_border_color="#E1E4DF",
+    table_border_color_dark="#2C3632",
+    button_border_width="1px",
+    button_secondary_background_fill="#FFFFFF",
+    button_secondary_background_fill_dark="#1B2220",
+    button_secondary_border_color="#C9D3CE",
+    button_secondary_border_color_dark="#34403B",
+)
+
+HEAD = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?'
+    'family=Instrument+Serif&display=swap">'
+)
+
+CSS = """
+:root { --ps-card: #FFFFFF; --ps-line: #E1E4DF; --ps-soft: #F0F2EE; --ps-muted: #5A6560;
+        --ps-ink2: #3E4A45; --ps-accent: #1F5C55; --ps-ok: #1F7A4D; --ps-warn-bg: #FBF5EC;
+        --ps-warn: #6B4A12; --ps-warn-tag: #F3E6CF; --ps-bad-bg: #FBF1EF; --ps-bad: #8A2E20;
+        --ps-tag-audio: #E7EEF0; --ps-tag-text: #EEEBE3; }
+.dark { --ps-card: #1A201E; --ps-line: #2C3632; --ps-soft: #222A27; --ps-muted: #A3ADA8;
+        --ps-ink2: #C4CCC8; --ps-accent: #7FC3B8; --ps-ok: #6FCF97; --ps-warn-bg: #2A2416;
+        --ps-warn: #E9C98B; --ps-warn-tag: #3D3420; --ps-bad-bg: #2C1B18; --ps-bad: #F0A595;
+        --ps-tag-audio: #24323A; --ps-tag-text: #34302A; }
+.gradio-container { max-width: 880px !important; margin: 0 auto !important; }
+footer { display: none !important; }
+.ps-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+             justify-content: space-between; padding: 8px 0 16px;
+             border-bottom: 1px solid var(--ps-line); margin-bottom: 8px; }
+.ps-title { font-family: 'Instrument Serif', Georgia, serif; font-size: 32px; letter-spacing: -0.01em; }
+.ps-sub { font-size: 14px; color: var(--ps-muted); margin-left: 12px; }
+.ps-pill { display: inline-flex; gap: 8px; align-items: center; font-size: 13px;
+           color: var(--ps-ink2); background: var(--ps-soft); border-radius: 999px; padding: 6px 12px; }
+.ps-card { background: var(--ps-card) !important; border: 1px solid var(--ps-line) !important;
+           border-radius: 14px !important; padding: 20px 24px !important; }
+.ps-step { display: flex; gap: 14px; align-items: center; font-weight: 600; }
+.ps-num { flex: none; width: 28px; height: 28px; border-radius: 999px; background: var(--ps-accent);
+          color: #FFFFFF; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+.dark .ps-num { color: #0C2724; }
+.ps-note { font-size: 13px; color: var(--ps-muted); }
+.ps-ok { color: var(--ps-ok); font-weight: 600; }
+.ps-seg .wrap { display: inline-flex !important; gap: 0 !important; background: var(--ps-soft);
+                border-radius: 10px; padding: 3px; }
+.ps-seg label { border: 0 !important; border-radius: 8px !important; background: transparent !important;
+                box-shadow: none !important; }
+.ps-seg label.selected { background: var(--ps-card) !important; box-shadow: 0 1px 2px rgba(0,0,0,.12) !important; }
+.ps-seg input[type=radio] { display: none; }
+.ps-card .form { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.ps-card .ps-drop { border: 1.5px dashed #B9C6C0 !important; border-radius: 12px !important; }
+.ps-list { border: 1px solid var(--ps-line); border-radius: 12px; overflow: hidden; }
+.ps-row { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 12px 16px;
+          border-top: 1px solid var(--ps-line); font-size: 14px; color: var(--ps-ink2); }
+.ps-row:first-child { border-top: 0; }
+.ps-row.skip { background: var(--ps-warn-bg); color: var(--ps-warn); }
+.ps-row.bad { background: var(--ps-bad-bg); color: var(--ps-bad); }
+.ps-file { font-family: 'IBM Plex Mono', ui-monospace, monospace; flex: 1 1 170px; color: inherit; }
+.ps-tag { font-size: 12px; border-radius: 6px; padding: 2px 8px; background: var(--ps-tag-audio); }
+.ps-tag.text { background: var(--ps-tag-text); }
+.ps-tag.skip { background: var(--ps-warn-tag); }
+.ps-what { flex: 1 1 260px; }
+.ps-start button { min-height: 52px; font-size: 16px !important; }
+.ps-table, .ps-table * { font-family: 'Instrument Sans', system-ui, sans-serif !important; }
+.ps-h1 { font-family: 'Instrument Serif', Georgia, serif; font-size: 40px; line-height: 1.1; margin: 8px 0 0; }
+.ps-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.ps-tile { background: var(--ps-card); border: 1px solid var(--ps-line); border-radius: 14px; padding: 14px 20px; }
+.ps-tile b { display: block; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400;
+             font-size: 36px; line-height: 1.1; }
+.ps-tile b.warn { color: #8A5A0B; }
+.dark .ps-tile b.warn { color: #E9C98B; }
+"""
+
+
+# --- logic ------------------------------------------------------------------------
 
 
 def env_key_for(provider: str) -> str:
@@ -87,20 +207,17 @@ def plain_error(error: Exception) -> str:
         error,
         (openai.APIConnectionError, anthropic.APIConnectionError, requests.ConnectionError),
     ):
-        return "No internet"
+        return "No internet. Check the connection and start again."
     message = str(error)
     if "Unsupported file type" in message or "Failed to load audio" in message:
         return "Audio format not supported"
     if type(error).__module__.startswith("av."):
         return "Audio format not supported"
-    return f"Failed ({type(error).__name__}). Details are in {LOG_PATH}"
+    return f"Failed ({type(error).__name__}). Details are in {LOG_PATH.name}"
 
 
 def check_key(provider: str, api_key: str) -> str:
-    """Make one small call (list the models) to see if the key works."""
-    api_key = api_key.strip() or env_key_for(provider)
-    if not api_key:
-        return "Paste a key first."
+    """Make one small call (list the models). Returns "" when the key works."""
     try:
         if provider == "anthropic":
             anthropic.Anthropic(api_key=api_key).models.list(limit=1)
@@ -109,23 +226,95 @@ def check_key(provider: str, api_key: str) -> str:
     except Exception as e:  # noqa: BLE001 — every failure becomes one plain line
         logger.warning("Key check failed: %r", e)
         return plain_error(e)
-    return "Key works"
+    return ""
 
 
-def on_key_change(api_key: str, remember: bool):
-    """Pick the provider from the key prefix, and save or forget the key."""
-    provider = gr.update(value=provider_for_key(api_key)) if api_key.strip() else gr.update()
-    return provider, api_key if remember else ""
+def key_summary(provider: str, how: str) -> str:
+    return (
+        f'<span class="ps-ok">✓</span> {PROVIDER_NAMES[provider]} key {how}'
+    )
 
 
-def status_lines(batch: BatchResult) -> str:
-    lines = []
-    for r in batch.files:
-        if r.error:
-            lines.append(f"- {r.filename}: {plain_error(r.error)}")
-        else:
-            lines.append(f"- {r.filename} ({r.patient_id}): {r.n_codes} findings")
-    return "\n".join(lines)
+def load_saved_key(saved: str):
+    """On page load: a saved key (or an env key) shows the short key line."""
+    if saved:
+        provider = provider_for_key(saved)
+        return saved, provider, key_summary(provider, "saved in this browser"), *_key_view(True)
+    for provider in PROVIDER_ENV_VAR:
+        if env_key_for(provider):
+            return "", provider, key_summary(provider, "from the environment"), *_key_view(True)
+    return "", "openai", "", *_key_view(False)
+
+
+def _key_view(have_key: bool):
+    """(entry box, short line) visibility."""
+    return gr.update(visible=not have_key), gr.update(visible=have_key)
+
+
+def on_key_entered(api_key: str, remember: bool):
+    """When the key box loses focus: check the key, then fold the box away."""
+    api_key = api_key.strip()
+    if not api_key:
+        return gr.update(), "", "", gr.update(), *_key_view(False)
+    provider = provider_for_key(api_key)
+    problem = check_key(provider, api_key)
+    if problem:
+        return provider, "", problem, gr.update(), *_key_view(False)
+    how = "works · kept in this browser only" if remember else "works · for this session only"
+    saved = api_key if remember else ""
+    return provider, key_summary(provider, how), "", saved, *_key_view(True)
+
+
+def add_files(new, current: list[str]) -> tuple[None, list[str]]:
+    """Add uploads to the selection. The drop box empties; the plan list shows them."""
+    new = [new] if isinstance(new, str) else (new or [])
+    return None, current + [p for p in new if p not in current]
+
+
+def file_plan(files: list[str], language: str) -> list[FilePlan]:
+    config = load_config(CONFIG_PATH)
+    config.transcription.language = language
+    return plan_batch(files, config, OUTPUT_DIR)
+
+
+def plan_html(plans: list[FilePlan]) -> str:
+    if not plans:
+        return ""
+    rows = []
+    for p in plans:
+        name = html.escape(p.name)
+        if p.action == "skip":
+            rows.append(
+                f'<div class="ps-row skip"><span class="ps-file">{name}</span>'
+                f'<span class="ps-tag skip">Skipped</span>'
+                f'<span class="ps-what">{html.escape(p.note)}</span></div>'
+            )
+            continue
+        kind, what = ACTION_TEXT[p.action]
+        tag = "ps-tag text" if kind == "Transcript" else "ps-tag"
+        rows.append(
+            f'<div class="ps-row"><span class="ps-file">{name}</span>'
+            f'<span class="{tag}">{kind}</span><span class="ps-what">{what}</span></div>'
+        )
+    return f'<div class="ps-list">{"".join(rows)}</div>'
+
+
+def selection_view(files: list[str], language: str, api_key: str):
+    """Everything that follows the file selection: list, language, reuse, Start."""
+    plans = file_plan(files, language)
+    runnable = [p for p in plans if p.action != "skip"]
+    has_audio = any(p.action in ("transcribe", "reuse") for p in plans)
+    reusable = [p.name for p in plans if p.action == "reuse"]
+    have_key = bool(api_key.strip()) or any(env_key_for(p) for p in PROVIDER_ENV_VAR)
+    n = len(runnable)
+    label = f"Start coding {n} file{'s' if n != 1 else ''}" if n else "Start coding"
+    return (
+        plan_html(plans),
+        gr.update(visible=has_audio),
+        gr.update(choices=reusable, value=[], visible=bool(reusable)),
+        gr.update(value=label, interactive=bool(n) and have_key),
+        gr.update(visible=bool(files)),
+    )
 
 
 def result_rows(batch: BatchResult) -> list[list]:
@@ -133,123 +322,218 @@ def result_rows(batch: BatchResult) -> list[list]:
     rows = []
     for r in batch.files:
         for m in dedup_by_code(r.matches, "detailed"):
+            status = "Absent" if m.get("negated") else "Present"
+            if m.get("needs_review"):
+                status += " · Review"
             rows.append(
                 [
                     r.patient_id,
-                    m["hpo_term"],
-                    m["hpo_id"] or "",
-                    "Absent" if m.get("negated") else "Present",
-                    "REVIEW" if m.get("needs_review") else "",
+                    m.get("patient_verbatim") or m.get("clinical_term") or "",
+                    m["hpo_term"] if m.get("hpo_id") else "No good match",
+                    m.get("hpo_id") or "—",
+                    status,
                 ]
             )
     return rows
 
 
+def filter_rows(rows: list[list], which: str) -> list[list]:
+    return [r for r in rows if "Review" in r[4]] if which == "To review" else rows
+
+
+def summary_html(batch: BatchResult, rows: list[list], when: datetime) -> str:
+    codes = sum(1 for r in rows if r[3] != "—")
+    review = sum(1 for r in rows if "Review" in r[4])
+    done = sum(1 for r in batch.files if not r.error)
+    total = len(batch.files)
+    return (
+        f'<div class="ps-h1">Results</div>'
+        f'<div class="ps-note">Run of {when:%d %B %Y, %H:%M} · {total} file{"s" if total != 1 else ""}</div>'
+        f'<div class="ps-tiles" style="margin-top:16px">'
+        f'<div class="ps-tile">HPO codes<b>{codes}</b></div>'
+        f'<div class="ps-tile">To review<b class="warn">{review}</b></div>'
+        f'<div class="ps-tile">Files done<b>{done} of {total}</b></div></div>'
+    )
+
+
+def status_html(batch: BatchResult) -> str:
+    rows = []
+    for r in batch.files:
+        who = f"{html.escape(r.filename)} → {html.escape(r.patient_id)}"
+        if r.error:
+            rows.append(
+                f'<div class="ps-row bad"><span class="ps-file">✗ {who}</span>'
+                f'<span>{html.escape(plain_error(r.error))}</span></div>'
+            )
+        else:
+            coded = dedup_by_code(r.matches, "detailed")
+            review = sum(1 for m in coded if m.get("needs_review"))
+            rows.append(
+                f'<div class="ps-row"><span class="ps-file"><span class="ps-ok">✓</span> {who}</span>'
+                f"<span>{len(coded)} findings · {review} to review</span></div>"
+            )
+    return f'<div class="ps-list">{"".join(rows)}</div>'
+
+
 def run_pipeline(
-    files: list[str] | None,
+    files: list[str],
     language: str,
     provider: str,
     api_key: str,
-    skip_transcription: bool,
+    retranscribe: list[str] | None,
     progress=gr.Progress(),
 ):
-    if not files:
-        return "Add one or more files first.", [], None
-
-    pasted_key = api_key.strip()
-    if not pasted_key and not env_key_for(provider):
-        return "Paste your API key first.", [], None
-
     config = load_config(CONFIG_PATH)
     config.llm.provider = provider
     config.llm.model = model_for(provider, config)
     config.transcription.language = language
 
-    with use_api_key(provider, pasted_key):
+    with use_api_key(provider, api_key.strip()):
         batch = run_batch(
             files,
             config,
             OUTPUT_DIR,
             on_progress=lambda fraction, message: progress(fraction, desc=message),
-            skip_transcription=skip_transcription,
+            retranscribe=frozenset(retranscribe or []),
         )
 
-    excel = str(batch.excel_path) if batch.excel_path else None
-    return status_lines(batch), result_rows(batch), excel
+    rows = result_rows(batch)
+    if batch.excel_path:
+        saved = f"Saved in {OUTPUT_DIR} as {batch.excel_path.name}. Error details go to {LOG_PATH.name} in the same folder."
+    else:
+        saved = f"No Excel file: every file failed. Details are in {LOG_PATH}."
+    return (
+        gr.update(visible=True),
+        summary_html(batch, rows, datetime.now()),
+        status_html(batch),
+        rows,
+        rows,
+        "All",
+        gr.update(value=str(batch.excel_path) if batch.excel_path else None, visible=bool(batch.excel_path)),
+        saved,
+    )
+
+
+# --- page -------------------------------------------------------------------------
+
+
+def _step(number: int, title: str) -> str:
+    return f'<div class="ps-step"><span class="ps-num">{number}</span>{html.escape(title)}</div>'
 
 
 def build_app() -> gr.Blocks:
-    with gr.Blocks(title="Phenoscribe") as app:
-        gr.Markdown("# Phenoscribe")
-        gr.Markdown(
-            "Turns patient interviews into HPO phenotype codes. "
-            "The recordings stay on this computer. Only text with the personal "
-            "details removed goes to the AI provider."
+    with gr.Blocks(title="Phenoscribe", theme=THEME, css=CSS, head=HEAD) as app:
+        gr.HTML(
+            '<div class="ps-header"><div><span class="ps-title">Phenoscribe</span>'
+            '<span class="ps-sub">Interviews to HPO codes</span></div>'
+            '<span class="ps-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">'
+            '<rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4">'
+            "</path></svg>Recordings stay on this computer</span></div>"
         )
-        gr.Markdown(f"Results are saved in `{OUTPUT_DIR}`.")
 
-        with gr.Row():
-            with gr.Column(scale=2):
-                files = gr.File(
-                    file_count="multiple",
-                    file_types=sorted(SUPPORTED_EXTENSIONS),
-                    label="Recordings (drag the files here)",
+        files = gr.State([])
+        rows = gr.State([])
+        saved_key = gr.BrowserState("", **KEY_STORAGE)
+
+        # 1 · key
+        with gr.Column(elem_classes="ps-card"):
+            with gr.Row(equal_height=True):
+                gr.HTML(_step(1, "API key"))
+                provider = gr.Radio(
+                    choices=PROVIDER_CHOICES, value="openai", show_label=False,
+                    container=False, elem_classes="ps-seg", scale=0, min_width=220,
                 )
-
-            with gr.Column(scale=1):
+            with gr.Column(visible=False) as key_entry:
                 api_key = gr.Textbox(
-                    label="API key",
-                    type="password",
+                    show_label=False, type="password",
                     placeholder="Paste your OpenAI or Anthropic API key",
                 )
-                remember = gr.Checkbox(
-                    value=True,
-                    label="Remember this key in this browser",
-                    info=(
-                        "The key is kept as plain data in this browser's profile. "
-                        "The app writes no key to disk."
-                    ),
-                )
-                with gr.Row():
-                    provider = gr.Radio(
-                        choices=PROVIDER_CHOICES, value="openai", label="Provider"
-                    )
-                    test_btn = gr.Button("Test key", size="sm")
-                key_status = gr.Markdown()
-                language = gr.Dropdown(
-                    choices=LANGUAGE_CHOICES,
-                    value="fr",
-                    label="Language of the recordings",
-                )
-                with gr.Accordion("Advanced", open=False):
-                    skip_transcription = gr.Checkbox(
-                        value=False,
-                        label="I already have the transcripts (skip transcription)",
-                    )
+                remember = gr.Checkbox(value=True, label="Remember this key in this browser")
+                key_problem = gr.Markdown()
+            with gr.Row(visible=False, equal_height=True) as key_line:
+                key_text = gr.HTML()
+                change_key = gr.Button("Change key", size="sm", scale=0, min_width=120)
 
-        start_btn = gr.Button("Start", variant="primary", size="lg")
+        # 2 · files
+        with gr.Column(elem_classes="ps-card"):
+            gr.HTML(_step(2, "Recordings and transcripts"))
+            drop = gr.File(
+                file_count="multiple", show_label=False, elem_classes="ps-drop", height=150,
+                label="Drop audio files or transcripts here",
+            )
+            with gr.Row():
+                folder = gr.UploadButton("Choose a folder", file_count="directory", size="sm", scale=0, min_width=160)
+                clear = gr.Button("Clear the list", size="sm", scale=0, min_width=140, visible=False)
+            gr.HTML(
+                '<div class="ps-note">Audio: .mp3 .wav .m4a .ogg .flac · Transcripts: .txt · '
+                "A saved transcript of the same audio is reused.</div>"
+            )
+            plan = gr.HTML()
+            retranscribe = gr.CheckboxGroup(label="Transcribe again", visible=False)
+            language = gr.Dropdown(
+                choices=LANGUAGE_CHOICES, value="fr", label="Language of the recordings",
+                visible=False,
+            )
 
-        gr.Markdown("### Results")
-        status = gr.Markdown()
-        results = gr.Dataframe(headers=RESULT_HEADERS, interactive=False, wrap=True)
-        excel_download = gr.File(label="Excel file", interactive=False)
-
-        saved_key = gr.BrowserState("", **KEY_STORAGE)
-        app.load(fn=lambda key: key, inputs=saved_key, outputs=api_key)
-        api_key.change(
-            fn=on_key_change, inputs=[api_key, remember], outputs=[provider, saved_key]
+        # 3 · start
+        start = gr.Button("Start coding", variant="primary", interactive=False, elem_classes="ps-start")
+        gr.HTML(
+            '<div class="ps-note">Results go to Documents/Phenoscribe. Each run makes a new Excel file. '
+            "Names and other personal details are removed on this computer before the text "
+            "goes to the AI provider. The removal can miss details.</div>"
         )
-        remember.change(
-            fn=lambda key, keep: key if keep else "",
+
+        # results
+        with gr.Column(visible=False) as results:
+            summary = gr.HTML()
+            excel = gr.DownloadButton("Download Excel", variant="primary", visible=False)
+            status = gr.HTML()
+            with gr.Column(elem_classes="ps-card"):
+                with gr.Row(equal_height=True):
+                    gr.HTML('<div class="ps-step">Coded findings</div>')
+                    show = gr.Radio(
+                        ["All", "To review"], value="All", show_label=False, container=False,
+                        elem_classes="ps-seg", scale=0, min_width=200,
+                    )
+                table = gr.Dataframe(
+                    headers=RESULT_HEADERS, interactive=False, wrap=True, elem_classes="ps-table",
+                    column_widths=["12%", "31%", "26%", "16%", "15%"],
+                )
+            saved = gr.Markdown(elem_classes="ps-note")
+
+        # events
+        key_outputs = [api_key, provider, key_text, key_entry, key_line]
+        app.load(fn=load_saved_key, inputs=saved_key, outputs=key_outputs)
+        api_key.blur(
+            fn=on_key_entered,
             inputs=[api_key, remember],
-            outputs=saved_key,
+            outputs=[provider, key_text, key_problem, saved_key, key_entry, key_line],
         )
-        test_btn.click(fn=check_key, inputs=[provider, api_key], outputs=key_status)
-        start_btn.click(
+        change_key.click(
+            fn=lambda: ("", "", *_key_view(False)),
+            outputs=[api_key, saved_key, key_entry, key_line],
+        )
+
+        view_outputs = [plan, language, retranscribe, start, clear]
+        drop.upload(fn=add_files, inputs=[drop, files], outputs=[drop, files]).then(
+            fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs
+        )
+        folder.upload(fn=lambda new, cur: add_files(new, cur)[1], inputs=[folder, files], outputs=files).then(
+            fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs
+        )
+        clear.click(fn=lambda: [], outputs=files).then(
+            fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs
+        )
+        for trigger in (language.change, key_text.change):
+            trigger(fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs)
+
+        start.click(
             fn=run_pipeline,
-            inputs=[files, language, provider, api_key, skip_transcription],
-            outputs=[status, results, excel_download],
+            inputs=[files, language, provider, api_key, retranscribe],
+            outputs=[results, summary, status, rows, table, show, excel, saved],
         )
+        show.change(fn=filter_rows, inputs=[rows, show], outputs=table)
 
     return app
 
@@ -268,6 +552,7 @@ def main():
         inbrowser=True,
         quiet=False,
         allowed_paths=[str(OUTPUT_DIR)],
+        show_api=False,
     )
 
 

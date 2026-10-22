@@ -1,4 +1,5 @@
-"""Tests for run_batch(): one new Excel per run, patient IDs, progress, errors."""
+"""Tests for run_batch() and plan_batch(): one new Excel per run, patient IDs,
+the work decided for each file, transcript reuse, progress and errors."""
 
 import json
 from datetime import datetime
@@ -9,9 +10,25 @@ from openpyxl import load_workbook
 from phenoscribe import pipeline
 from phenoscribe.config import Config, PatientConfig
 from phenoscribe.output import write_excel
-from phenoscribe.pipeline import batch_patient_id, new_results_path, run_batch
+from phenoscribe.pipeline import (
+    batch_patient_id,
+    new_results_path,
+    plan_batch,
+    run_batch,
+    transcript_cache_path,
+)
 
 CONFIG = Config(patient=PatientConfig(id_prefix="MGA."))
+
+
+def _files(folder, *names, content=b"audio"):
+    paths = []
+    for name in names:
+        path = folder / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        paths.append(str(path))
+    return paths
 
 
 @pytest.fixture
@@ -20,7 +37,7 @@ def fake_pipeline(monkeypatch):
     calls = []
 
     def fake(input_path, patient_id, config, output_path=None, on_step=None, **kwargs):
-        calls.append(patient_id)
+        calls.append((patient_id, kwargs.get("reuse_transcript")))
         on_step("removing personal details")
         if "bad" in input_path:
             raise ValueError("Unsupported file type '.xyz'")
@@ -38,8 +55,9 @@ def _patient_ids(path):
 
 
 def test_two_runs_give_two_files(tmp_path, fake_pipeline):
-    first = run_batch([str(tmp_path / "467.mp3")], CONFIG, tmp_path)
-    second = run_batch([str(tmp_path / "467.mp3")], CONFIG, tmp_path)
+    files = _files(tmp_path / "in", "467.mp3")
+    first = run_batch(files, CONFIG, tmp_path)
+    second = run_batch(files, CONFIG, tmp_path)
 
     assert first.excel_path != second.excel_path
     assert first.excel_path.name.startswith("results_")
@@ -57,6 +75,8 @@ def test_name_in_filename_gives_hash_id():
     assert pid.startswith("pt-") and len(pid) == len("pt-") + 8
     assert "jean" not in pid
     assert batch_patient_id("jean-martin.mp3", "MGA.") == pid  # stable
+    # A recording and its transcript share one ID.
+    assert batch_patient_id("jean-martin.txt", "MGA.") == pid
 
 
 def test_results_path_is_dated_and_never_reused(tmp_path):
@@ -68,7 +88,8 @@ def test_results_path_is_dated_and_never_reused(tmp_path):
 
 
 def test_a_failed_file_does_not_stop_the_batch(tmp_path, fake_pipeline):
-    batch = run_batch([str(tmp_path / "bad.xyz"), str(tmp_path / "467.mp3")], CONFIG, tmp_path)
+    files = _files(tmp_path / "in", "bad.mp3", "467.mp3")
+    batch = run_batch(files, CONFIG, tmp_path)
 
     bad, good = batch.files
     assert isinstance(bad.error, ValueError)
@@ -78,13 +99,14 @@ def test_a_failed_file_does_not_stop_the_batch(tmp_path, fake_pipeline):
 
 
 def test_no_excel_when_every_file_fails(tmp_path, fake_pipeline):
-    assert run_batch([str(tmp_path / "bad.xyz")], CONFIG, tmp_path).excel_path is None
+    files = _files(tmp_path / "in", "bad.mp3")
+    assert run_batch(files, CONFIG, tmp_path).excel_path is None
 
 
 def test_progress_names_the_file_and_the_step(tmp_path, fake_pipeline):
     messages = []
     run_batch(
-        [str(tmp_path / "466.mp3"), str(tmp_path / "467.mp3")],
+        _files(tmp_path / "in", "466.mp3", "467.mp3"),
         CONFIG,
         tmp_path,
         on_progress=lambda fraction, message: messages.append((fraction, message)),
@@ -94,9 +116,87 @@ def test_progress_names_the_file_and_the_step(tmp_path, fake_pipeline):
 
 
 def test_filename_mapping_keeps_the_name_out_of_the_excel(tmp_path, fake_pipeline):
-    batch = run_batch([str(tmp_path / "jean-martin.mp3")], CONFIG, tmp_path)
+    batch = run_batch(_files(tmp_path / "in", "jean-martin.mp3"), CONFIG, tmp_path)
     pid = batch.files[0].patient_id
 
     mapping = json.loads((tmp_path / "filename_mapping.json").read_text(encoding="utf-8"))
     assert mapping == {pid: "jean-martin.mp3"}
     assert _patient_ids(batch.excel_path) == [pid]
+
+
+# --- plan_batch: the work for each file ----------------------------------------
+
+
+def _actions(plans):
+    return {p.name: (p.action, p.note) for p in plans}
+
+
+def test_plan_audio_transcript_and_unsupported(tmp_path):
+    files = _files(tmp_path / "in", "101.mp3", "103.txt", "consent.pdf", ".DS_Store", "103_pseudo.txt")
+    assert _actions(plan_batch(files, CONFIG, tmp_path)) == {
+        "101.mp3": ("transcribe", ""),
+        "103.txt": ("transcript", ""),
+        "consent.pdf": ("skip", "Not an audio file or transcript"),
+    }
+
+
+def test_plan_transcript_wins_over_its_audio(tmp_path):
+    files = _files(tmp_path / "in", "467.mp3", "467.txt")
+    assert _actions(plan_batch(files, CONFIG, tmp_path)) == {
+        "467.mp3": ("skip", "Uses 467.txt instead"),
+        "467.txt": ("transcript", ""),
+    }
+
+
+def test_plan_skips_two_files_for_one_patient(tmp_path):
+    # 467.mp3 in two folders would overwrite each other's transcript.
+    files = _files(tmp_path / "a", "467.mp3") + _files(tmp_path / "b", "467.mp3")
+    plans = plan_batch(files, CONFIG, tmp_path)
+    assert [p.action for p in plans] == ["skip", "skip"]
+    assert plans[0].note == "Two files give patient MGA.467. Rename one."
+
+
+def test_plan_reuses_the_transcript_of_the_same_audio(tmp_path):
+    (audio,) = _files(tmp_path / "in", "467.mp3", content=b"bytes one")
+    cache = transcript_cache_path(audio, CONFIG, str(tmp_path / "transcripts"))
+    cache.parent.mkdir(parents=True)
+    cache.write_text("bonjour", encoding="utf-8")
+    assert plan_batch([audio], CONFIG, tmp_path)[0].action == "reuse"
+
+    # Other bytes under the same name: transcribe again.
+    (tmp_path / "in" / "467.mp3").write_bytes(b"bytes two")
+    assert plan_batch([audio], CONFIG, tmp_path)[0].action == "transcribe"
+
+
+def test_cache_key_changes_with_the_whisper_settings(tmp_path):
+    (audio,) = _files(tmp_path / "in", "467.mp3")
+    other = Config()
+    other.transcription.language = "nl"
+    assert transcript_cache_path(audio, CONFIG, "t") != transcript_cache_path(audio, other, "t")
+
+
+def test_run_batch_skips_planned_skips_and_honours_retranscribe(tmp_path, fake_pipeline):
+    files = _files(tmp_path / "in", "466.mp3", "467.mp3", "467.txt", "notes.pdf")
+    run_batch(files, CONFIG, tmp_path, retranscribe=frozenset({"466.mp3"}))
+    assert fake_pipeline == [("MGA.466", False), ("MGA.467", True)]
+
+
+def test_process_recording_reuses_and_saves_the_audio_transcript(tmp_path, monkeypatch):
+    """The real process_recording, with every step after transcription stubbed."""
+    (audio,) = _files(tmp_path / "in", "467.mp3")
+    monkeypatch.setattr(pipeline, "check_obo_version", lambda *a: "hp/releases/2026-02-16")
+    monkeypatch.setattr(pipeline, "pseudonymize", lambda text, **k: (text, {}))
+    monkeypatch.setattr(pipeline, "extract_symptoms", lambda text, **k: [])
+    monkeypatch.setattr(pipeline, "match_hpo", lambda symptoms, **k: [])
+    monkeypatch.setattr(pipeline, "write_excel", lambda *a, **k: None)
+    whisper = []
+    monkeypatch.setattr(pipeline, "transcribe", lambda path, **k: whisper.append(path) or "bonjour")
+    out = str(tmp_path / "out" / "results.xlsx")
+
+    pipeline.process_recording(audio, "MGA.467", CONFIG, output_path=out, reuse_transcript=True)
+    pipeline.process_recording(audio, "MGA.467", CONFIG, output_path=out, reuse_transcript=True)
+    pipeline.process_recording(audio, "MGA.467", CONFIG, output_path=out, reuse_transcript=False)
+
+    assert len(whisper) == 2  # the second run reused the saved transcript
+    cache = transcript_cache_path(audio, CONFIG, str(tmp_path / "out" / "transcripts"))
+    assert cache.read_text(encoding="utf-8") == "bonjour"

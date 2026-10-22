@@ -61,7 +61,10 @@ Neither model is a complete de-identifier. Spot-check the first batch.
 
 Double-click `Start Phenoscribe.bat` (Windows) or `Start Phenoscribe.command` (Mac; `sh` on Linux).
 The script installs `uv` if it is missing, runs `phenoscribe setup`, and opens the page on
-<http://127.0.0.1:7860>. Drop the files on the page and click **Start**.
+<http://127.0.0.1:7860>. Drop files or choose a folder, then click **Start coding**. The app
+decides the work for each file (`plan_batch` in `pipeline.py`): audio is transcribed, a `.txt`
+is coded as it is, and a saved transcript of the same audio bytes is reused
+(`transcripts/by-audio/<sha256>.txt`, keyed by the bytes, backend, model and language).
 
 Each run writes a new `results_YYYY-MM-DD_HHMM.xlsx` to `Documents/Phenoscribe`
 (`PHENOSCRIBE_OUTPUT_DIR`), with `transcripts/`, `pseudo/`, `phenoscribe.log`, and
