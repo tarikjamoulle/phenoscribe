@@ -1,10 +1,12 @@
 """Tests for transcription backend dispatch."""
 
+import sys
+import types
 from unittest.mock import patch
 
 import pytest
 
-from phenoscribe.transcribe import transcribe
+from phenoscribe.transcribe import resolve_backend, transcribe
 
 
 def test_text_file_passes_through(tmp_path):
@@ -57,3 +59,41 @@ def test_mlx_dispatch(tmp_path):
     assert result == "hola"
     fake_mlx.assert_called_once()
     fake_fw.assert_not_called()
+
+
+# --- backend: "auto" ----------------------------------------------------------
+
+
+def test_auto_is_faster_whisper_when_mlx_does_not_import(monkeypatch):
+    # None in sys.modules makes `import mlx_whisper` raise ImportError.
+    monkeypatch.setitem(sys.modules, "mlx_whisper", None)
+    monkeypatch.setattr("phenoscribe.transcribe.shutil.which", lambda _: "/usr/bin/ffmpeg")
+    assert resolve_backend("auto") == "faster-whisper"
+
+
+def test_auto_is_faster_whisper_when_ffmpeg_is_missing(monkeypatch):
+    monkeypatch.setitem(sys.modules, "mlx_whisper", types.ModuleType("mlx_whisper"))
+    monkeypatch.setattr("phenoscribe.transcribe.shutil.which", lambda _: None)
+    assert resolve_backend("auto") == "faster-whisper"
+
+
+def test_auto_is_mlx_when_mlx_imports_and_ffmpeg_exists(monkeypatch):
+    monkeypatch.setitem(sys.modules, "mlx_whisper", types.ModuleType("mlx_whisper"))
+    monkeypatch.setattr("phenoscribe.transcribe.shutil.which", lambda _: "/usr/bin/ffmpeg")
+    assert resolve_backend("auto") == "mlx"
+
+
+def test_explicit_backend_is_unchanged():
+    assert resolve_backend("faster-whisper") == "faster-whisper"
+    assert resolve_backend("mlx") == "mlx"
+
+
+def test_auto_dispatches_to_the_resolved_backend(tmp_path, monkeypatch):
+    audio = tmp_path / "fake.mp3"
+    audio.touch()
+    monkeypatch.setattr("phenoscribe.transcribe.resolve_backend", lambda _: "faster-whisper")
+    with patch(
+        "phenoscribe.transcribe._transcribe_faster_whisper", return_value="bonjour"
+    ) as fake_fw:
+        assert transcribe(str(audio), backend="auto") == "bonjour"
+    fake_fw.assert_called_once()

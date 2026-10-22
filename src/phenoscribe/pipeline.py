@@ -10,7 +10,12 @@ from phenoscribe.hpo_index import check_obo_version
 from phenoscribe.match_hpo import match_hpo
 from phenoscribe.output import write_excel
 from phenoscribe.pii import pseudonymize
-from phenoscribe.transcribe import transcribe, transcribe_segments, AUDIO_EXTENSIONS
+from phenoscribe.transcribe import (
+    AUDIO_EXTENSIONS,
+    resolve_backend,
+    transcribe,
+    transcribe_segments,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +94,7 @@ def process_recording(
         use_diarization = config.diarization.enabled and is_audio
 
         if use_diarization:
-            if config.transcription.backend == "mlx":
+            if resolve_backend(config.transcription.backend) == "mlx":
                 logger.warning(
                     "[%s] Diarization is not supported with the mlx backend yet; "
                     "falling back to faster-whisper for this transcript.",
