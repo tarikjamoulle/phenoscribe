@@ -74,8 +74,9 @@ number (`467.mp3`) gets the ID `MGA.467`.
 
 `phenoscribe setup` downloads the pinned `hp.obo`, builds the ChromaDB index, and
 pre-downloads the Whisper and PII models. It skips each part that is present, so it is safe
-at every start. The transcription backend `auto` picks mlx on Apple Silicon (when `ffmpeg`
-exists), else faster-whisper.
+at every start. The transcription backend `auto` picks mlx on Apple Silicon when `ffmpeg`
+exists, else faster-whisper on the CPU. A fresh Mac has no `ffmpeg` (`brew install ffmpeg`),
+so it uses the CPU path, about 4x slower (`config.yaml`), until `ffmpeg` is installed.
 
 To publish a version for users, push a tag (`git tag v0.2.0 && git push origin v0.2.0`).
 The release job (`.github/workflows/release.yml`) attaches `Phenoscribe.zip` to a GitHub
