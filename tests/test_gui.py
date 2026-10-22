@@ -37,6 +37,12 @@ def test_model_comes_from_config_for_the_configured_provider():
         (_auth_error(openai.AuthenticationError), "Key rejected"),
         (_auth_error(anthropic.AuthenticationError), "Key rejected"),
         (openai.APIConnectionError(request=_REQUEST), "No internet. Check the connection and start again."),
+        (
+            openai.RateLimitError(
+                "insufficient_quota", response=httpx.Response(429, request=_REQUEST), body=None
+            ),
+            "The AI account has no credit left, or hit its limit. Check the account billing.",
+        ),
         (ValueError("Unsupported file type '.xyz'"), "Audio format not supported"),
         (RuntimeError("Failed to load audio: moov atom not found"), "Audio format not supported"),
     ],

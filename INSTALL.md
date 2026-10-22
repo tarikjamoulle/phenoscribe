@@ -25,7 +25,8 @@ one time. A slow laptop takes longer.
 1. Open **Downloads** in File Explorer.
 2. Right-click `Phenoscribe.zip`, then click **Extract All…**.
 3. In the box "Files will be extracted to this folder", replace the text with `C:\`.
-   Click **Extract**. You now have the folder `C:\Phenoscribe`.
+   Click **Extract**. If Windows asks for permission, click **Continue**.
+   You now have the folder `C:\Phenoscribe`.
    A short path is necessary: a long path can go past the Windows path-length limit.
 4. Open `C:\Phenoscribe`.
 
@@ -58,6 +59,10 @@ The first time, your computer can show a warning, because the start file is not 
 - Windows SmartScreen ("Windows protected your PC"): click **More info**, then **Run anyway**.
 - Mac ("cannot be opened"): open **System Settings → Privacy & Security**, scroll down,
   and click **Open Anyway**. Then double-click the file again.
+
+On a Mac, the speech step runs on the Apple chip's GPU only when the free program
+`ffmpeg` is installed. Without it, the app works the same but transcribes about 4 times
+slower. Ask Tarik if you want it installed.
 
 You own your laptop, so you can always pass these warnings. An antivirus program can also
 ask about the start file or about `uv` (the tool that installs Python). Allow it.
@@ -100,6 +105,7 @@ from two folders) are both skipped. Rename one of them.
 
 If a file fails, the page shows one short line for it ("Key rejected", "No internet",
 "Audio format not supported"). The full details go to `phenoscribe.log` in the same folder.
+If every file fails, the app makes no Excel file, and the page says so.
 
 ## Update
 
@@ -132,6 +138,8 @@ Copy the key when you create it. You cannot see it again later.
 | The window closes or says "Phenoscribe stopped with an error" | Copy the last 20 lines of the window and send them to Tarik. |
 | "Key rejected" | Paste the key again, or make a new key. With OpenAI, check that you have credit. |
 | "No internet" | Check the connection, then click **Start coding** again. |
+| "The AI account has no credit left, or hit its limit" | Add credit on the provider's billing page (OpenAI needs prepaid credit), wait a few minutes, then click **Start coding** again. |
+| A line that starts with "Failed" | Send `phenoscribe.log` from `Documents/Phenoscribe results` to Tarik. |
 | The browser does not open | Open <http://127.0.0.1:7860> yourself. |
 | "Cannot find empty port" | Phenoscribe already runs in another window. Use that window, or close it first. |
 

@@ -203,6 +203,8 @@ def plain_error(error: Exception) -> str:
     """One plain line for a failed file. The full trace is in the log file."""
     if isinstance(error, (openai.AuthenticationError, anthropic.AuthenticationError)):
         return "Key rejected"
+    if isinstance(error, (openai.RateLimitError, anthropic.RateLimitError)):
+        return "The AI account has no credit left, or hit its limit. Check the account billing."
     if isinstance(
         error,
         (openai.APIConnectionError, anthropic.APIConnectionError, requests.ConnectionError),
