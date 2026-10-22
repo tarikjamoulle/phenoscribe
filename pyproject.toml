@@ -6,7 +6,8 @@ build-backend = "hatchling.build"
 name = "phenoscribe"
 version = "0.1.0"
 description = "Automated HPO phenotype coding from patient interviews"
-requires-python = ">=3.10"
+# The lock has no torch wheel for Python 3.14, so cap below it (.python-version pins 3.12).
+requires-python = ">=3.10,<3.14"
 # Upper bounds are deliberate. This is a clinical tool: a minor/major release of
 # torch/transformers can change the French NER and PII model tokenisation or NER
 # output, which changes what reaches the LLM and therefore the codes emitted.
@@ -31,6 +32,9 @@ dependencies = [
     "gradio>=5,<6",
     "mlx-whisper>=0.4,<1 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
 
 [project.scripts]
 phenoscribe = "phenoscribe.cli:main"

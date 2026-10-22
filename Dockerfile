@@ -1,4 +1,7 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
+
+# uv installs the exact versions in uv.lock, the same as the start scripts.
+COPY --from=ghcr.io/astral-sh/uv:0.6.17 /uv /bin/uv
 
 # Pinned versions — bump deliberately, then re-validate against ground truth.
 # HPO_VERSION must match a tag at
@@ -19,14 +22,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# CPU-only torch (saves ~1.5 GB vs default CUDA wheels, works on amd64 + arm64).
-RUN pip install --no-cache-dir \
-        --index-url https://download.pytorch.org/whl/cpu \
-        torch
+# Use the image's Python and put the project venv first on PATH.
+ENV UV_PYTHON_DOWNLOADS=never \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
 
-COPY pyproject.toml ./
+# Dependencies first (cached layer), then the project itself.
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --frozen --no-dev --no-install-project --no-cache
 COPY src/ src/
-RUN pip install --no-cache-dir -e . \
+RUN uv sync --frozen --no-dev --no-cache \
     && apt-get purge -y build-essential \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
