@@ -1,33 +1,57 @@
 # Install Phenoscribe
 
 This page is for people who do not use a command line. You type no commands.
-The first start takes 10 to 20 minutes, because the app downloads its parts one time.
+The first start takes 10 to 40 minutes, because the app downloads and prepares its parts
+one time. A slow laptop takes longer.
 
 ## What you need
 
-- A laptop with Windows 10/11 (64-bit, Intel or AMD) or a Mac.
+- A laptop with Windows 10/11 (64-bit, Intel or AMD), or a Mac with Apple Silicon (M1 or
+  newer). An Intel Mac does not work: the app needs packages that no longer exist for it.
+  To check a Mac, open the Apple menu → **About This Mac**: the **Chip** line names M1, M2…
 - About 10 GB of free disk space.
 - An internet connection.
 - An API key from OpenAI or Anthropic. The AI step uses it, at about $0.01 for each recording.
   See [Get an API key](#get-an-api-key).
 
-## 1. Download
+## 1. Download and extract
 
-1. Go to <https://github.com/tarikjamoulle/phenoscribe/releases>.
-2. Under the newest release, click `Phenoscribe.zip`.
-3. Extract the ZIP:
-   - Windows: right-click the file, then **Extract All**. Extract it to a short path, for
-     example `C:\Phenoscribe`. A long path can go past the Windows path-length limit.
-   - Mac: double-click the file. Move the `Phenoscribe` folder to your **Documents** folder.
+1. Go to <https://github.com/tarikjamoulle/phenoscribe/releases/latest>.
+2. Under **Assets**, click `Phenoscribe.zip`. The file goes to your **Downloads** folder.
+3. Extract the ZIP. The ZIP holds one folder, `Phenoscribe`.
+
+**Windows**
+
+1. Open **Downloads** in File Explorer.
+2. Right-click `Phenoscribe.zip`, then click **Extract All…**.
+3. In the box "Files will be extracted to this folder", replace the text with `C:\`.
+   Click **Extract**. You now have the folder `C:\Phenoscribe`.
+   A short path is necessary: a long path can go past the Windows path-length limit.
+4. Open `C:\Phenoscribe`.
+
+Do not double-click the start file in the ZIP itself (File Explorer shows the ZIP like a
+folder). The start file must be in the extracted folder.
+
+**Mac**
+
+1. Open **Downloads** in Finder.
+2. If you see a `Phenoscribe` folder, Safari extracted the ZIP for you. If you see only
+   `Phenoscribe.zip`, double-click it. The `Phenoscribe` folder appears next to it.
+3. Drag the `Phenoscribe` folder to your **Documents** folder, and open it.
 
 ## 2. Double-click the start file
 
-- Windows: open the folder and double-click `Start Phenoscribe.bat`.
-- Mac: open the folder and double-click `Start Phenoscribe.command`.
+- Windows: in `C:\Phenoscribe`, double-click `Start Phenoscribe.bat`.
+- Mac: in `Documents/Phenoscribe`, double-click `Start Phenoscribe.command`.
+
+Tip: make a shortcut on the desktop. On Windows, right-click the file, then **Send to → Desktop
+(create shortcut)** (on Windows 11, click **Show more options** first). On a Mac, hold **Option + Cmd** and drag
+the file to the desktop.
 
 A window with text opens. The first time, it downloads Python, the packages, the
-speech model (3 GB) and the HPO ontology. Each later start skips these downloads.
-Keep this window open while you use the app. Close it to stop the app.
+speech model (3 GB) and the HPO ontology, and builds the search index. Each later start
+skips this and opens the page in about 30 seconds. Keep this window open while you use the
+app. Close it to stop the app.
 
 The first time, your computer can show a warning, because the start file is not signed:
 
@@ -68,19 +92,25 @@ your browser profile. The app writes no key to disk. Click **Change key** to use
    to check.
 
 Each run makes a new Excel file, for example `results_2026-10-22_1405.xlsx`, in the
-folder `Documents/Phenoscribe`. A file named only with a number (`467.mp3`) gets the patient
+folder `Documents/Phenoscribe results`. A file named only with a number (`467.mp3`) gets the patient
 ID `MGA.467`. Any other file name gets a code such as `pt-7a4b3c8e`, because file names can
 hold patient names. The file `filename_mapping.json` in the same folder links each code to
 its file name. Two files that give the same patient ID in one run (for example `467.mp3`
 from two folders) are both skipped. Rename one of them.
 
 If a file fails, the page shows one short line for it ("Key rejected", "No internet",
-"Audio format not supported"). The full details go to `Documents/Phenoscribe/phenoscribe.log`.
+"Audio format not supported"). The full details go to `phenoscribe.log` in the same folder.
 
 ## Update
 
-Download the new ZIP and replace the old folder. Your results stay in
-`Documents/Phenoscribe`, outside the app folder, so you lose nothing.
+1. Close the Phenoscribe window.
+2. Download the new ZIP (step 1) and delete the old app folder (`C:\Phenoscribe`, or
+   `Phenoscribe` in **Documents** on a Mac).
+3. Extract the new ZIP at the same place, then double-click the start file.
+
+Your results and saved transcripts stay in `Documents/Phenoscribe results`, outside the app
+folder, so you lose nothing. The speech model stays on the computer too. The first start
+after an update rebuilds the search index, so it takes some minutes.
 
 ## Get an API key
 
@@ -101,7 +131,7 @@ Copy the key when you create it. You cannot see it again later.
 |---|---|
 | The window closes or says "Phenoscribe stopped with an error" | Copy the last 20 lines of the window and send them to Tarik. |
 | "Key rejected" | Paste the key again, or make a new key. With OpenAI, check that you have credit. |
-| "No internet" | Check the connection, then click **Start** again. |
+| "No internet" | Check the connection, then click **Start coding** again. |
 | The browser does not open | Open <http://127.0.0.1:7860> yourself. |
 | "Cannot find empty port" | Phenoscribe already runs in another window. Use that window, or close it first. |
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Start Phenoscribe. Double-click on a Mac, or run `sh "Start Phenoscribe.command"` on Linux.
 cd "$(dirname "$0")" || exit 1
-export PHENOSCRIBE_OUTPUT_DIR="$HOME/Documents/Phenoscribe"
+export PHENOSCRIBE_OUTPUT_DIR="$HOME/Documents/Phenoscribe results"
 export PATH="$HOME/.local/bin:$PATH"
 
 fail() {

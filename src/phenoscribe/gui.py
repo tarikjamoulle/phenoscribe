@@ -4,7 +4,7 @@ Three steps on one calm page: a key, the files, Start. The app decides the work
 for each file (plan_batch): audio is transcribed, a .txt is coded as it is, and a
 saved transcript of the same audio is reused. Results go to a new dated Excel in
 `PHENOSCRIBE_OUTPUT_DIR` (default `/app/output`; the start scripts set
-`Documents/Phenoscribe`).
+`Documents/Phenoscribe results`).
 """
 
 import html
@@ -479,7 +479,7 @@ def build_app() -> gr.Blocks:
         # 3 · start
         start = gr.Button("Start coding", variant="primary", interactive=False, elem_classes="ps-start")
         gr.HTML(
-            '<div class="ps-note">Results go to Documents/Phenoscribe. Each run makes a new Excel file. '
+            f'<div class="ps-note">Results go to {html.escape(str(OUTPUT_DIR))}. Each run makes a new Excel file. '
             "Names and other personal details are removed on this computer before the text "
             "goes to the AI provider. The removal can miss details.</div>"
         )

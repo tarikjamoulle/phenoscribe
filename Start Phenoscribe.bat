@@ -1,7 +1,7 @@
 @echo off
 rem Start Phenoscribe. Double-click this file.
 cd /d "%~dp0"
-set "PHENOSCRIBE_OUTPUT_DIR=%USERPROFILE%\Documents\Phenoscribe"
+set "PHENOSCRIBE_OUTPUT_DIR=%USERPROFILE%\Documents\Phenoscribe results"
 
 set "UV=uv"
 where uv >nul 2>nul

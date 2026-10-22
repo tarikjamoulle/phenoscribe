@@ -8,19 +8,19 @@ Automated HPO phenotype coding from patient interviews. Built for a GP doing lon
 
 A recorded GP–patient conversation in, an Excel of standardized HPO codes out. Six steps:
 
-1. **Transcribe** the recording with faster-whisper, on the laptop. The audio file never leaves the machine.
+1. **Transcribe** the recording with Whisper large-v3, on the laptop: mlx on the GPU of an Apple Silicon Mac, faster-whisper on the CPU elsewhere (`transcription.backend: auto`). The audio file never leaves the machine. A `.txt` transcript skips this step.
 2. **Pseudonymise PII** locally with a French NER model plus regex. Names, places, dates, phones, emails and national IDs get stable placeholders: "Dr. Martin" → "PERSON_1", "Bruxelles" → "LOCATION_1". The mapping stays on the machine. Default model: [`Anonym-IA/V2-camembert-ner-pii-french`](https://huggingface.co/Anonym-IA/V2-camembert-ner-pii-french) (CamemBERT-base, MIT, validation micro-F1 0.9327). See [Privacy](#privacy) for what it catches and what it misses.
 3. **Extract symptoms** with an LLM: each complaint becomes a clinical English label plus the patient's own French verbatim.
-4. **Shortlist five HPO candidates** per symptom from a local ChromaDB index of ~17,000 HPO terms.
+4. **Shortlist five HPO candidates** per symptom from a local ChromaDB index of ~19,400 HPO terms.
 5. **Pick the best code** from that shortlist with an LLM. The term name is re-read from the official ontology so the AI can't mis-label a valid code (Peter Robinson's caveat).
-6. **Write the Excel** in the GP's existing format: `Term (HP:code) [patient verbatim]; …`
+6. **Write the Excel**: by default one row per finding (term, code, present/absent, modifiers, verbatim, review flag). `output.format: semicolon` gives the GP's original one-row-per-patient format, `Term (HP:code) [patient verbatim]; …`.
 
 Cohort summaries with `phenoscribe aggregate` — counts per HPO term plus a horizontal bar chart in the style of the Plovdiv poster.
 
 ## Privacy
 
 - Audio and the mapping table never leave the machine.
-- Only pseudonymised text is sent to the LLM provider.
+- Only pseudonymised text is sent to the LLM provider. The pseudonymisation can miss details (see below).
 - Designed under GDPR + Belgian health-data law.
 
 ### PII model: what it catches, what it misses
@@ -55,6 +55,7 @@ Neither model is a complete de-identifier. Spot-check the first batch.
 
 - An **API key** from OpenAI or Anthropic. About $0.01 per recording.
 - **About 10 GB free disk space** (most of it is the Whisper speech model).
+- Windows x64, Linux, or an Apple Silicon Mac. `uv.lock` has no torch wheel for Intel Macs.
 - For the CLI: `uv`. It installs Python 3.12 (`.python-version`) and the exact versions in `uv.lock`.
 
 ### Web app (start file, recommended)
@@ -66,7 +67,7 @@ decides the work for each file (`plan_batch` in `pipeline.py`): audio is transcr
 is coded as it is, and a saved transcript of the same audio bytes is reused
 (`transcripts/by-audio/<sha256>.txt`, keyed by the bytes, backend, model and language).
 
-Each run writes a new `results_YYYY-MM-DD_HHMM.xlsx` to `Documents/Phenoscribe`
+Each run writes a new `results_YYYY-MM-DD_HHMM.xlsx` to `Documents/Phenoscribe results`
 (`PHENOSCRIBE_OUTPUT_DIR`), with `transcripts/`, `pseudo/`, `phenoscribe.log`, and
 `filename_mapping.json` (each hashed `pt-…` ID back to its filename). A file named only by a
 number (`467.mp3`) gets the ID `MGA.467`.
@@ -75,6 +76,10 @@ number (`467.mp3`) gets the ID `MGA.467`.
 pre-downloads the Whisper and PII models. It skips each part that is present, so it is safe
 at every start. The transcription backend `auto` picks mlx on Apple Silicon (when `ffmpeg`
 exists), else faster-whisper.
+
+To publish a version for users, push a tag (`git tag v0.2.0 && git push origin v0.2.0`).
+The release job (`.github/workflows/release.yml`) attaches `Phenoscribe.zip` to a GitHub
+release, which is the download that INSTALL.md points to.
 
 ### Docker (Linux servers)
 
@@ -94,13 +99,13 @@ The `127.0.0.1:` prefix on `-p` keeps the published port reachable only from thi
 uv sync --frozen && uv run phenoscribe setup
 
 # Process every audio file in data/recordings/, write to output/results.xlsx
-phenoscribe process data/recordings/ --output output/results.xlsx
+uv run phenoscribe process data/recordings/ --output output/results.xlsx
 
 # Build a cohort summary (CSV + bar chart) from an existing results file
-phenoscribe aggregate output/results.xlsx --top 30
+uv run phenoscribe aggregate output/results.xlsx --top 30
 
 # Show the status of the last batch
-phenoscribe status
+uv run phenoscribe status
 ```
 
 `--skip-transcription` reuses saved transcripts from `output/transcripts/`. Use it when you change the LLM provider or model and want to re-run just the matching step without redoing Whisper.
@@ -113,7 +118,7 @@ phenoscribe status
 - `anthropic` (claude-opus-4-7, claude-sonnet-4-6, claude-haiku-4-5)
 - `ollama` (local Llama / Mistral — for offline use; CLI only)
 
-API keys live in `.env` or in the web app's password box. Never written to disk by the GUI.
+API keys come from the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) or from the key box on the web page. With **Remember this key in this browser** ticked, the browser keeps the key in its local storage. The app never writes a key to disk. The web page offers OpenAI and Anthropic and takes the model from `config.yaml`.
 
 ### HPO release
 
@@ -156,20 +161,24 @@ match.
 
 ```
 src/phenoscribe/        Pipeline source
-  transcribe.py         Step 1: faster-whisper
+  transcribe.py         Step 1: Whisper (mlx or faster-whisper, backend auto)
   pii.py                Step 2: local French NER + regex pseudonymisation
   extract_symptoms.py   Step 3: LLM symptom extraction
   hpo_index.py          Step 4: ChromaDB vector search
   match_hpo.py          Step 5: LLM judging + canonical name resolution
   output.py             Step 6: Excel writer (three formats)
   aggregate.py          Cohort-level prevalence + bar chart
-  pipeline.py           Orchestrator
-  cli.py                Typer CLI
+  pipeline.py           Orchestrator: process_recording, plan_batch, run_batch
+  cli.py                argparse CLI (process, setup, status, aggregate, validate)
   gui.py                Gradio web app
   diarize.py            Optional: pyannote speaker diarization (needs HF_TOKEN)
 
+Start Phenoscribe.bat   Double-click start file (Windows)
+Start Phenoscribe.command  Double-click start file (Mac; `sh` on Linux)
+scripts/                Seeding, benchmarks, CI smoke run
 data/                   HPO ontology, ChromaDB, recordings (gitignored)
-output/                 Excel, transcripts, pseudonymised text, filename mapping
+output/                 CLI output: Excel, transcripts, pseudonymised text
+                        (the web app writes to Documents/Phenoscribe results)
 context/                Architecture notes, plans, shipped docs, exports
 tests/                  Unit + integration tests
 ```
