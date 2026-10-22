@@ -2,9 +2,7 @@
 
 Automated HPO phenotype coding from patient interviews. Built for a GP doing long-COVID research who was coding ~150 recordings manually.
 
-> **Never used a terminal?** Follow **[INSTALL.md](INSTALL.md)** — a step-by-step guide from "I just got a laptop" to "I have an Excel". Allow about 45 minutes the first time.
->
-> A double-click launcher for Mac and Windows is planned (see `context/plans/`).
+> **Never used a terminal?** Follow **[INSTALL.md](INSTALL.md)**: download the ZIP, double-click the start file, paste your key, drop your files.
 
 ## What it does
 
@@ -51,61 +49,46 @@ general fallback model flags those drug/condition tokens as MISC and would
 over-redact them, and it also catches some first names the PII model misses.
 Neither model is a complete de-identifier. Spot-check the first batch.
 
-## Two ways to run
+## Ways to run
 
 ### Requirements
 
-- **Docker Desktop** (Mac / Windows) or **Docker Engine** (Linux). Free download at <https://www.docker.com/products/docker-desktop/>.
 - An **API key** from OpenAI or Anthropic. About $0.01 per recording.
-- **~8 GB free disk space** (most of it is the Whisper voice-recognition model).
-- For the CLI: **Python 3.11+** and `uv` (or `pip`).
+- **About 10 GB free disk space** (most of it is the Whisper speech model).
+- For the CLI: `uv`. It installs Python 3.12 (`.python-version`) and the exact versions in `uv.lock`.
 
-Both ways use the same folder layout next to the project. Create them once:
+### Web app (start file, recommended)
 
-```bash
-mkdir -p data/recordings output
-```
+Double-click `Start Phenoscribe.bat` (Windows) or `Start Phenoscribe.command` (Mac; `sh` on Linux).
+The script installs `uv` if it is missing, runs `phenoscribe setup`, and opens the page on
+<http://127.0.0.1:7860>. Drop the files on the page and click **Start**.
 
-| Folder | What goes in it | Who writes it |
-|---|---|---|
-| `data/recordings/` | **Your audio files.** Drop `.mp3`, `.wav`, `.m4a`, `.ogg` (or pre-made `.txt` transcripts) here. | You |
-| `output/` | **The results.** Excel at `output/results.xlsx`, transcripts at `output/transcripts/<name>.txt`, pseudonymised text at `output/pseudo/<name>.txt`, and `output/filename_mapping.json` mapping each hashed `pt-…` id back to your original filename. | Phenoscribe |
+Each run writes a new `results_YYYY-MM-DD_HHMM.xlsx` to `Documents/Phenoscribe`
+(`PHENOSCRIBE_OUTPUT_DIR`), with `transcripts/`, `pseudo/`, `phenoscribe.log`, and
+`filename_mapping.json` (each hashed `pt-…` ID back to its filename). A file named only by a
+number (`467.mp3`) gets the ID `MGA.467`.
 
-The Whisper transcription model and the HPO ontology are baked into the Docker image at build time, so the first run doesn't trigger a multi-GB download mid-transcription.
+`phenoscribe setup` downloads the pinned `hp.obo`, builds the ChromaDB index, and
+pre-downloads the Whisper and PII models. It skips each part that is present, so it is safe
+at every start. The transcription backend `auto` picks mlx on Apple Silicon (when `ffmpeg`
+exists), else faster-whisper.
 
-### Web app (Docker — recommended for non-developers)
-
-First time only — build the image (20–30 min, mostly downloading Whisper + Torch):
-
-```bash
-docker build -t phenoscribe .
-```
-
-Every time — start the app:
+### Docker (Linux servers)
 
 ```bash
+docker build -t phenoscribe .     # runs phenoscribe setup inside the image
 docker run --rm -p 127.0.0.1:7860:7860 \
-  -e PHENOSCRIBE_INPUT_DIR=/data/recordings \
   -e PHENOSCRIBE_OUTPUT_DIR=/data/output \
-  -v "$(pwd)/data/recordings:/data/recordings:ro" \
   -v "$(pwd)/output:/data/output" \
   phenoscribe
 ```
 
-The `127.0.0.1:` prefix on `-p` keeps the published port reachable only from this machine — nobody else on your network can browse to it.
-
-Then:
-
-1. Open <http://localhost:7860> in your browser.
-2. The files you put in `data/recordings/` show up as checkboxes. Tick the ones you want to process. (Added new files after the app started? Click **Refresh file list**.)
-3. Pick your LLM provider, paste your API key in the password box, choose the language.
-4. Click **Run**. Progress bar shows which file is being processed.
-5. When it finishes, open `output/results.xlsx` on your machine. There's also a download button in the browser. `output/filename_mapping.json` tells you which original filename each `pt-…` id came from.
+The `127.0.0.1:` prefix on `-p` keeps the published port reachable only from this machine.
 
 ### CLI
 
 ```bash
-uv pip install -e .
+uv sync --frozen && uv run phenoscribe setup
 
 # Process every audio file in data/recordings/, write to output/results.xlsx
 phenoscribe process data/recordings/ --output output/results.xlsx
