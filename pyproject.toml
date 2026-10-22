@@ -26,12 +26,16 @@ dependencies = [
     "pyyaml>=6.0,<7",
     "requests>=2.31.0,<3",
     "sentencepiece>=0.2.0,<1",
-    "pyannote.audio>=3.1.0,<4",
     "hpo-toolkit>=0.5,<1.0",
     "matplotlib>=3.7,<4",
     "gradio>=5,<6",
     "mlx-whisper>=0.4,<1 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
+
+[project.optional-dependencies]
+# Speaker diarization is off by default and needs a Hugging Face token. It is
+# large, so it stays out of the default install: `uv sync --extra diarize`.
+diarize = ["pyannote.audio>=3.1.0,<4"]
 
 [dependency-groups]
 dev = ["pytest>=8,<10"]

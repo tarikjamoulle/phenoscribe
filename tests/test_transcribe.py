@@ -97,3 +97,13 @@ def test_auto_dispatches_to_the_resolved_backend(tmp_path, monkeypatch):
     ) as fake_fw:
         assert transcribe(str(audio), backend="auto") == "bonjour"
     fake_fw.assert_called_once()
+
+
+def test_diarization_without_the_extra_says_how_to_install(monkeypatch, tmp_path):
+    from phenoscribe import diarize
+
+    monkeypatch.setenv("HF_TOKEN", "hf_test")
+    monkeypatch.setitem(sys.modules, "pyannote.audio", None)
+    monkeypatch.setattr(diarize, "_pipeline_cache", None)
+    with pytest.raises(ImportError, match="uv sync --extra diarize"):
+        diarize.diarize(str(tmp_path / "a.mp3"))
