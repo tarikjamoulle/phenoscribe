@@ -88,8 +88,28 @@ def test_a_saved_key_shows_the_short_line(monkeypatch):
 
 
 def test_add_files_empties_the_drop_box_and_skips_repeats():
-    box, files = gui.add_files(["/t/a.mp3", "/t/b.txt"], ["/t/a.mp3"])
+    box, files, added = gui.add_files(["/t/a.mp3", "/t/b.txt"], ["/t/a.mp3"])
     assert box is None and files == ["/t/a.mp3", "/t/b.txt"]
+    assert added == ["/t/b.txt"]
+
+
+def test_count_line_names_added_and_skipped():
+    plans = [
+        FilePlan("/t/1.mp3", "1.mp3", "MGA.1", "transcribe"),
+        FilePlan("/t/x.pdf", "x.pdf", "pt-1", "skip", "Not an audio file or transcript"),
+    ]
+    assert "1 file added · 1 skipped" in gui.count_line(plans)
+    assert "2 files added" in gui.count_line(plans[:1] * 2)
+
+
+def test_only_the_new_rows_flash():
+    plans = [
+        FilePlan("/t/1.mp3", "1.mp3", "MGA.1", "transcribe"),
+        FilePlan("/t/2.mp3", "2.mp3", "MGA.2", "transcribe"),
+    ]
+    page = gui.plan_html(plans, fresh=["/t/2.mp3"])
+    assert page.count('class="ps-row new"') == 1
+    assert gui.plan_html(plans).count(" new") == 0
 
 
 def test_plan_html_has_one_row_per_file_and_escapes_names():
@@ -111,13 +131,19 @@ def test_selection_view_enables_start_only_with_files_and_a_key(monkeypatch, tmp
         gui, "file_plan",
         lambda files, language: [FilePlan(f, f, "MGA.1", "transcribe") for f in files],
     )
-    *_, start, _ = gui.selection_view(["101.mp3", "102.mp3"], "fr", "")
+    files = ["101.mp3", "102.mp3"]
+    start = gui.selection_view(files, [], "fr", "")[3]
     assert start["interactive"] is False
-    _, language, reuse, start, clear = gui.selection_view(["101.mp3", "102.mp3"], "fr", "sk-x")
+    _, language, reuse, start, clear, drop, hint, fresh = gui.selection_view(files, files, "fr", "sk-x")
     assert start["interactive"] is True and start["value"] == "Start coding 2 files"
     assert language["visible"] is True and reuse["visible"] is False and clear["visible"] is True
-    *_, start, _ = gui.selection_view([], "fr", "sk-x")
+    # With files in the list, the drop box shrinks to a slim bar and the hint goes.
+    assert drop["height"] == 56 and "ps-slim" in drop["elem_classes"]
+    assert hint["visible"] is False
+    assert fresh == []  # the flash plays once
+    _, _, _, start, _, drop, hint, _ = gui.selection_view([], [], "fr", "sk-x")
     assert start["interactive"] is False
+    assert drop["height"] == 150 and "ps-slim" not in drop["elem_classes"] and hint["visible"] is True
 
 
 def _batch():
@@ -170,3 +196,26 @@ def test_status_has_one_plain_line_per_file():
 
 def test_the_page_builds():
     assert gui.build_app() is not None
+
+
+def test_working_panel_names_the_files_and_the_wait():
+    plans = [
+        FilePlan("/t/1.mp3", "1.mp3", "MGA.1", "transcribe"),
+        FilePlan("/t/2.txt", "2.txt", "MGA.2", "transcript"),
+        FilePlan("/t/x.pdf", "x.pdf", "pt-1", "skip", "Not an audio file or transcript"),
+    ]
+    page = gui.working_html(plans)
+    assert "Coding 2 files…" in page
+    assert "1 recording to transcribe" in page
+    assert "Keep this page and the Phenoscribe window open" in page
+    assert "to transcribe" not in gui.working_html(plans[1:2])
+
+
+def test_begin_run_locks_start_and_shows_the_panel(monkeypatch):
+    monkeypatch.setattr(
+        gui, "file_plan", lambda files, language: [FilePlan(f, f, "MGA.1", "transcribe") for f in files]
+    )
+    start, working, results = gui.begin_run(["1.mp3"], "fr")
+    assert start["interactive"] is False and start["value"] == "Coding…"
+    assert working["visible"] is True and "Coding 1 file…" in working["value"]
+    assert results["visible"] is False
