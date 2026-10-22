@@ -111,7 +111,8 @@ def test_progress_names_the_file_and_the_step(tmp_path, fake_pipeline):
         tmp_path,
         on_progress=lambda fraction, message: messages.append((fraction, message)),
     )
-    assert (0.5, "2/2 · 467.mp3 · removing personal details") in messages
+    # File 2 of 2, past transcription: (1 + 0.6) / 2.
+    assert (0.8, "2/2 · 467.mp3 · removing personal details") in messages
     assert messages[-1] == (1.0, "Finished")
 
 

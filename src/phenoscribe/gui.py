@@ -128,11 +128,11 @@ CSS = """
 :root { --ps-card: #FFFFFF; --ps-line: #E1E4DF; --ps-soft: #F0F2EE; --ps-muted: #5A6560;
         --ps-ink2: #3E4A45; --ps-accent: #1F5C55; --ps-ok: #1F7A4D; --ps-warn-bg: #FBF5EC;
         --ps-warn: #6B4A12; --ps-warn-tag: #F3E6CF; --ps-bad-bg: #FBF1EF; --ps-bad: #8A2E20;
-        --ps-tag-audio: #E7EEF0; --ps-tag-text: #EEEBE3; }
+        --ps-tag-audio: #E7EEF0; --ps-tag-text: #EEEBE3; --ps-new: #D5E5E2; }
 .dark { --ps-card: #1A201E; --ps-line: #2C3632; --ps-soft: #222A27; --ps-muted: #A3ADA8;
         --ps-ink2: #C4CCC8; --ps-accent: #7FC3B8; --ps-ok: #6FCF97; --ps-warn-bg: #2A2416;
         --ps-warn: #E9C98B; --ps-warn-tag: #3D3420; --ps-bad-bg: #2C1B18; --ps-bad: #F0A595;
-        --ps-tag-audio: #24323A; --ps-tag-text: #34302A; }
+        --ps-tag-audio: #24323A; --ps-tag-text: #34302A; --ps-new: #1F4A45; }
 .gradio-container { max-width: 880px !important; margin: 0 auto !important; }
 footer { display: none !important; }
 .ps-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
@@ -169,6 +169,19 @@ footer { display: none !important; }
 .ps-tag.text { background: var(--ps-tag-text); }
 .ps-tag.skip { background: var(--ps-warn-tag); }
 .ps-what { flex: 1 1 260px; }
+.ps-count { font-size: 15px; font-weight: 600; margin: 4px 2px 10px; }
+@keyframes ps-flash { from { background: var(--ps-new); } to { background: transparent; } }
+.ps-row.new { animation: ps-flash 1.6s ease-out; }
+.ps-working { --font-mono: 'Instrument Sans', system-ui, sans-serif; }
+.ps-working .pending { opacity: 1 !important; }
+.ps-working .translucent { background: transparent !important; }
+.ps-working .progress-bar-wrap { background: var(--ps-soft) !important; border: 1px solid var(--ps-line) !important;
+                                 border-radius: 999px !important; height: 10px !important; }
+.ps-working .progress-bar { background: var(--ps-accent) !important; border-radius: 999px !important; }
+.ps-slim .wrap { font-size: 0 !important; flex-direction: row !important; min-height: 0 !important; }
+.ps-slim .wrap > * { display: none !important; }
+.ps-slim .wrap::after { content: "+ Drop more files here, or click to add"; font-size: 14px;
+                        color: var(--ps-ink2); }
 .ps-start button { min-height: 52px; font-size: 16px !important; }
 .ps-table, .ps-table * { font-family: 'Instrument Sans', system-ui, sans-serif !important; }
 .ps-h1 { font-family: 'Instrument Serif', Georgia, serif; font-size: 40px; line-height: 1.1; margin: 8px 0 0; }
@@ -267,10 +280,15 @@ def on_key_entered(api_key: str, remember: bool):
     return provider, key_summary(provider, how), "", saved, *_key_view(True)
 
 
-def add_files(new, current: list[str]) -> tuple[None, list[str]]:
-    """Add uploads to the selection. The drop box empties; the plan list shows them."""
+def add_files(new, current: list[str]) -> tuple[None, list[str], list[str]]:
+    """Add uploads to the selection. Returns (empty drop box, selection, new paths).
+
+    The drop box empties at once; the plan list shows the files, with the new
+    rows highlighted, so the user sees where they went.
+    """
     new = [new] if isinstance(new, str) else (new or [])
-    return None, current + [p for p in new if p not in current]
+    added = [p for p in new if p not in current]
+    return None, current + added, added
 
 
 def file_plan(files: list[str], language: str) -> list[FilePlan]:
@@ -279,15 +297,27 @@ def file_plan(files: list[str], language: str) -> list[FilePlan]:
     return plan_batch(files, config, OUTPUT_DIR)
 
 
-def plan_html(plans: list[FilePlan]) -> str:
+def count_line(plans: list[FilePlan]) -> str:
+    """'✓ 3 files added · 1 skipped' above the list."""
+    ready = sum(1 for p in plans if p.action != "skip")
+    skipped = len(plans) - ready
+    text = f"{ready} file{'s' if ready != 1 else ''} added"
+    if skipped:
+        text += f" · {skipped} skipped"
+    return f'<div class="ps-count"><span class="ps-ok">✓</span> {text}</div>'
+
+
+def plan_html(plans: list[FilePlan], fresh: list[str] = ()) -> str:
+    """The file list. Rows for the paths in ``fresh`` (just added) flash once."""
     if not plans:
         return ""
     rows = []
     for p in plans:
         name = html.escape(p.name)
+        new = " new" if p.path in fresh else ""
         if p.action == "skip":
             rows.append(
-                f'<div class="ps-row skip"><span class="ps-file">{name}</span>'
+                f'<div class="ps-row skip{new}"><span class="ps-file">{name}</span>'
                 f'<span class="ps-tag skip">Skipped</span>'
                 f'<span class="ps-what">{html.escape(p.note)}</span></div>'
             )
@@ -295,14 +325,15 @@ def plan_html(plans: list[FilePlan]) -> str:
         kind, what = ACTION_TEXT[p.action]
         tag = "ps-tag text" if kind == "Transcript" else "ps-tag"
         rows.append(
-            f'<div class="ps-row"><span class="ps-file">{name}</span>'
+            f'<div class="ps-row{new}"><span class="ps-file">{name}</span>'
             f'<span class="{tag}">{kind}</span><span class="ps-what">{what}</span></div>'
         )
-    return f'<div class="ps-list">{"".join(rows)}</div>'
+    return f'{count_line(plans)}<div class="ps-list">{"".join(rows)}</div>'
 
 
-def selection_view(files: list[str], language: str, api_key: str):
-    """Everything that follows the file selection: list, language, reuse, Start."""
+def selection_view(files: list[str], fresh: list[str], language: str, api_key: str):
+    """Everything that follows the file selection: list, language, reuse, Start,
+    and the drop box, which shrinks to a slim bar once files are in the list."""
     plans = file_plan(files, language)
     runnable = [p for p in plans if p.action != "skip"]
     has_audio = any(p.action in ("transcribe", "reuse") for p in plans)
@@ -310,12 +341,16 @@ def selection_view(files: list[str], language: str, api_key: str):
     have_key = bool(api_key.strip()) or any(env_key_for(p) for p in PROVIDER_ENV_VAR)
     n = len(runnable)
     label = f"Start coding {n} file{'s' if n != 1 else ''}" if n else "Start coding"
+    drop_classes = ["ps-drop", "ps-slim"] if files else ["ps-drop"]
     return (
-        plan_html(plans),
+        plan_html(plans, fresh),
         gr.update(visible=has_audio),
         gr.update(choices=reusable, value=[], visible=bool(reusable)),
         gr.update(value=label, interactive=bool(n) and have_key),
         gr.update(visible=bool(files)),
+        gr.update(height=56 if files else 150, elem_classes=drop_classes),
+        gr.update(visible=not files),
+        [],
     )
 
 
@@ -377,6 +412,35 @@ def status_html(batch: BatchResult) -> str:
     return f'<div class="ps-list">{"".join(rows)}</div>'
 
 
+def working_html(plans: list[FilePlan]) -> str:
+    """What the page shows while a run works, above Gradio's progress bar."""
+    runnable = [p for p in plans if p.action != "skip"]
+    audio = sum(1 for p in runnable if p.action == "transcribe")
+    n = len(runnable)
+    lines = [f'<div class="ps-step">Coding {n} file{"s" if n != 1 else ""}…</div>']
+    if audio:
+        lines.append(
+            f'<div class="ps-note">{audio} recording{"s" if audio != 1 else ""} to transcribe. '
+            "Transcription takes about 10 minutes for each 20 minutes of audio, "
+            "longer without a GPU.</div>"
+        )
+    lines.append(
+        '<div class="ps-note">Keep this page and the Phenoscribe window open. '
+        "The results appear here when the run ends.</div>"
+    )
+    return "".join(lines)
+
+
+def begin_run(files: list[str], language: str):
+    """Before the run: lock Start and show the working panel (the progress bar goes there)."""
+    plans = file_plan(files, language)
+    return (
+        gr.update(interactive=False, value="Coding…"),
+        gr.update(value=working_html(plans), visible=True),
+        gr.update(visible=False),
+    )
+
+
 def run_pipeline(
     files: list[str],
     language: str,
@@ -405,6 +469,7 @@ def run_pipeline(
     else:
         saved = f"No Excel file: every file failed. Details are in {LOG_PATH}."
     return (
+        gr.update(visible=False),
         gr.update(visible=True),
         summary_html(batch, rows, datetime.now()),
         status_html(batch),
@@ -435,6 +500,7 @@ def build_app() -> gr.Blocks:
         )
 
         files = gr.State([])
+        fresh = gr.State([])
         rows = gr.State([])
         saved_key = gr.BrowserState("", **KEY_STORAGE)
 
@@ -467,7 +533,7 @@ def build_app() -> gr.Blocks:
             with gr.Row():
                 folder = gr.UploadButton("Choose a folder", file_count="directory", size="sm", scale=0, min_width=160)
                 clear = gr.Button("Clear the list", size="sm", scale=0, min_width=140, visible=False)
-            gr.HTML(
+            hint = gr.HTML(
                 '<div class="ps-note">Audio: .mp3 .wav .m4a .ogg .flac · Transcripts: .txt · '
                 "A saved transcript of the same audio is reused.</div>"
             )
@@ -485,6 +551,9 @@ def build_app() -> gr.Blocks:
             "Names and other personal details are removed on this computer before the text "
             "goes to the AI provider. The removal can miss details.</div>"
         )
+
+        # while a run works: Gradio draws the progress bar on this panel
+        working = gr.HTML(visible=False, elem_classes=["ps-card", "ps-working"], min_height=140)
 
         # results
         with gr.Column(visible=False) as results:
@@ -517,24 +586,28 @@ def build_app() -> gr.Blocks:
             outputs=[api_key, saved_key, key_entry, key_line],
         )
 
-        view_outputs = [plan, language, retranscribe, start, clear]
-        drop.upload(fn=add_files, inputs=[drop, files], outputs=[drop, files]).then(
-            fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs
+        view_inputs = [files, fresh, language, api_key]
+        view_outputs = [plan, language, retranscribe, start, clear, drop, hint, fresh]
+        drop.upload(fn=add_files, inputs=[drop, files], outputs=[drop, files, fresh]).then(
+            fn=selection_view, inputs=view_inputs, outputs=view_outputs
         )
-        folder.upload(fn=lambda new, cur: add_files(new, cur)[1], inputs=[folder, files], outputs=files).then(
-            fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs
-        )
+        folder.upload(
+            fn=lambda new, cur: add_files(new, cur)[1:], inputs=[folder, files], outputs=[files, fresh]
+        ).then(fn=selection_view, inputs=view_inputs, outputs=view_outputs)
         clear.click(fn=lambda: [], outputs=files).then(
-            fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs
+            fn=selection_view, inputs=view_inputs, outputs=view_outputs
         )
         for trigger in (language.change, key_text.change):
-            trigger(fn=selection_view, inputs=[files, language, api_key], outputs=view_outputs)
+            trigger(fn=selection_view, inputs=view_inputs, outputs=view_outputs)
 
         start.click(
+            fn=begin_run, inputs=[files, language], outputs=[start, working, results],
+        ).then(
             fn=run_pipeline,
             inputs=[files, language, provider, api_key, retranscribe],
-            outputs=[results, summary, status, rows, table, show, excel, saved],
-        )
+            outputs=[working, results, summary, status, rows, table, show, excel, saved],
+            show_progress_on=[working],
+        ).then(fn=selection_view, inputs=view_inputs, outputs=view_outputs)
         show.change(fn=filter_rows, inputs=[rows, show], outputs=table)
 
     return app

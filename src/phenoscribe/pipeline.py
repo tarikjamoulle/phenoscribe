@@ -375,6 +375,19 @@ def record_filename_mapping(out_dir: Path, mapping: dict[str, str]) -> None:
     path.write_text(json.dumps(existing, indent=2, sort_keys=True), encoding="utf-8")
 
 
+# Share of one file's time spent before each step starts. Whisper takes most
+# of it, so the bar moves on after transcription instead of sitting at 0 %.
+STEP_PROGRESS = {
+    "transcribing": 0.0,
+    "reading the transcript": 0.0,
+    "reading the saved transcript": 0.0,
+    "removing personal details": 0.6,
+    "finding symptoms": 0.7,
+    "matching HPO codes": 0.8,
+    "writing the Excel file": 0.95,
+}
+
+
 @dataclass
 class FileResult:
     filename: str
@@ -421,7 +434,8 @@ def run_batch(
         results.append(result)
 
         def on_step(label: str, i: int = i, name: str = name) -> None:
-            progress(i / total, f"{i + 1}/{total} · {name} · {label}")
+            done = (i + STEP_PROGRESS.get(label, 0.0)) / total
+            progress(done, f"{i + 1}/{total} · {name} · {label}")
 
         try:
             matches = process_recording(
