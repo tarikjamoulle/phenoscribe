@@ -5,6 +5,8 @@ RELATED or BROAD synonym was embedded the same as an EXACT one. The parser now
 keeps the scope and build_enriched_text embeds only EXACT and NARROW by default.
 """
 
+from pathlib import Path
+
 from phenoscribe.hpo_index import (
     EMBEDDED_SCOPES,
     build_enriched_text,
@@ -49,7 +51,7 @@ def test_parse_synonym_line_with_scope_and_type(tmp_path):
 
 
 def test_real_insomnia_synonyms_carry_scope():
-    obo = "/Users/tarikjamoulle/projects/hpo_identifier/data/hpo/hp.obo"
+    obo = str(Path(__file__).resolve().parent.parent / "data" / "hpo" / "hp.obo")
     terms = parse_obo(obo)
     insomnia = next(t for t in terms if t["id"] == "HP:0100785")
     assert insomnia["synonyms"], "Insomnia should have synonyms"

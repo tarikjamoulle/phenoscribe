@@ -12,8 +12,18 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Marc runs the app on Windows, other users on Mac or Linux. Each OS gets
+    # different wheels of the same locked packages, so a bug can show on one
+    # OS only. Install and test on all three.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +33,8 @@ jobs:
           enable-cache: true
 
       - name: Set up Python
-        run: uv python install 3.11
+        # Reads .python-version (3.12).
+        run: uv python install
 
       - name: Install project (locked)
         # --frozen fails if uv.lock and pyproject.toml disagree, so a lockfile
@@ -64,6 +75,12 @@ jobs:
           print(f"HPO release guard OK: {release}")
           PY
 
+      - name: First-run setup (no models)
+        # The same command the start scripts and the Dockerfile run. Downloads
+        # the pinned hp.obo and builds the ChromaDB index. It runs before
+        # the tests, because the data-backed tests read the real hp.obo.
+        run: uv run phenoscribe setup --no-models
+
       - name: Run tests
         # The full suite needs gitignored fixtures (the real hp.obo, models,
         # benchmark corpora) and network model downloads, none of which exist on
@@ -71,4 +88,10 @@ jobs:
         # network-marked ones; data-backed tests run locally where data/ exists.
         env:
           PYTHONPATH: ${{ github.workspace }}/src
+          # tests/conftest.py sends it with hpo-toolkit's GitHub API call, so
+          # shared macOS runners do not hit the anonymous rate limit (403).
+          GITHUB_TOKEN: ${{ github.token }}
         run: uv run python -m pytest -q -m "not network"
+
+      - name: Smoke run (LLM stubbed)
+        run: uv run python scripts/smoke_run.py

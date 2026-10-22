@@ -1,6 +1,7 @@
 """Transcription module — faster-whisper, mlx-whisper, or passthrough for text."""
 
 import logging
+import shutil
 import time
 from pathlib import Path
 
@@ -23,6 +24,42 @@ _MLX_MODEL_ALIASES = {
 _faster_whisper_cache: dict[str, object] = {}
 
 
+def resolve_backend(backend: str) -> str:
+    """Turn "auto" into the backend this machine can run.
+
+    "auto" is mlx when mlx-whisper imports (Apple Silicon only) and the
+    `ffmpeg` command exists, because mlx-whisper decodes audio with it.
+    Otherwise faster-whisper, which decodes with the PyAV wheel and needs no
+    system program. Any other value is returned unchanged.
+    """
+    if backend != "auto":
+        return backend
+    try:
+        import mlx_whisper  # noqa: F401
+    except ImportError:
+        return "faster-whisper"
+    return "mlx" if shutil.which("ffmpeg") else "faster-whisper"
+
+
+def download_speech_model(
+    backend: str, model_name: str, local_files_only: bool = False
+) -> str:
+    """Put the Whisper model for ``backend`` in the Hugging Face cache. Returns its folder.
+
+    With ``local_files_only=True`` nothing downloads, and a model that is not
+    cached yet raises FileNotFoundError. `phenoscribe setup` uses that as its
+    "already present" check.
+    """
+    if resolve_backend(backend) == "mlx":
+        from huggingface_hub import snapshot_download
+
+        repo = _MLX_MODEL_ALIASES.get(model_name, model_name)
+        return snapshot_download(repo, local_files_only=local_files_only)
+    from faster_whisper import download_model
+
+    return download_model(model_name, local_files_only=local_files_only)
+
+
 def transcribe(
     input_path: str,
     *,
@@ -35,7 +72,8 @@ def transcribe(
 
     Args:
         input_path: Path to audio file (.wav, .mp3, .m4a, .ogg, .flac) or text file (.txt).
-        backend: "faster-whisper" (CPU/CUDA) or "mlx" (Apple Silicon Metal).
+        backend: "faster-whisper" (CPU/CUDA), "mlx" (Apple Silicon Metal), or
+            "auto" (see resolve_backend).
         model_name: Whisper model name. For mlx, also accepts an HF repo path directly;
             bare names like "large-v3" are mapped to the matching mlx-community repo.
         language: Audio language code.
@@ -57,12 +95,14 @@ def transcribe(
             f"Supported: {AUDIO_EXTENSIONS | TEXT_EXTENSIONS}"
         )
 
+    backend = resolve_backend(backend)
     if backend == "mlx":
         return _transcribe_mlx(path, model_name, language)
     if backend == "faster-whisper":
         return _transcribe_faster_whisper(path, model_name, language, device)
     raise ValueError(
-        f"Unknown transcription backend '{backend}'. Use 'faster-whisper' or 'mlx'."
+        f"Unknown transcription backend '{backend}'. "
+        "Use 'auto', 'faster-whisper' or 'mlx'."
     )
 
 

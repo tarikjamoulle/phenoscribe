@@ -6,7 +6,7 @@ llm:
   ollama_base_url: "http://localhost:11434"  # only used if provider is ollama
 
 transcription:
-  backend: "mlx"              # faster-whisper | mlx (Apple Silicon GPU, ~4.5x faster on M1 Pro 16-core)
+  backend: "auto"             # auto | faster-whisper | mlx (Apple Silicon GPU, ~4.5x faster on M1 Pro 16-core). auto = mlx when it is installed and ffmpeg exists, else faster-whisper
   model: "large-v3"           # faster-whisper model name, or mlx HF repo. NOTE: distil-* variants are English-only — do not use for French audio
   language: "fr"              # audio language
   device: "cpu"               # cpu | cuda | auto (only used by faster-whisper)
@@ -28,7 +28,7 @@ output:
   propagate_ancestors: true   # true-path rule (ON by default): add an "Ancestor Closure" sheet with the is_a ancestor expansion for downstream tools (Exomiser, LIRICAL, Phen2Gene, Phenomizer). Set false to suppress.
 
 hpo:
-  release: "hp/releases/2026-02-16"  # pinned HPO release; must match the obo data-version: header and the Dockerfile HPO_VERSION tag (v2026-02-16)
+  release: "hp/releases/2026-02-16"  # pinned HPO release; must match the obo data-version: header (phenoscribe setup downloads the matching v2026-02-16 tag)
 
 paths:
   chroma_db: "data/chroma_db"

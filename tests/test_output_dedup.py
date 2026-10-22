@@ -7,6 +7,8 @@ keep the longest. The ancestor closure is built from the deduped present set,
 so no duplicate leaf can reach it.
 """
 
+from pathlib import Path
+
 import openpyxl
 
 from phenoscribe.output import CLOSURE_SHEET, dedup_by_code, write_excel
@@ -16,7 +18,7 @@ from phenoscribe.output import CLOSURE_SHEET, dedup_by_code, write_excel
 EPISODIC_ATAXIA = "HP:0002131"
 ATAXIA = "HP:0001251"
 PHENOTYPIC_ABNORMALITY = "HP:0000118"
-OBO_PATH = "/Users/tarikjamoulle/projects/hpo_identifier/data/hpo/hp.obo"
+OBO_PATH = str(Path(__file__).resolve().parent.parent / "data" / "hpo" / "hp.obo")
 
 
 def _restated_matches():

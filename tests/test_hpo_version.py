@@ -21,7 +21,7 @@ from phenoscribe.output import write_excel
 from phenoscribe.validate import load_codes_from_excel
 
 # The real release shipped in the repo.
-REAL_OBO = "/Users/tarikjamoulle/projects/hpo_identifier/data/hpo/hp.obo"
+REAL_OBO = str(Path(__file__).resolve().parent.parent / "data" / "hpo" / "hp.obo")
 PINNED_RELEASE = "hp/releases/2026-02-16"
 
 # A tiny obo with a known obsolete-with-replaced_by term, an obsolete

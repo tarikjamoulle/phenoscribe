@@ -15,7 +15,7 @@ class LLMConfig:
 
 @dataclass
 class TranscriptionConfig:
-    backend: str = "faster-whisper"  # faster-whisper | mlx (Apple Silicon)
+    backend: str = "faster-whisper"  # auto | faster-whisper | mlx (Apple Silicon)
     model: str = "large-v3"
     language: str = "fr"
     device: str = "cpu"  # only used by faster-whisper
@@ -50,7 +50,7 @@ class OutputConfig:
 @dataclass
 class HpoConfig:
     # The one pinned HPO release. Must match the data-version: header of the
-    # on-disk obo and the tag the Dockerfile downloads (v2026-02-16).
+    # on-disk obo and the tag `phenoscribe setup` downloads (v2026-02-16).
     release: str = "hp/releases/2026-02-16"
 
 
@@ -101,7 +101,7 @@ def load_config(path: str = "config.yaml") -> Config:
     if not config_path.exists():
         return Config()
 
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
 
     return Config(

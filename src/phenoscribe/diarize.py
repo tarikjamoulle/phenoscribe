@@ -31,7 +31,13 @@ def diarize(audio_path: str, num_speakers: int = 2) -> list[dict]:
         )
 
     if _pipeline_cache is None:
-        from pyannote.audio import Pipeline
+        try:
+            from pyannote.audio import Pipeline
+        except ImportError as e:
+            raise ImportError(
+                "Speaker diarization needs the optional 'diarize' extra. "
+                "Install it with `uv sync --extra diarize`."
+            ) from e
 
         logger.info("Loading pyannote speaker-diarization-3.1 pipeline...")
         _pipeline_cache = Pipeline.from_pretrained(

@@ -1,244 +1,156 @@
-# Installing Phenoscribe — a step-by-step guide
+# Install Phenoscribe
 
-This guide is for people who have never used a command line. If you can follow a recipe, you can install Phenoscribe. Allow about 45 minutes the first time — most of it is waiting for downloads.
+This page is for people who do not use a command line. You type no commands.
+The first start takes 10 to 40 minutes, because the app downloads and prepares its parts
+one time. A slow laptop takes longer.
 
-> A double-click launcher for Mac and Windows is on the roadmap. Until then, you'll need to type a few commands. The steps below tell you exactly what to type.
+## What you need
 
-## 1. What you need
+- A laptop with Windows 10/11 (64-bit, Intel or AMD), or a Mac with Apple Silicon (M1 or
+  newer). An Intel Mac does not work: the app needs packages that no longer exist for it.
+  To check a Mac, open the Apple menu → **About This Mac**: the **Chip** line names M1, M2…
+- About 10 GB of free disk space.
+- An internet connection.
+- An API key from OpenAI or Anthropic. The AI step uses it, at about $0.01 for each recording.
+  See [Get an API key](#get-an-api-key).
 
-- A laptop running **Mac**, **Windows 10/11**, or **Linux**.
-- About **10 GB of free disk space** for the Docker image (it bundles the Whisper voice-recognition model and the HPO ontology so the first run doesn't need to download them).
-- An **internet connection** for the first run (later runs can be offline for transcription; the AI step still needs internet).
-- An **API key** from OpenAI or Anthropic. This is what pays for the AI part. About $0.01 per recording. (See step 3.)
+## 1. Download and extract
 
-## 2. Install Docker Desktop
+1. Go to <https://github.com/tarikjamoulle/phenoscribe/releases/latest>.
+2. Under **Assets**, click `Phenoscribe.zip`. The file goes to your **Downloads** folder.
+3. Extract the ZIP. The ZIP holds one folder, `Phenoscribe`.
 
-Docker is the program that runs Phenoscribe inside a sealed box on your machine, so it doesn't interfere with anything else you have installed.
+**Windows**
 
-### Mac
+1. Open **Downloads** in File Explorer.
+2. Right-click `Phenoscribe.zip`, then click **Extract All…**.
+3. In the box "Files will be extracted to this folder", replace the text with `C:\`.
+   Click **Extract**. You now have the folder `C:\Phenoscribe`.
+   A short path is necessary: a long path can go past the Windows path-length limit.
+4. Open `C:\Phenoscribe`.
 
-1. Go to <https://www.docker.com/products/docker-desktop/> and click **Download for Mac**. Pick the chip type — Apple Silicon (M1/M2/M3/M4) or Intel.
-2. Open the downloaded `.dmg` file. Drag **Docker** into your **Applications** folder.
-3. Open **Applications → Docker**. The first time, it will ask for your password and walk through a brief setup. Accept the defaults.
-4. Wait until the Docker icon in the top menu bar stops animating — it should say "Docker Desktop is running".
+Do not double-click the start file in the ZIP itself (File Explorer shows the ZIP like a
+folder). The start file must be in the extracted folder.
 
-### Windows
+**Mac**
 
-1. Go to <https://www.docker.com/products/docker-desktop/> and click **Download for Windows**.
-2. Run the installer. When asked, leave both checkboxes ticked ("Use WSL 2 instead of Hyper-V" and "Add shortcut to desktop").
-3. Restart your computer when prompted.
-4. Open **Docker Desktop** from the Start Menu. Accept the agreement. Wait until the whale icon in the bottom-right tray stops animating.
+1. Open **Downloads** in Finder.
+2. If you see a `Phenoscribe` folder, Safari extracted the ZIP for you. If you see only
+   `Phenoscribe.zip`, double-click it. The `Phenoscribe` folder appears next to it.
+3. Drag the `Phenoscribe` folder to your **Documents** folder, and open it.
 
-### Linux
+## 2. Double-click the start file
 
-Follow the official guide for your distribution: <https://docs.docker.com/engine/install/>. Make sure you can run `docker` without `sudo` (the post-install steps cover this).
+- Windows: in `C:\Phenoscribe`, double-click `Start Phenoscribe.bat`.
+- Mac: in `Documents/Phenoscribe`, double-click `Start Phenoscribe.command`.
 
-## 3. Get an API key
+Tip: make a shortcut on the desktop. On Windows, right-click the file, then **Send to → Desktop
+(create shortcut)** (on Windows 11, click **Show more options** first). On a Mac, hold **Option + Cmd** and drag
+the file to the desktop.
 
-You only need **one** of OpenAI or Anthropic. Pick whichever you have an account with, or set up the cheaper one.
+A window with text opens. The first time, it downloads Python, the packages, the
+speech model (3 GB) and the HPO ontology, and builds the search index. Each later start
+skips this and opens the page in about 30 seconds. Keep this window open while you use the
+app. Close it to stop the app.
 
-### Option A: OpenAI
+The first time, your computer can show a warning, because the start file is not signed:
 
-1. Go to <https://platform.openai.com/signup> and create an account if you don't have one.
-2. Add a payment method at <https://platform.openai.com/settings/organization/billing/overview>. **You also need to pre-pay some credit** ($5 is plenty for testing) — OpenAI no longer bills after usage.
-3. Create an API key at <https://platform.openai.com/api-keys> → **+ Create new secret key**. Give it a name like "phenoscribe", click Create, and **copy the key now** (you can't see it again later). It starts with `sk-…`.
+- Windows SmartScreen ("Windows protected your PC"): click **More info**, then **Run anyway**.
+- Mac ("cannot be opened"): open **System Settings → Privacy & Security**, scroll down,
+  and click **Open Anyway**. Then double-click the file again.
 
-### Option B: Anthropic (Claude)
+You own your laptop, so you can always pass these warnings. An antivirus program can also
+ask about the start file or about `uv` (the tool that installs Python). Allow it.
 
-1. Go to <https://console.anthropic.com/> and create an account.
-2. Add credit at **Settings → Billing**.
-3. Create an API key at **Settings → API Keys** → **Create Key**. Copy it; it starts with `sk-ant-…`.
+## 3. Paste your API key
 
-Keep the key in a password manager or a note where you can find it later.
+The browser opens on the Phenoscribe page (<http://127.0.0.1:7860>).
 
-## 4. Download Phenoscribe
+![The Phenoscribe page](install-images/page.png)
 
-The easiest way, no Git needed:
+Paste your key in the **API key** box, then click anywhere outside the box. The app
+makes one small call to check the key. When the key works, the box folds into one line
+("OpenAI key works"). If the key is wrong, the page says "Key rejected".
 
-1. Go to <https://github.com/tarikjamoulle/phenoscribe>.
-2. Click the green **Code** button → **Download ZIP**.
-3. Open the downloaded `phenoscribe-main.zip` from your Downloads folder. On Mac it unzips automatically; on Windows right-click → Extract All.
-4. Move the unzipped `phenoscribe-main` folder to somewhere easy to find — for example, your **Documents** folder.
+The app selects OpenAI or Anthropic from the key. With **Remember this key in this
+browser** ticked, you paste the key one time only. The browser keeps it as plain data in
+your browser profile. The app writes no key to disk. Click **Change key** to use another key.
 
-## 5. Open the Terminal
+## 4. Add your files and click Start
 
-This is the program where you'll type the Phenoscribe commands.
+1. Drag your files onto the box, or click **Choose a folder** to add a whole folder.
+   - Audio files (`.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`) are transcribed, then coded.
+   - Transcripts (`.txt`) are coded as they are. A `467.txt` next to `467.mp3` is used in
+     place of the audio.
+   - A recording that the app already transcribed is not transcribed again. To make a new
+     transcript, tick the file under **Transcribe again**.
+   - Other files are skipped. The list under the box says what happens to each file.
+2. Check the language. French is the default.
+3. Click **Start coding**. The progress bar shows the file and the step.
+4. When the run ends, the page shows the number of codes, one line for each file, and the
+   coded findings. Click **Download Excel**, or click **To review** to see only the codes
+   to check.
 
-- **Mac:** Press `Cmd + Space`, type `Terminal`, press Enter.
-- **Windows:** Press the Windows key, type `Command Prompt`, press Enter. (Or use PowerShell — either works.)
-- **Linux:** Press `Ctrl + Alt + T`, or look for "Terminal" in your apps.
+Each run makes a new Excel file, for example `results_2026-10-22_1405.xlsx`, in the
+folder `Documents/Phenoscribe results`. A file named only with a number (`467.mp3`) gets the patient
+ID `MGA.467`. Any other file name gets a code such as `pt-7a4b3c8e`, because file names can
+hold patient names. The file `filename_mapping.json` in the same folder links each code to
+its file name. Two files that give the same patient ID in one run (for example `467.mp3`
+from two folders) are both skipped. Rename one of them.
 
-A new window will open with a blinking cursor. You're going to type a few commands here.
+If a file fails, the page shows one short line for it ("Key rejected", "No internet",
+"Audio format not supported"). The full details go to `phenoscribe.log` in the same folder.
 
-## 6. Move into the Phenoscribe folder
+## Update
 
-In the Terminal window, type the command below and press Enter. Replace the path if you put the folder somewhere else.
+1. Close the Phenoscribe window.
+2. Download the new ZIP (step 1) and delete the old app folder (`C:\Phenoscribe`, or
+   `Phenoscribe` in **Documents** on a Mac).
+3. Extract the new ZIP at the same place, then double-click the start file.
 
-**Mac / Linux:**
+Your results and saved transcripts stay in `Documents/Phenoscribe results`, outside the app
+folder, so you lose nothing. The speech model stays on the computer too. The first start
+after an update rebuilds the search index, so it takes some minutes.
 
-```
-cd ~/Documents/phenoscribe-main
-```
+## Get an API key
 
-**Windows:**
+You need one key, from OpenAI or from Anthropic.
 
-```
-cd %USERPROFILE%\Documents\phenoscribe-main
-```
+- OpenAI: create an account at <https://platform.openai.com/signup>, add credit under
+  **Settings → Billing** ($5 is enough to test), then create a key at
+  <https://platform.openai.com/api-keys>. The key starts with `sk-`.
+- Anthropic: create an account at <https://console.anthropic.com/>, add credit under
+  **Settings → Billing**, then create a key under **Settings → API Keys**. The key starts
+  with `sk-ant-`.
 
-To check you're in the right place, type `ls` (Mac/Linux) or `dir` (Windows) and press Enter. You should see file names like `Dockerfile`, `README.md`, `pyproject.toml`.
+Copy the key when you create it. You cannot see it again later.
 
-## 7. Build the Phenoscribe image (one time)
+## Problems
 
-This builds the sealed box that runs Phenoscribe. **It takes 20–30 minutes the first time** because it downloads the Whisper voice-recognition model (~3 GB) and a lot of supporting software, all into the image. After this, you won't need to do it again unless you re-download a new version of Phenoscribe.
-
-Type this command and press Enter:
-
-```
-docker build -t phenoscribe .
-```
-
-(Don't forget the dot at the end.) You'll see a lot of text scrolling — that's normal. When it finishes, you'll see something like `naming to docker.io/library/phenoscribe`. If you see an error, jump to the Troubleshooting section.
-
-## 8. Create your folders
-
-Phenoscribe needs two folders next to the project: one for your recordings, one for results.
-
-Type this command and press Enter:
-
-**Mac / Linux:**
-
-```
-mkdir -p data/recordings output
-```
-
-**Windows:**
-
-```
-mkdir data\recordings output
-```
-
-What each folder is for:
-
-| Folder | What goes in it |
+| What you see | What to do |
 |---|---|
-| `data/recordings/` | **Your audio files.** Drag your `.mp3`, `.wav`, `.m4a`, or `.ogg` recordings into this folder. |
-| `output/` | **Your results.** Phenoscribe writes the Excel here, plus a `filename_mapping.json` that links each hashed `pt-…` id back to your original filename. You don't put anything in this folder yourself. |
+| The window closes or says "Phenoscribe stopped with an error" | Copy the last 20 lines of the window and send them to Tarik. |
+| "Key rejected" | Paste the key again, or make a new key. With OpenAI, check that you have credit. |
+| "No internet" | Check the connection, then click **Start coding** again. |
+| The browser does not open | Open <http://127.0.0.1:7860> yourself. |
+| "Cannot find empty port" | Phenoscribe already runs in another window. Use that window, or close it first. |
 
-The Whisper voice-recognition model is already inside the Docker image (that's why step 7 took a while), so there's no separate model folder to manage.
+Help: open an issue at <https://github.com/tarikjamoulle/phenoscribe/issues>, or email Tarik.
 
-## 9. Add your recordings
+## Docker (for Linux servers)
 
-Open `data/recordings/` in your file browser (Finder on Mac, File Explorer on Windows) and drag your audio files into it. Start with one file for your first test.
+Linux users can also use the start file (`sh "Start Phenoscribe.command"`). For a server,
+use Docker. The build runs `phenoscribe setup`, so the image holds the models and the index
+(about 10 GB).
 
-## 10. Start the app
-
-Back in the Terminal, type this command and press Enter. It's one long command — copy and paste it as a single block.
-
-**Mac / Linux:**
-
-```
+```bash
+docker build -t phenoscribe .
 docker run --rm -p 127.0.0.1:7860:7860 \
-  -e PHENOSCRIBE_INPUT_DIR=/data/recordings \
   -e PHENOSCRIBE_OUTPUT_DIR=/data/output \
-  -v "$(pwd)/data/recordings:/data/recordings:ro" \
   -v "$(pwd)/output:/data/output" \
   phenoscribe
 ```
 
-**Windows (Command Prompt):**
-
-```
-docker run --rm -p 127.0.0.1:7860:7860 ^
-  -e PHENOSCRIBE_INPUT_DIR=/data/recordings ^
-  -e PHENOSCRIBE_OUTPUT_DIR=/data/output ^
-  -v "%cd%\data\recordings:/data/recordings:ro" ^
-  -v "%cd%\output:/data/output" ^
-  phenoscribe
-```
-
-The `127.0.0.1:` prefix on `-p` is what keeps the app reachable only from your own laptop — without it, anyone on the same wifi could open the page.
-
-After a few seconds you'll see a line like `Running on local URL: http://0.0.0.0:7860` (that's the address *inside* the Docker container — from your browser, you still use `localhost`). The app is now running. **Leave this Terminal window open** — closing it stops the app.
-
-## 11. Use the app in your browser
-
-1. Open your browser (Chrome, Safari, Firefox, Edge — any of them).
-2. Go to <http://localhost:7860>.
-3. You'll see the Phenoscribe page. The files you put in `data/recordings/` show up as checkboxes. **Tick the ones you want to process.**
-4. On the right, pick your settings:
-   - **Audio language** — `French` is the default.
-   - **LLM provider** — `openai` or `anthropic`, whichever key you have.
-   - **LLM model** — pick the cheapest one for testing (`gpt-4o-mini` or `claude-haiku-4-5`).
-   - **API key** — paste the key you copied in step 3.
-5. Click the big **Run** button.
-6. A progress bar shows which file is being processed. The first run on a new machine takes 5–10 minutes extra because Whisper downloads itself. After that, expect roughly **5–15 minutes per recording** depending on length.
-
-## 12. Find your Excel
-
-When Phenoscribe finishes, the Excel is at `output/results.xlsx` in your project folder. Open it like any other Excel file — double-click in Finder or File Explorer.
-
-You'll also see a download button in the browser if you'd rather grab it that way.
-
-The patient column in the Excel contains hashed ids like `pt-7a4b3c8e` instead of your original filenames. This is deliberate — filenames often carry patient names, and we don't want those in the spreadsheet. To map an id back to the source recording, open `output/filename_mapping.json`.
-
-Phenoscribe also saves:
-
-- `output/transcripts/pt-<hash>.txt` — the raw transcript Whisper produced.
-- `output/pseudo/pt-<hash>.txt` — the same transcript with names replaced by placeholders. This is what the AI saw.
-
-These are useful if you want to re-run just the AI step later (uncheck "Transcribe audio" in the GUI).
-
-## 13. Stop the app
-
-Go back to the Terminal window where the app is running. Press `Ctrl + C` (on Mac, that's the literal Control key, not Cmd). The app stops. You can close the Terminal window.
-
-## 14. Running it again later
-
-Once everything is installed, the everyday flow is just:
-
-1. Open Docker Desktop (if it isn't already running).
-2. Open Terminal, run the `cd` command from step 6.
-3. Run the `docker run` command from step 10.
-4. Open <http://localhost:7860>.
-
-The first build (step 7) and Docker Desktop install (step 2) are one-time. The Whisper model lives inside the Docker image, so every fresh `docker run` already has it.
-
----
-
-## Troubleshooting
-
-**`docker: command not found` or `'docker' is not recognized`**
-Docker Desktop isn't installed or isn't running. Go back to step 2. Make sure the Docker icon in your menu bar / system tray says "Docker Desktop is running" before retrying.
-
-**The build (step 7) fails with a network error**
-Your internet hiccuped. Just run the same `docker build` command again — it picks up where it left off.
-
-**`Cannot connect to the Docker daemon`**
-Docker Desktop isn't running. Open it from your Applications / Start Menu and wait for the icon to stop animating.
-
-**Port 7860 already in use**
-Another program is using that port. Easiest fix: change `-p 7860:7860` to `-p 7861:7861` in the run command, then open <http://localhost:7861> instead.
-
-**The browser page is blank or won't load**
-Wait another 30 seconds — the first start takes a moment. Then hard-refresh: `Cmd + Shift + R` (Mac) or `Ctrl + F5` (Windows). If still blank, check the Terminal window for an error.
-
-**"insufficient_quota" error on OpenAI**
-Your prepaid OpenAI credit is at $0. Top up at <https://platform.openai.com/settings/organization/billing/overview>. The "monthly usage limit" is separate from the actual credit balance.
-
-**Whisper download fails during `docker build`**
-The build pulls the model from Hugging Face. If your connection is unstable, the build step may fail mid-download. Re-run `docker build -t phenoscribe .` — completed steps are cached, so it picks up where it left off.
-
-**Run failed with a Python error in the Terminal**
-Copy the last 20 lines of the Terminal output and send them to Tarik. The transcript and pseudonymised file (if produced) are in `output/transcripts/` and `output/pseudo/` — useful for debugging without re-running Whisper.
-
-**My results.xlsx already exists from an old run**
-A new run overwrites it. If you want to keep the old one, rename it first.
-
-## Getting help
-
-Open an issue at <https://github.com/tarikjamoulle/phenoscribe/issues> or email Tarik directly. Include:
-
-- Your operating system and Docker Desktop version.
-- The full command you ran.
-- The last ~20 lines of output from the Terminal window.
+Open <http://localhost:7860> and drop the files on the page. The `127.0.0.1:` part of `-p`
+keeps the page closed to other computers on the network. Docker on a Mac cannot use the
+Mac GPU, so transcription is slower there than with the start file.
