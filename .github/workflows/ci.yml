@@ -75,6 +75,12 @@ jobs:
           print(f"HPO release guard OK: {release}")
           PY
 
+      - name: First-run setup (no models)
+        # The same command the start scripts and the Dockerfile run. Downloads
+        # the pinned hp.obo and builds the ChromaDB index. It runs before
+        # the tests, because the data-backed tests read the real hp.obo.
+        run: uv run phenoscribe setup --no-models
+
       - name: Run tests
         # The full suite needs gitignored fixtures (the real hp.obo, models,
         # benchmark corpora) and network model downloads, none of which exist on
@@ -83,11 +89,6 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/src
         run: uv run python -m pytest -q -m "not network"
-
-      - name: First-run setup (no models)
-        # The same command the start scripts and the Dockerfile run. Downloads
-        # the pinned hp.obo and builds the ChromaDB index.
-        run: uv run phenoscribe setup --no-models
 
       - name: Smoke run (LLM stubbed)
         run: uv run python scripts/smoke_run.py

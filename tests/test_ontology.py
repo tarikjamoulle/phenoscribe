@@ -5,6 +5,8 @@ assume the annotation set is ancestor-closed. These tests pin the closure
 against the real ontology release so the true-path expansion is correct.
 """
 
+from pathlib import Path
+
 import openpyxl
 import pytest
 
@@ -16,7 +18,7 @@ from phenoscribe.ontology import (
 )
 from phenoscribe.output import CLOSURE_SHEET, write_excel
 
-OBO_PATH = "/Users/tarikjamoulle/projects/hpo_identifier/data/hpo/hp.obo"
+OBO_PATH = str(Path(__file__).resolve().parent.parent / "data" / "hpo" / "hp.obo")
 
 # Episodic ataxia is a child of Ataxia, deep under Phenotypic abnormality.
 EPISODIC_ATAXIA = "HP:0002131"
