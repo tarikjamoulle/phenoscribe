@@ -37,6 +37,9 @@ COPY config.yaml ./
 # image so the first user click does not start a multi-GB download.
 RUN phenoscribe setup
 
+# The page listens on 127.0.0.1 by default; in a container it must listen
+# on all interfaces so `docker run -p 7860:7860` reaches it.
+ENV GRADIO_SERVER_NAME=0.0.0.0
 EXPOSE 7860
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

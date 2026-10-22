@@ -73,6 +73,7 @@ def test_a_failed_file_does_not_stop_the_batch(tmp_path, fake_pipeline):
     bad, good = batch.files
     assert isinstance(bad.error, ValueError)
     assert good.error is None and good.n_codes == 1
+    assert good.matches[0]["hpo_id"] == "HP:0012378"
     assert _patient_ids(batch.excel_path) == ["MGA.467"]
 
 

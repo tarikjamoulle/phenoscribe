@@ -286,6 +286,7 @@ class FileResult:
     filename: str
     patient_id: str
     n_codes: int = 0
+    matches: list[dict] = field(default_factory=list)
     error: Exception | None = None
 
 
@@ -335,6 +336,7 @@ def run_batch(
                 transcript_stem=Path(name).stem,
                 on_step=on_step,
             )
+            result.matches = matches
             result.n_codes = len(matches)
         except Exception as e:  # noqa: BLE001 — one bad file must not stop the batch
             logger.exception("Failed processing %s", name)
