@@ -7,7 +7,7 @@ from pathlib import Path
 
 from phenoscribe.config import load_config
 from phenoscribe.jobs import create_job, get_failed_jobs, update_job
-from phenoscribe.pipeline import process_recording
+from phenoscribe.pipeline import derive_patient_id, process_recording
 from phenoscribe.transcribe import AUDIO_EXTENSIONS, TEXT_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -19,19 +19,6 @@ PROVIDER_ALIASES = {
     "gpt": "openai",
 }
 CANONICAL_PROVIDERS = {"openai", "anthropic", "ollama"}
-
-
-def derive_patient_id(stem: str, prefix: str) -> str:
-    """Build the join key from a filename stem and the configured prefix.
-
-    The transcript/audio files are named by bare stem (e.g. "467"); the
-    ground truth keys patients as "MGA.467". Prepend the prefix so pipeline
-    output joins against the GT. If the stem already carries the prefix, it
-    is left untouched so re-runs stay idempotent.
-    """
-    if not prefix or stem.startswith(prefix):
-        return stem
-    return f"{prefix}{stem}"
 
 
 def resolve_provider(name: str) -> str:

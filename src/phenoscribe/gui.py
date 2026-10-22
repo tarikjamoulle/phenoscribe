@@ -5,18 +5,15 @@ results go to `PHENOSCRIBE_OUTPUT_DIR` (default `/app/output`). The user picks
 which files to process, hits Run, watches per-file progress, downloads the Excel.
 """
 
-import hashlib
-import json
 import logging
 import os
-import traceback
 from pathlib import Path
 
 import gradio as gr
 
 from phenoscribe.config import load_config
 from phenoscribe.llm import use_api_key
-from phenoscribe.pipeline import process_recording
+from phenoscribe.pipeline import run_batch
 from phenoscribe.transcribe import AUDIO_EXTENSIONS, TEXT_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -69,36 +66,6 @@ def env_key_for(provider: str) -> str:
     return os.environ.get(PROVIDER_ENV_VAR.get(provider, ""), "")
 
 
-def patient_id_for(filename: str) -> str:
-    """Stable, content-free patient id derived from the filename.
-
-    Filenames in clinical use often carry patient names ("martin-jean-2025-04-12.mp3");
-    those names would otherwise leak into the Excel patient column and into transcript
-    file paths on disk, defeating the pseudonymisation guarantee. A short hash gives a
-    stable id without revealing the source string.
-    """
-    digest = hashlib.sha1(filename.encode("utf-8")).hexdigest()[:8]
-    return f"pt-{digest}"
-
-
-def record_filename_mapping(mapping: dict[str, str]) -> None:
-    """Append/merge the filename -> patient_id mapping to output/filename_mapping.json.
-
-    Lets the GP map an Excel row back to the source recording without putting the
-    raw filename in the Excel itself.
-    """
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    path = OUTPUT_DIR / "filename_mapping.json"
-    existing: dict[str, str] = {}
-    if path.exists():
-        try:
-            existing = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            logger.warning("filename_mapping.json was malformed; rewriting from scratch")
-    existing.update(mapping)
-    path.write_text(json.dumps(existing, indent=2, sort_keys=True), encoding="utf-8")
-
-
 def refresh_files():
     return gr.update(choices=list_input_files(), value=[])
 
@@ -138,39 +105,20 @@ def run_pipeline(
     config.transcription.language = language
     config.diarization.enabled = do_diarize
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = str(OUTPUT_DIR / "results.xlsx")
-
-    rows: list[list] = []
-    mapping: dict[str, str] = {}
-    total = len(selected_files)
-
     with use_api_key(provider, pasted_key):
-        for i, filename in enumerate(selected_files):
-            progress(i / total, desc=f"[{i + 1}/{total}] {filename}")
-            filepath = INPUT_DIR / filename
-            patient_id = patient_id_for(filename)
-            mapping[patient_id] = filename
+        batch = run_batch(
+            [str(INPUT_DIR / f) for f in selected_files],
+            config,
+            OUTPUT_DIR,
+            on_progress=lambda fraction, message: progress(fraction, desc=message),
+            skip_transcription=not do_transcribe,
+        )
 
-            try:
-                matches = process_recording(
-                    str(filepath),
-                    patient_id,
-                    config,
-                    output_path=output_path,
-                    skip_transcription=not do_transcribe,
-                )
-                rows.append([filename, "done", len(matches), ""])
-            except Exception as e:
-                logger.error("Failed processing %s:\n%s", filename, traceback.format_exc())
-                rows.append([filename, "failed", 0, str(e)])
-
-    if mapping:
-        record_filename_mapping(mapping)
-
-    progress(1.0, desc="Finished")
-    excel = output_path if Path(output_path).exists() else None
-    return rows, excel
+    rows = [
+        [r.filename, "failed" if r.error else "done", r.n_codes, str(r.error or "")]
+        for r in batch.files
+    ]
+    return rows, str(batch.excel_path) if batch.excel_path else None
 
 
 def build_app() -> gr.Blocks:

@@ -5,7 +5,7 @@ keys the patient as "MGA.467", so the join produced zero overlap and blocked
 the F1 number. These tests pin the prefix derivation and the resulting join.
 """
 
-from phenoscribe.cli import derive_patient_id
+from phenoscribe.pipeline import derive_patient_id
 from phenoscribe.config import Config, PatientConfig
 from phenoscribe.output import write_excel
 from phenoscribe.validate import load_codes_from_excel

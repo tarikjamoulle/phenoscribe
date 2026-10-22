@@ -1,7 +1,12 @@
 """Pipeline orchestrator — chains all processing steps."""
 
+import hashlib
+import json
 import logging
 import os
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from phenoscribe.config import Config
@@ -28,6 +33,7 @@ def process_recording(
     skip_transcription: bool = False,
     skip_pii: bool = False,
     transcript_stem: str | None = None,
+    on_step: Callable[[str], None] | None = None,
 ) -> list[dict]:
     """Process a single recording through the full pipeline.
 
@@ -47,10 +53,13 @@ def process_recording(
         transcript_stem: Filename stem of the cached transcript. Defaults to
             patient_id. Use this when the join key carries a prefix (MGA.467)
             but the cached transcript is named by bare stem (467.txt).
+        on_step: Called with a plain label ("transcribing", ...) as each step starts.
 
     Returns:
         List of HPO matches.
     """
+    step = on_step or (lambda label: None)
+
     # Startup guard: the obo on disk, the ChromaDB index and config must all
     # agree on the HPO release before we produce any codes.
     version = check_obo_version(config.paths.hpo_obo, config.hpo.release)
@@ -86,10 +95,12 @@ def process_recording(
                 f"No saved transcript for {patient_id} in {transcript_dir} "
                 f"(tried: {tried}). Run the full pipeline first to generate transcripts."
             )
+        step("reading the saved transcript")
         logger.info("[%s] Step 1: Skipped (reading saved transcript)", patient_id)
         raw_text = Path(transcript_path).read_text(encoding="utf-8").strip()
     else:
         # Step 1: Transcribe (with optional diarization)
+        step("transcribing")
         is_audio = Path(input_path).suffix.lower() in AUDIO_EXTENSIONS
         use_diarization = config.diarization.enabled and is_audio
 
@@ -149,6 +160,7 @@ def process_recording(
         safe_text = raw_text
         pii_mapping: dict = {}
     else:
+        step("removing personal details")
         logger.info("[%s] Step 2: Pseudonymizing PII...", patient_id)
         safe_text, pii_mapping = pseudonymize(
             raw_text,
@@ -167,6 +179,7 @@ def process_recording(
         logger.info("[%s] Pseudonymized transcript saved: %s", patient_id, pseudo_path)
 
     # Step 3: Extract symptoms
+    step("finding symptoms")
     logger.info("[%s] Step 3: Extracting symptoms...", patient_id)
     symptoms = extract_symptoms(
         safe_text,
@@ -177,6 +190,7 @@ def process_recording(
     logger.info("[%s] Symptoms extracted: %d", patient_id, len(symptoms))
 
     # Step 4 & 5: Match HPO codes (includes ChromaDB search + LLM judge)
+    step("matching HPO codes")
     logger.info("[%s] Steps 4-5: Matching HPO codes...", patient_id)
     matches = match_hpo(
         symptoms,
@@ -190,6 +204,7 @@ def process_recording(
     logger.info("[%s] HPO codes matched: %d", patient_id, len(matches))
 
     # Step 6: Write output
+    step("writing the Excel file")
     logger.info("[%s] Step 6: Writing output...", patient_id)
     write_excel(
         patient_id,
@@ -202,3 +217,131 @@ def process_recording(
     )
 
     return matches
+
+
+def derive_patient_id(stem: str, prefix: str) -> str:
+    """Build the join key from a filename stem and the configured prefix.
+
+    The transcript/audio files are named by bare stem (e.g. "467"); the
+    ground truth keys patients as "MGA.467". Prepend the prefix so pipeline
+    output joins against the GT. If the stem already carries the prefix, it
+    is left untouched so re-runs stay idempotent.
+    """
+    if not prefix or stem.startswith(prefix):
+        return stem
+    return f"{prefix}{stem}"
+
+
+def batch_patient_id(filename: str, prefix: str) -> str:
+    """Patient ID for an uploaded file.
+
+    Marc names recordings by patient number ("467.mp3"), which becomes
+    "MGA.467" so the Excel joins against his code lists. Any other filename
+    can carry a patient name ("martin-jean-2025-04-12.mp3"), which must stay
+    out of the Excel, so it gets a short hash instead.
+    """
+    stem = Path(filename).stem
+    if stem.isdigit():
+        return derive_patient_id(stem, prefix)
+    digest = hashlib.sha1(filename.encode("utf-8")).hexdigest()[:8]
+    return f"pt-{digest}"
+
+
+def new_results_path(out_dir: Path, now: datetime | None = None) -> Path:
+    """A new dated Excel path for one run: results_YYYY-MM-DD_HHMM.xlsx.
+
+    Each run gets its own file, so a rerun never adds rows to an older file
+    and an older file that is open in Excel never blocks the save. A second
+    run in the same minute gets a "_2" suffix.
+    """
+    base = f"results_{(now or datetime.now()):%Y-%m-%d_%H%M}"
+    path = out_dir / f"{base}.xlsx"
+    n = 2
+    while path.exists():
+        path = out_dir / f"{base}_{n}.xlsx"
+        n += 1
+    return path
+
+
+def record_filename_mapping(out_dir: Path, mapping: dict[str, str]) -> None:
+    """Merge the patient_id -> filename mapping into out_dir/filename_mapping.json.
+
+    Lets the GP map an Excel row back to the source recording without putting the
+    raw filename in the Excel itself.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "filename_mapping.json"
+    existing: dict[str, str] = {}
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            logger.warning("filename_mapping.json was malformed; rewriting from scratch")
+    existing.update(mapping)
+    path.write_text(json.dumps(existing, indent=2, sort_keys=True), encoding="utf-8")
+
+
+@dataclass
+class FileResult:
+    filename: str
+    patient_id: str
+    n_codes: int = 0
+    error: Exception | None = None
+
+
+@dataclass
+class BatchResult:
+    excel_path: Path | None
+    files: list[FileResult] = field(default_factory=list)
+
+
+def run_batch(
+    files: list[str],
+    config: Config,
+    out_dir: str | Path,
+    on_progress: Callable[[float, str], None] | None = None,
+    skip_transcription: bool = False,
+) -> BatchResult:
+    """Process a list of files into one new Excel file in ``out_dir``.
+
+    A file that fails does not stop the batch: its error is kept on its
+    FileResult and the full trace goes to the log.
+
+    on_progress is called with (fraction done, "2/5 · 467.mp3 · removing
+    personal details") at each step.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    excel_path = new_results_path(out_dir)
+    progress = on_progress or (lambda fraction, message: None)
+
+    results: list[FileResult] = []
+    total = len(files)
+    for i, filepath in enumerate(files):
+        name = Path(filepath).name
+        result = FileResult(name, batch_patient_id(name, config.patient.id_prefix))
+        results.append(result)
+
+        def on_step(label: str, i: int = i, name: str = name) -> None:
+            progress(i / total, f"{i + 1}/{total} · {name} · {label}")
+
+        try:
+            matches = process_recording(
+                str(filepath),
+                result.patient_id,
+                config,
+                output_path=str(excel_path),
+                skip_transcription=skip_transcription,
+                transcript_stem=Path(name).stem,
+                on_step=on_step,
+            )
+            result.n_codes = len(matches)
+        except Exception as e:  # noqa: BLE001 — one bad file must not stop the batch
+            logger.exception("Failed processing %s", name)
+            result.error = e
+
+    if results:
+        record_filename_mapping(out_dir, {r.patient_id: r.filename for r in results})
+    progress(1.0, "Finished")
+    return BatchResult(excel_path if excel_path.exists() else None, results)
+
