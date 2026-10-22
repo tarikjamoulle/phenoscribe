@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 import chromadb
+import requests
 
 from phenoscribe.embeddings import get_embedding_function
 
@@ -38,7 +39,7 @@ def read_obo_version(obo_path: str) -> str:
     if not path.exists():
         raise FileNotFoundError(f"HPO obo not found: {obo_path}")
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for _ in range(50):
             line = f.readline()
             if not line:
@@ -63,6 +64,74 @@ def check_obo_version(obo_path: str, expected_release: str) -> str:
             f"release, or update hpo.release to match the obo."
         )
     return actual
+
+
+def obo_url(release: str) -> str:
+    """GitHub download URL of the hp.obo for a pinned release.
+
+    ``hp/releases/2026-02-16`` is published under the tag ``v2026-02-16``.
+    """
+    tag = "v" + release.rsplit("/", 1)[-1]
+    return (
+        "https://github.com/obophenotype/human-phenotype-ontology/releases/"
+        f"download/{tag}/hp.obo"
+    )
+
+
+def download_obo(obo_path: str, release: str) -> None:
+    """Download the pinned hp.obo to ``obo_path`` and verify its header.
+
+    Writes to a temporary file first, so a broken download never leaves a
+    half-written obo that a later run takes for a good one.
+    """
+    path = Path(obo_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".part")
+    with requests.get(obo_url(release), stream=True, timeout=60) as response:
+        response.raise_for_status()
+        with open(tmp, "wb") as f:
+            for chunk in response.iter_content(chunk_size=1 << 20):
+                f.write(chunk)
+    check_obo_version(str(tmp), release)
+    tmp.replace(path)
+
+
+def obo_ready(obo_path: str, release: str) -> bool:
+    """True when the obo exists and carries the pinned release."""
+    try:
+        check_obo_version(obo_path, release)
+    except (FileNotFoundError, ValueError, HpoVersionMismatch):
+        return False
+    return True
+
+
+def index_ready(chroma_path: str, release: str, embedding_model: str = "default") -> bool:
+    """True when the ChromaDB index holds terms seeded from ``release`` with ``embedding_model``."""
+    if not Path(chroma_path).exists():
+        return False
+    client = chromadb.PersistentClient(path=chroma_path)
+    try:
+        collection = client.get_collection("hpo_terms")
+    except Exception:  # noqa: BLE001 — chromadb raises different types per version
+        return False
+    meta = collection.metadata or {}
+    return (
+        meta.get("hpo_release") == release
+        and meta.get("embedding_model", "default") == embedding_model
+        and collection.count() > 0
+    )
+
+
+def seed_pinned_index(
+    obo_path: str, chroma_path: str, release: str, embedding_model: str = "default"
+) -> int:
+    """Guard the pinned release, then seed ChromaDB. Returns the number of terms.
+
+    If the on-disk obo header does not match ``release`` this raises before
+    any write, so a stale index is never written.
+    """
+    check_obo_version(obo_path, release)
+    return seed_chromadb(obo_path, chroma_path, embedding_model=embedding_model)
 
 
 # OBO synonym scopes (OBO 1.4 spec). EXACT means same meaning as the term;
@@ -100,7 +169,7 @@ def parse_obo(obo_path: str) -> list[dict]:
         if term and not term.get("is_obsolete"):
             terms.append(term)
 
-    with open(obo_path) as f:
+    with open(obo_path, encoding="utf-8") as f:
         for line in f:
             line = line.rstrip("\n")
 
@@ -193,7 +262,7 @@ def build_obsolete_map(obo_path: str) -> dict[str, str]:
             # replaced_by entry with an alt mapping for the same key.
             mapping.setdefault(alt, term["id"])
 
-    with open(obo_path) as f:
+    with open(obo_path, encoding="utf-8") as f:
         for line in f:
             line = line.rstrip("\n")
             if line == "[Term]":

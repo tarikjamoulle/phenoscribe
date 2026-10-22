@@ -134,6 +134,17 @@ def _get_ner(model: str = DEFAULT_MODEL, fallback_model: str = FALLBACK_MODEL):
     raise RuntimeError("No PII NER model could be loaded.")
 
 
+def download_model(model: str = DEFAULT_MODEL, local_files_only: bool = False) -> str:
+    """Put the PII NER model in the Hugging Face cache. Returns its folder.
+
+    With ``local_files_only=True`` nothing downloads, and a model that is not
+    cached yet raises FileNotFoundError.
+    """
+    from huggingface_hub import snapshot_download
+
+    return snapshot_download(model, local_files_only=local_files_only)
+
+
 def resolve_model(model: str = DEFAULT_MODEL, fallback_model: str = FALLBACK_MODEL) -> str:
     """Return the model name that ``_get_ner`` would actually load.
 

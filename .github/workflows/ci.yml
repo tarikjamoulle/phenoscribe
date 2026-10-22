@@ -83,3 +83,11 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/src
         run: uv run python -m pytest -q -m "not network"
+
+      - name: First-run setup (no models)
+        # The same command the start scripts and the Dockerfile run. Downloads
+        # the pinned hp.obo and builds the ChromaDB index.
+        run: uv run phenoscribe setup --no-models
+
+      - name: Smoke run (LLM stubbed)
+        run: uv run python scripts/smoke_run.py

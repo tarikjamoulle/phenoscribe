@@ -3,15 +3,8 @@ FROM python:3.12-slim
 # uv installs the exact versions in uv.lock, the same as the start scripts.
 COPY --from=ghcr.io/astral-sh/uv:0.6.17 /uv /bin/uv
 
-# Pinned versions — bump deliberately, then re-validate against ground truth.
-# HPO_VERSION must match a tag at
-#   https://github.com/obophenotype/human-phenotype-ontology/releases
-# and must match hpo.release in config.yaml. The v<date> tag downloads an obo
-# whose data-version: header reads hp/releases/<date>; the startup guard
-# (check_obo_version) fails loudly if the two disagree.
-# WHISPER_MODEL is the faster-whisper model that gets baked into the image.
-ARG HPO_VERSION=v2026-02-16
-ARG WHISPER_MODEL=large-v3
+# The pinned HPO release and the Whisper model come from config.yaml.
+# `phenoscribe setup` downloads both, the same way the start scripts do.
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
@@ -39,19 +32,10 @@ RUN uv sync --frozen --no-dev --no-cache \
 COPY scripts/ scripts/
 COPY config.yaml ./
 
-# HPO ontology — pinned release, then seeded into ChromaDB.
-RUN mkdir -p data/hpo \
-    && curl -fsSL "https://github.com/obophenotype/human-phenotype-ontology/releases/download/${HPO_VERSION}/hp.obo" \
-        -o data/hpo/hp.obo \
-    && echo "${HPO_VERSION}" > data/hpo/VERSION \
-    && python scripts/seed_hpo.py
-
-# ChromaDB's default ONNX embedding model — caches under ~/.cache/chroma/.
-RUN python -c "from chromadb.utils.embedding_functions import DefaultEmbeddingFunction; ef = DefaultEmbeddingFunction(); ef(['warmup'])"
-
-# Bake the Whisper model into the image so the first user click doesn't
-# trigger a multi-GB download mid-transcription. ~3 GB for large-v3.
-RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu')"
+# One setup path for all installs: the pinned hp.obo, the ChromaDB index
+# (with its ONNX embedding model) and the Whisper + PII models, baked into the
+# image so the first user click does not start a multi-GB download.
+RUN phenoscribe setup
 
 EXPOSE 7860
 

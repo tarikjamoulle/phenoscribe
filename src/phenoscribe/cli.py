@@ -81,6 +81,18 @@ def main():
     proc.add_argument("--skip-transcription", action="store_true", help="Skip transcription, read from saved transcripts in output/transcripts/")
     proc.add_argument("--retry-failed", action="store_true", help="Retry previously failed jobs")
 
+    # Setup command
+    setup = subparsers.add_parser(
+        "setup",
+        help="Download the ontology and models and build the search index (skips what is present)",
+    )
+    setup.add_argument("--config", "-c", default="config.yaml", help="Config file path")
+    setup.add_argument(
+        "--no-models",
+        action="store_true",
+        help="Skip the speech and privacy model downloads (for CI)",
+    )
+
     # Status command
     status = subparsers.add_parser("status", help="Show processing status")
     status.add_argument("--config", "-c", default="config.yaml", help="Config file path")
@@ -120,6 +132,8 @@ def main():
 
     if args.command == "process":
         _cmd_process(args)
+    elif args.command == "setup":
+        _cmd_setup(args)
     elif args.command == "status":
         _cmd_status(args)
     elif args.command == "aggregate":
@@ -230,6 +244,67 @@ def _cmd_process(args):
 
     print(f"\nDone. Completed: {completed}, Failed: {failed}")
     print(f"Results: {output_path}")
+
+
+def _cmd_setup(args):
+    """Prepare a fresh copy of the app. Safe to run at every start.
+
+    Each part is skipped when it is already present, so the start scripts
+    call this every time and only the first start downloads anything.
+    """
+    from phenoscribe import hpo_index, pii, transcribe
+
+    config = load_config(args.config)
+    obo, chroma, release = config.paths.hpo_obo, config.paths.chroma_db, config.hpo.release
+    embedding = config.hpo_index.embedding_model
+    speech = config.transcription
+
+    _setup_part(
+        "HPO ontology",
+        lambda: hpo_index.obo_ready(obo, release),
+        "Downloading the HPO ontology (10 MB, one time only)...",
+        lambda: hpo_index.download_obo(obo, release),
+    )
+    _setup_part(
+        "Search index",
+        lambda: hpo_index.index_ready(chroma, release, embedding),
+        "Building the search index (one time only, a few minutes)...",
+        lambda: hpo_index.seed_pinned_index(obo, chroma, release, embedding),
+    )
+    if args.no_models:
+        print("Speech and privacy models: skipped (--no-models).")
+    else:
+        _setup_part(
+            "Speech model",
+            lambda: _cached(transcribe.download_speech_model, speech.backend, speech.model),
+            "Downloading the speech model (3 GB, one time only)...",
+            lambda: transcribe.download_speech_model(speech.backend, speech.model),
+        )
+        _setup_part(
+            "Privacy model",
+            lambda: _cached(pii.download_model, config.pii.model),
+            "Downloading the privacy model (450 MB, one time only)...",
+            lambda: pii.download_model(config.pii.model),
+        )
+    print("Setup done.")
+
+
+def _setup_part(name, is_ready, message, fetch) -> None:
+    """Print one plain line for a setup part, and fetch it only when it is missing."""
+    if is_ready():
+        print(f"{name}: ready.")
+        return
+    print(message, flush=True)
+    fetch()
+
+
+def _cached(download, *args) -> bool:
+    """True when ``download(*args, local_files_only=True)`` finds the model in the cache."""
+    try:
+        download(*args, local_files_only=True)
+    except FileNotFoundError:
+        return False
+    return True
 
 
 def _cmd_status(args):

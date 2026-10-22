@@ -41,6 +41,25 @@ def resolve_backend(backend: str) -> str:
     return "mlx" if shutil.which("ffmpeg") else "faster-whisper"
 
 
+def download_speech_model(
+    backend: str, model_name: str, local_files_only: bool = False
+) -> str:
+    """Put the Whisper model for ``backend`` in the Hugging Face cache. Returns its folder.
+
+    With ``local_files_only=True`` nothing downloads, and a model that is not
+    cached yet raises FileNotFoundError. `phenoscribe setup` uses that as its
+    "already present" check.
+    """
+    if resolve_backend(backend) == "mlx":
+        from huggingface_hub import snapshot_download
+
+        repo = _MLX_MODEL_ALIASES.get(model_name, model_name)
+        return snapshot_download(repo, local_files_only=local_files_only)
+    from faster_whisper import download_model
+
+    return download_model(model_name, local_files_only=local_files_only)
+
+
 def transcribe(
     input_path: str,
     *,
