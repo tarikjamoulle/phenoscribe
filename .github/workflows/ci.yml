@@ -88,6 +88,9 @@ jobs:
         # network-marked ones; data-backed tests run locally where data/ exists.
         env:
           PYTHONPATH: ${{ github.workspace }}/src
+          # tests/conftest.py sends it with hpo-toolkit's GitHub API call, so
+          # shared macOS runners do not hit the anonymous rate limit (403).
+          GITHUB_TOKEN: ${{ github.token }}
         run: uv run python -m pytest -q -m "not network"
 
       - name: Smoke run (LLM stubbed)
