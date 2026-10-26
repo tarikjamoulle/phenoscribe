@@ -110,10 +110,10 @@ TIMESTAMP_PATTERN = re.compile(
     r"|\b\d{1,2}:\d{2}:\d{2}(?:[.,]\d+)?\b"
 )
 
-# A phone or ID number from the NER head has at least this many digits.
-# Shorter number-only hits ("2", "36", "09") are counts, times or ages.
+# A number-only hit from the NER head (an ID, a phone) has at least this many
+# digits. Shorter ones ("2", "36", "09") are counts, times or speaker numbers.
+# Dates and ages are the exception: the user can keep those types anyway.
 MIN_NUMBER_DIGITS = 6
-_NUMBER_CATEGORIES = {"ID", "PHONE"}
 
 # Cache one pipeline per resolved model name.
 _ner_pipelines: dict[str, object] = {}
@@ -203,20 +203,37 @@ def find_personal_details(
     for start, end in stamps:
         masked = masked[:start] + " " * (end - start) + masked[end:]
 
+    def in_stamp(start: int, end: int) -> bool:
+        return any(start < e and end > s for s, e in stamps)
+
+    # Two model runs: with the timestamps hidden, and on the text as it is.
+    # Hidden timestamps stop false IDs but change the context around a word,
+    # so a borderline name can fall under min_score in one run only. Keep the
+    # hits of both runs, except any hit that touches a timestamp.
+    entities = _detect_entities(ner, masked, min_score=min_score)
+    if stamps:
+        entities += _detect_entities(ner, text, min_score=min_score)
+
     raw = []
-    for e in _detect_entities(ner, masked, min_score=min_score):
+    for e in entities:
         label = e["entity_group"]
         # Unknown label: keep it as its own category rather than drop PII.
         category = LABEL_TO_CATEGORY.get(label, label)
-        found = masked[e["start"]:e["end"]]
-        if (category in _NUMBER_CATEGORIES and not re.search(r"[^\W\d_]", found)
-                and sum(c.isdigit() for c in found) < MIN_NUMBER_DIGITS):
-            continue
         # NER subword tokenisation (esp. for accented or multi-subword names)
         # often reports a span that covers only part of a word. Snap the span
         # out to whole-word boundaries so we never leave a leaked fragment such
         # as "PERSON_1loïse" or "JOB_1ynéco".
         start, end = _snap_to_word_boundaries(masked, e["start"], e["end"])
+        if in_stamp(start, end):
+            continue
+        found = masked[start:end]
+        letters = sum(c.isalpha() for c in found)
+        digits = sum(c.isdigit() for c in found)
+        if not letters and digits < MIN_NUMBER_DIGITS and category not in ("DATE", "AGE"):
+            continue  # "2", "36", "1:" are counts, times or speaker numbers
+        if letters < 2 and not digits:
+            # One letter is never a name: "M" of "M." or the "m" of "m'avait".
+            continue
         raw.append({"start": start, "end": end, "category": category,
                     "score": float(e.get("score", 1.0)), "origin": "model"})
 
