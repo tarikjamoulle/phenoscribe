@@ -56,6 +56,7 @@ def match_hpo(
     k: int = 5,
     obo_path: str | None = None,
     embedding_model: str | None = None,
+    on_symptom=None,
 ) -> list[dict]:
     """Match extracted symptoms to HPO codes.
 
@@ -73,6 +74,8 @@ def match_hpo(
         obo_path: If given, the final selected code is run through
             resolve_obsolete so a retired id (e.g. from a stale index) maps to
             its active replacement. Defaults to None (no resolution).
+        on_symptom: Called with (number, total) before each symptom, for a
+            progress bar: one LLM call for each symptom takes most of the time.
 
     Returns:
         List of dicts with hpo_id, hpo_term, patient_verbatim, clinical_term,
@@ -87,7 +90,9 @@ def match_hpo(
     obsolete_map = build_obsolete_map(obo_path) if obo_path else {}
     results = []
 
-    for symptom in symptoms:
+    for number, symptom in enumerate(symptoms, 1):
+        if on_symptom:
+            on_symptom(number, len(symptoms))
         clinical_term = symptom["clinical_term"]
         negated = bool(symptom.get("negated", False))
 

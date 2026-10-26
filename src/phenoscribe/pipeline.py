@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -325,6 +326,7 @@ def code_review(
         chroma_path=config.paths.chroma_db,
         obo_path=config.paths.hpo_obo,
         embedding_model=config.hpo_index.embedding_model,
+        on_symptom=lambda n, total: step(f"matching HPO codes · symptom {n} of {total}"),
     )
     logger.info("[%s] HPO codes matched: %d", patient_id, len(matches))
 
@@ -567,7 +569,7 @@ def run_batch(
         results.append(result)
 
         def on_step(label: str, i: int = i, name: str = name) -> None:
-            done = (i + STEP_PROGRESS.get(label, 0.0)) / total
+            done = (i + step_fraction(STEP_PROGRESS, label)) / total
             progress(done, f"{i + 1}/{total} · {name} · {label}")
 
         try:
@@ -594,9 +596,26 @@ def run_batch(
 
 
 
+def step_fraction(fractions: dict[str, float], label: str) -> float:
+    """Share of one file done at ``label``.
+
+    A label can carry a count after " · " ("matching HPO codes · symptom 12
+    of 40"). The bar then moves from that step's share towards the next one.
+    """
+    base_label, _, detail = label.partition(" · ")
+    base = fractions.get(base_label, 0.0)
+    count = re.search(r"(\d+) of (\d+)", detail)
+    if not count:
+        return base
+    following = [f for f in fractions.values() if f > base]
+    end = min(following, default=1.0)
+    done, total = int(count.group(1)) - 1, int(count.group(2))
+    return base + (end - base) * done / max(total, 1)
+
+
 def _stepper(progress, fractions, i, total, name):
     def on_step(label: str) -> None:
-        progress((i + fractions.get(label, 0.0)) / total, f"{i + 1}/{total} · {name} · {label}")
+        progress((i + step_fraction(fractions, label)) / total, f"{i + 1}/{total} · {name} · {label}")
     return on_step
 
 

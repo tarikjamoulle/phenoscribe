@@ -202,3 +202,12 @@ def test_process_recording_reuses_and_saves_the_audio_transcript(tmp_path, monke
     assert len(whisper) == 2  # the second run reused the saved transcript
     cache = transcript_cache_path(audio, CONFIG, str(tmp_path / "out" / "transcripts"))
     assert cache.read_text(encoding="utf-8") == "bonjour"
+
+
+def test_the_bar_moves_within_the_matching_step():
+    from phenoscribe.pipeline import CODE_PROGRESS, step_fraction
+
+    assert step_fraction(CODE_PROGRESS, "matching HPO codes") == 0.4
+    assert step_fraction(CODE_PROGRESS, "matching HPO codes · symptom 1 of 10") == 0.4
+    assert step_fraction(CODE_PROGRESS, "matching HPO codes · symptom 6 of 10") == pytest.approx(0.65)
+    assert step_fraction(CODE_PROGRESS, "writing the Excel file") == 0.9
