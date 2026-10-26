@@ -19,6 +19,9 @@ For each finding, output:
 - onset: when it began, normalized to one of: congenital, neonatal, antenatal, childhood, juvenile, adult. Empty string if not stated.
 - severity: how bad it is, normalized to one of: borderline, mild, moderate, severe, profound. Empty string if not stated.
 - context: any remaining temporal or qualifying detail that does not fit the fields above (e.g., "since March 2021", "worse after meals")
+- mentions: every place in the transcript where this finding comes up, in transcript order. \
+Each item is a short quote (3 to 15 words) copied character for character from the transcript, \
+without the [mm:ss] time markers. Include the quote of patient_verbatim.
 
 Negation is critical. A denied or absent finding must have negated=true. French negation cues include:
 ne...pas, n'...pas, pas de, pas d', plus de, aucun, aucune, sans, absence de, jamais, ni...ni, \
@@ -35,7 +38,8 @@ Rules:
 - Use standard English medical terminology for clinical_term (e.g., "headache", "fatigue", "abdominal pain")
 - Keep patient_verbatim in the original French
 - For frequency, onset, severity: only fill them when the text states it; otherwise use an empty string
-- If the same finding is mentioned multiple times, include it once with combined detail
+- If the same finding is mentioned multiple times, include it once with combined detail, \
+and list each place in mentions
 - Do NOT include diagnoses (e.g., "COVID-19"), treatments, or procedures — only symptoms and findings
 - A comparison to a past event or illness is not a finding. "comme après ma commotion cérébrale" \
 is not "post-concussion syndrome": extract the symptoms the patient describes, not the comparison
@@ -45,9 +49,9 @@ lié au vertige ?"), extract the symptom (vertigo), not the activity ("difficult
 
 Output ONLY a JSON array. No other text. Example:
 [
-  {"patient_verbatim": "j'ai mal au ventre", "clinical_term": "abdominal pain", "negated": false, "frequency": "", "onset": "adult", "severity": "severe", "context": "worse after meals"},
-  {"patient_verbatim": "je n'ai pas de fièvre", "clinical_term": "fever", "negated": true, "frequency": "", "onset": "", "severity": "", "context": ""},
-  {"patient_verbatim": "je suis fatigué", "clinical_term": "fatigue", "negated": false, "frequency": "frequent", "onset": "", "severity": "", "context": "since COVID infection, March 2021"}
+  {"patient_verbatim": "j'ai mal au ventre", "clinical_term": "abdominal pain", "negated": false, "frequency": "", "onset": "adult", "severity": "severe", "context": "worse after meals", "mentions": ["j'ai mal au ventre", "le ventre me fait encore mal après le repas"]},
+  {"patient_verbatim": "je n'ai pas de fièvre", "clinical_term": "fever", "negated": true, "frequency": "", "onset": "", "severity": "", "context": "", "mentions": ["je n'ai pas de fièvre"]},
+  {"patient_verbatim": "je suis fatigué", "clinical_term": "fatigue", "negated": false, "frequency": "frequent", "onset": "", "severity": "", "context": "since COVID infection, March 2021", "mentions": ["je suis fatigué", "toujours cette fatigue le soir"]}
 ]"""
 
 
@@ -66,7 +70,8 @@ def extract_symptoms(
         ollama_base_url: Ollama URL (if applicable).
 
     Returns:
-        List of dicts with keys: patient_verbatim, clinical_term, context.
+        List of dicts with keys: patient_verbatim, clinical_term, negated,
+        frequency, onset, severity, context, mentions.
     """
     response = llm_call(
         system_prompt=SYSTEM_PROMPT,
@@ -134,6 +139,7 @@ def _parse_response(response: str) -> list[dict]:
                     "onset": _coerce_str(item.get("onset", "")),
                     "severity": _coerce_str(item.get("severity", "")),
                     "context": _coerce_str(item.get("context", "")),
+                    "mentions": _coerce_quotes(item.get("mentions"), item.get("patient_verbatim", "")),
                 }
             )
 
@@ -160,3 +166,13 @@ def _coerce_str(value) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _coerce_quotes(value, verbatim) -> list[str]:
+    """The mention quotes as a list of strings; the verbatim when there are none."""
+    if isinstance(value, str):
+        value = [value]
+    quotes = [str(q).strip() for q in (value or []) if q is not None and str(q).strip()]
+    if not quotes and verbatim:
+        quotes = [str(verbatim).strip()]
+    return quotes

@@ -14,8 +14,9 @@ from phenoscribe.config import Config
 from phenoscribe.extract_symptoms import extract_symptoms
 from phenoscribe.hpo_index import check_obo_version
 from phenoscribe.match_hpo import match_hpo
-from phenoscribe.output import write_docx, write_excel, write_personal_details
+from phenoscribe.output import write_docx, write_excel, write_mentions, write_personal_details
 from phenoscribe.pii import find_personal_details
+from phenoscribe.timeline import add_timeline, mention_rows
 from phenoscribe.review import (
     APPROVED,
     AUTO,
@@ -328,6 +329,10 @@ def code_review(
     logger.info("[%s] HPO codes matched: %d", patient_id, len(matches))
 
     # Step 6: Write output
+    # Where each finding comes up in the interview (position %, time).
+    timeline = mention_rows(matches, safe_text)
+    add_timeline(matches, timeline)
+
     step("writing the Excel file")
     logger.info("[%s] Step 6: Writing output...", patient_id)
     write_excel(
@@ -339,6 +344,7 @@ def code_review(
         propagate_ancestors=config.output.propagate_ancestors,
         obo_path=config.paths.hpo_obo,
     )
+    write_mentions(excel_path, patient_id, timeline)
 
     return matches
 

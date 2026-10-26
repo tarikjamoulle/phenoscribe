@@ -28,6 +28,9 @@ HEADERS = {
         "Clinical Term",
         "Needs Review",
         "Confidence",
+        "First Mention %",
+        "Last Mention %",
+        "Mentions",
     ],
     "semicolon": ["Patient_ID", "observation_source_value", "excluded_source_value"],
     "purl": [
@@ -286,14 +289,17 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
                 clinical_term,
                 _review_label(m),
                 _confidence_cell(m),
+                m.get("first_position"),
+                m.get("last_position"),
+                m.get("n_mentions"),
             ]
         )
         row = ws.max_row
-        for col in range(1, 12):
+        for col in range(1, 15):
             ws.cell(row=row, column=col).alignment = _TOP_ALIGNMENT
         ws.cell(row=row, column=8).alignment = _WRAP_ALIGNMENT
         if m.get("needs_review"):
-            for col in range(1, 12):
+            for col in range(1, 15):
                 ws.cell(row=row, column=col).fill = _REVIEW_FILL
 
 
@@ -376,6 +382,49 @@ def _hpo_id_to_purl(hpo_id: str) -> str:
     """Convert HP:0002027 to PURL format."""
     obo_id = hpo_id.replace(":", "_")
     return f"http://purl.obolibrary.org/obo/{obo_id}"
+
+
+MENTIONS_SHEET = "Mentions"
+MENTIONS_HEADERS = [
+    "Patient_ID", "HPO Code", "HPO Term", "Clinical Term", "Present/Absent",
+    "Order", "Mention", "Position %", "Time", "Quote", "Found",
+]
+
+
+def write_mentions(path, patient_id: str, rows: list[dict]) -> None:
+    """One row for each mention of a finding, in interview order (timeline.mention_rows).
+
+    "Position %" is the place in the interview (0 = start, 100 = end). "Order"
+    is 1 for the first finding to come up. "Time" comes from the [mm:ss]
+    markers, when the transcript has them.
+    """
+    from phenoscribe.timeline import time_label
+
+    path = Path(path)
+    wb = load_workbook(path) if path.exists() else Workbook()
+    if MENTIONS_SHEET in wb.sheetnames:
+        ws = wb[MENTIONS_SHEET]
+    else:
+        ws = wb.create_sheet(MENTIONS_SHEET) if path.exists() else wb.active
+        ws.title = MENTIONS_SHEET
+        ws.append(MENTIONS_HEADERS)
+        _style_header_row(ws, len(MENTIONS_HEADERS))
+    for r in rows:
+        ws.append([
+            patient_id,
+            r["hpo_id"] or "",
+            r["hpo_term"] if r["hpo_id"] else "",
+            r["clinical_term"],
+            "Absent" if r["negated"] else "Present",
+            r["order"],
+            r["mention"],
+            r["position"],
+            time_label(r["seconds"]),
+            r["quote"],
+            r["found"],
+        ])
+    _auto_fit_columns(ws)
+    wb.save(path)
 
 
 PERSONAL_DETAILS_SHEET = "Personal details"
