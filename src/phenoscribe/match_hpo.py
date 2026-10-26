@@ -173,6 +173,7 @@ def match_hpo(
             "frequency": symptom.get("frequency", ""),
             "onset": symptom.get("onset", ""),
             "severity": symptom.get("severity", ""),
+            "mentions": symptom.get("mentions") or [],
         }
         _attach_modifier_codes(result)
         results.append(result)
@@ -213,6 +214,7 @@ def _uncoded_record(symptom: dict) -> dict:
         "frequency": symptom.get("frequency", ""),
         "onset": symptom.get("onset", ""),
         "severity": symptom.get("severity", ""),
+        "mentions": symptom.get("mentions") or [],
     }
 
 

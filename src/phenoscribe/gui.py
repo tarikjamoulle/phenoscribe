@@ -93,7 +93,7 @@ PROVIDER_ENV_VAR = {
     "anthropic": "ANTHROPIC_API_KEY",
 }
 
-RESULT_HEADERS = ["Patient", "Symptom (patient words)", "HPO term", "Code", "Status"]
+RESULT_HEADERS = ["Patient", "Symptom (patient words)", "HPO term", "Code", "Status", "When"]
 
 # The browser keeps the key in local storage. Gradio encrypts the stored value
 # with this secret; it must stay the same across restarts, or the saved key is
@@ -440,9 +440,19 @@ def result_rows(batch: BatchResult) -> list[list]:
                     m["hpo_term"] if m.get("hpo_id") else "No good match",
                     m.get("hpo_id") or "—",
                     status,
+                    when_text(m),
                 ]
             )
     return rows
+
+
+def when_text(match: dict) -> str:
+    """'12 %' (first mention in the interview), plus '· 3×' for repeats."""
+    first = match.get("first_position")
+    if first is None:
+        return ""
+    n = match.get("n_mentions") or 1
+    return f"{first:.0f} %" + (f" · {n}×" if n > 1 else "")
 
 
 def filter_rows(rows: list[list], which: str) -> list[list]:
@@ -910,7 +920,7 @@ def build_app() -> gr.Blocks:
                     )
                 table = gr.Dataframe(
                     headers=RESULT_HEADERS, interactive=False, wrap=True, elem_classes="ps-table",
-                    column_widths=["12%", "31%", "26%", "16%", "15%"],
+                    column_widths=["11%", "29%", "24%", "13%", "12%", "11%"],
                 )
             saved = gr.Markdown(elem_classes="ps-note")
 

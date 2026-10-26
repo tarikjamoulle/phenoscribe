@@ -145,6 +145,11 @@ hold patient names. The file `filename_mapping.json` in the same folder links ea
 its file name. Two files that give the same patient ID in one run (for example `467.mp3`
 from two folders) are both skipped. Rename one of them.
 
+The Excel file also shows when each finding comes up in the interview. The columns
+**First Mention %** and **Last Mention %** give the place (0 % = start, 100 % = end), and
+**Mentions** gives how many times it comes up. The **Mentions** sheet has one row for each
+time, in interview order, with the time (`mm:ss`) when the transcript has time markers.
+
 The clean texts go to the `clean` folder. The Excel file has a **Personal details** sheet
 with the counts for each patient. No real name goes in the Excel file or the ZIP.
 

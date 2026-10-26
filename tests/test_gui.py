@@ -151,7 +151,7 @@ def test_selection_view_enables_start_only_with_files_and_a_key(monkeypatch, tmp
 def _batch():
     found = [
         {"hpo_id": "HP:0012378", "hpo_term": "Fatigue", "patient_verbatim": "épuisée",
-         "negated": False, "needs_review": False},
+         "negated": False, "needs_review": False, "first_position": 12.4, "n_mentions": 3},
         {"hpo_id": "HP:0012378", "hpo_term": "Fatigue", "patient_verbatim": "épuisée",
          "negated": False, "needs_review": False},
         {"hpo_id": "HP:0001945", "hpo_term": "Fever", "patient_verbatim": "pas de fièvre",
@@ -170,9 +170,9 @@ def _batch():
 
 def test_result_rows_show_the_symptom_and_match_the_excel_rows():
     assert gui.result_rows(_batch()) == [
-        ["MGA.467", "épuisée", "Fatigue", "HP:0012378", "Present"],
-        ["MGA.467", "pas de fièvre", "Fever", "HP:0001945", "Absent · Review"],
-        ["MGA.467", "Tingling", "No good match", "—", "Present · Review"],
+        ["MGA.467", "épuisée", "Fatigue", "HP:0012378", "Present", "12 % · 3×"],
+        ["MGA.467", "pas de fièvre", "Fever", "HP:0001945", "Absent · Review", ""],
+        ["MGA.467", "Tingling", "No good match", "—", "Present · Review", ""],
     ]
 
 

@@ -13,7 +13,7 @@ A recorded GP–patient conversation in, an Excel of standardized HPO codes out.
 3. **Extract symptoms** with an LLM: each complaint becomes a clinical English label plus the patient's own French verbatim.
 4. **Shortlist five HPO candidates** per symptom from a local ChromaDB index of ~19,400 HPO terms.
 5. **Pick the best code** from that shortlist with an LLM. The term name is re-read from the official ontology so the AI can't mis-label a valid code (Peter Robinson's caveat).
-6. **Write the Excel**: by default one row per finding (term, code, present/absent, modifiers, verbatim, review flag). `output.format: semicolon` gives the GP's original one-row-per-patient format, `Term (HP:code) [patient verbatim]; …`.
+6. **Write the Excel**: by default one row per finding (term, code, present/absent, modifiers, verbatim, review flag, first and last mention as a % of the interview, number of mentions). A "Mentions" sheet has one row for each place a finding comes up, in interview order: position % (0 = start, 100 = end, spoken text only), time from the `[mm:ss]` markers, mention number and order of first appearance (`timeline.py`). Whisper transcripts carry a `[mm:ss]` marker before each segment. `output.format: semicolon` gives the GP's original one-row-per-patient format, `Term (HP:code) [patient verbatim]; …`.
 
 Cohort summaries with `phenoscribe aggregate` — counts per HPO term plus a horizontal bar chart in the style of the Plovdiv poster.
 
@@ -180,7 +180,8 @@ src/phenoscribe/        Pipeline source
   extract_symptoms.py   Step 3: LLM symptom extraction
   hpo_index.py          Step 4: ChromaDB vector search
   match_hpo.py          Step 5: LLM judging + canonical name resolution
-  output.py             Step 6: Excel writer (three formats)
+  timeline.py           Where each finding comes up: position %, time, order
+  output.py             Step 6: Excel writer (three formats, Mentions sheet)
   aggregate.py          Cohort-level prevalence + bar chart
   pipeline.py           Orchestrator: process_recording, plan_batch, prepare_batch, code_batch
   cli.py                argparse CLI (process, clean, setup, status, aggregate, validate)
