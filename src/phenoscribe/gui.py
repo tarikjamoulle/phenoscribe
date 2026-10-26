@@ -721,11 +721,15 @@ def _approved(queue) -> list[str]:
 
 
 def begin_coding(queue):
-    """Lock the button and show the working panel for stage 2."""
-    n = len(_approved(queue))
+    """Lock the button and show the progress panel under it, with the files to code."""
+    names = [r.source for p in _approved(queue) if (r := _load(p))]
+    n = len(names)
+    shown = ", ".join(html.escape(name) for name in names[:6]) + (f" and {n - 6} more" if n > 6 else "")
     panel = (f'<div class="ps-step">Finding the HPO codes in {n} file{"s" if n != 1 else ""}…</div>'
-             '<div class="ps-note">About 1 minute for each file. Only the approved clean text '
-             "goes to the AI provider.</div>")
+             f'<div class="ps-note">{shown}</div>'
+             '<div class="ps-note">About 1 minute for each file: one AI call finds the symptoms, '
+             "then one call for each symptom picks its code. Only the approved clean text goes "
+             "to the AI provider.</div>")
     return gr.update(interactive=False, value="Working…"), gr.update(value=panel, visible=True)
 
 
@@ -901,6 +905,8 @@ def build_app() -> gr.Blocks:
             with gr.Row():
                 code_btn = gr.Button("Find HPO codes", variant="primary", interactive=False)
                 clean_btn = gr.Button("Save the clean texts", interactive=False, visible=False)
+            # while the codes are found: the progress bar shows here, under the button
+            code_working = gr.HTML(visible=False, elem_classes=["ps-card", "ps-working"], min_height=120)
             clean_file = gr.DownloadButton("Download the clean texts (.zip)", visible=False)
             clean_note = gr.Markdown(elem_classes="ps-note")
             gr.HTML('<div class="ps-note">Each change is saved. You can close the page and '
@@ -979,12 +985,12 @@ def build_app() -> gr.Blocks:
         )
 
         code_btn.click(
-            fn=begin_coding, inputs=queue, outputs=[code_btn, working],
+            fn=begin_coding, inputs=queue, outputs=[code_btn, code_working],
         ).then(
             fn=code_run,
             inputs=[queue, provider, api_key],
-            outputs=[working, review_panel, queue, results, summary, status, rows, table, show, excel, saved],
-            show_progress_on=[working],
+            outputs=[code_working, review_panel, queue, results, summary, status, rows, table, show, excel, saved],
+            show_progress_on=[code_working],
         ).then(fn=review_view, inputs=review_inputs, outputs=review_outputs)
         clean_btn.click(fn=clean_run, inputs=queue, outputs=[clean_file, clean_note]).then(
             fn=review_view, inputs=review_inputs, outputs=review_outputs

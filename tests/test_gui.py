@@ -316,3 +316,10 @@ def test_approve_the_rest_needs_the_confirm(review_on_disk, tmp_path):
     view = _view(gui.on_approve_rest(True, "MGA.412", review_on_disk, []))
     assert load_review(tmp_path, "MGA.412").approved_how == BULK
     assert "All 1 files approved" in view["queue"] and view["rest"]["visible"] is False
+
+
+def test_begin_coding_names_the_files(review_on_disk):
+    gui.on_approve("MGA.412", review_on_disk, [])
+    button, panel = gui.begin_coding(review_on_disk)
+    assert button["interactive"] is False
+    assert panel["visible"] is True and "412.docx" in panel["value"] and "1 file" in panel["value"]
