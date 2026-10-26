@@ -210,6 +210,28 @@ def _get_faster_whisper_model(model_name: str, device: str):
     return _faster_whisper_cache[key]
 
 
+def timestamp(seconds: float) -> str:
+    """"[mm:ss]", or "[h:mm:ss]" from one hour on, like the Word transcripts."""
+    total = int(seconds)
+    hours, rest = divmod(total, 3600)
+    minutes, secs = divmod(rest, 60)
+    return f"[{hours}:{minutes:02d}:{secs:02d}]" if hours else f"[{minutes:02d}:{secs:02d}]"
+
+
+def timed_text(segments) -> str:
+    """One line for each Whisper segment, with its start time: "[01:23] text".
+
+    The times let the app place each symptom in the interview. The
+    personal-detail removal ignores them (pii.TIMESTAMP_PATTERN).
+    """
+    lines = []
+    for start, text in segments:
+        text = text.strip()
+        if text:
+            lines.append(f"{timestamp(start)} {text}")
+    return "\n".join(lines)
+
+
 def _transcribe_faster_whisper(
     path: Path, model_name: str, language: str, device: str
 ) -> str:
@@ -218,7 +240,7 @@ def _transcribe_faster_whisper(
 
     model = _get_faster_whisper_model(model_name, device)
     segments, info = model.transcribe(str(path), language=language)
-    text = " ".join(segment.text.strip() for segment in segments)
+    text = timed_text((segment.start, segment.text) for segment in segments)
 
     elapsed = time.time() - start
     logger.info(
@@ -245,7 +267,9 @@ def _transcribe_mlx(path: Path, model_name: str, language: str) -> str:
     start = time.time()
 
     result = mlx_whisper.transcribe(str(path), path_or_hf_repo=repo, language=language)
-    text = result["text"].strip()
+    text = timed_text((seg["start"], seg["text"]) for seg in result.get("segments") or [])
+    if not text:  # no segment list: keep the plain text
+        text = result["text"].strip()
 
     elapsed = time.time() - start
     # mlx-whisper does not surface audio duration on the result dict; log raw timing.
