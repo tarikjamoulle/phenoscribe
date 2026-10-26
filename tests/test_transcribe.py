@@ -107,3 +107,35 @@ def test_diarization_without_the_extra_says_how_to_install(monkeypatch, tmp_path
     monkeypatch.setattr(diarize, "_pipeline_cache", None)
     with pytest.raises(ImportError, match="uv sync --extra diarize"):
         diarize.diarize(str(tmp_path / "a.mp3"))
+
+
+def test_timed_text_puts_the_start_time_before_each_segment():
+    from phenoscribe.pii import TIMESTAMP_PATTERN
+    from phenoscribe.transcribe import timed_text
+
+    text = timed_text([(0.0, " Bonjour docteur."), (83.6, " J'ai mal "), (90.0, "  "),
+                       (3725.2, "Merci.")])
+    assert text == "[00:00] Bonjour docteur.\n[01:23] J'ai mal\n[1:02:05] Merci."
+    # The personal-detail removal sees each marker as a timestamp.
+    assert len(TIMESTAMP_PATTERN.findall(text)) == 3
+
+
+def test_mlx_and_faster_whisper_both_give_timed_text(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    from phenoscribe import transcribe as t
+
+    audio = tmp_path / "a.mp3"
+    audio.write_bytes(b"x")
+    fake_mlx = types.SimpleNamespace(transcribe=lambda *a, **k: {
+        "text": "Bonjour. Ça va.", "segments": [{"start": 0.0, "text": " Bonjour."},
+                                                {"start": 4.2, "text": " Ça va."}]})
+    monkeypatch.setitem(sys.modules, "mlx_whisper", fake_mlx)
+    assert t._transcribe_mlx(audio, "large-v3", "fr") == "[00:00] Bonjour.\n[00:04] Ça va."
+
+    segment = types.SimpleNamespace(start=61.0, text=" Oui.")
+    model = types.SimpleNamespace(
+        transcribe=lambda *a, **k: (iter([segment]), types.SimpleNamespace(duration=62.0)))
+    monkeypatch.setattr(t, "_get_faster_whisper_model", lambda *a: model)
+    assert t._transcribe_faster_whisper(audio, "large-v3", "fr", "cpu") == "[01:01] Oui."
