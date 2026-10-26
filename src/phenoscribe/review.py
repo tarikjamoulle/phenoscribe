@@ -91,9 +91,10 @@ def type_name(category: str, plural: bool = False) -> str:
 # --- matching -----------------------------------------------------------------------
 
 
-# Hyphens, apostrophes and spaces all fold to one space, so "Jean-Dupont" and
-# "Jean Dupont" match. Each folds to one character, so positions stay the same.
-_SEPARATORS = set("-‐‑‒–—'’ʼ_\u00a0\u202f\t\n\r ")
+# Hyphens and spaces fold to one space, so "Jean-Dupont" and "Jean Dupont"
+# match. Each folds to one character, so positions stay the same. Apostrophes
+# stay: in French they mark an elision ("m'avait", "l'hôpital").
+_SEPARATORS = set("-‐‑‒–—_\u00a0\u202f\t\n\r ")
 
 
 def _fold_char(c: str) -> str:
@@ -119,13 +120,14 @@ def fold(text: str) -> str:
 def _occurrences(folded_text: str, value: str) -> list[tuple[int, int]]:
     """Positions of ``value`` as a whole word, in any case, accents and separators.
 
-    One space in the value matches a run of spaces, hyphens or apostrophes.
+    One space in the value matches a run of spaces or hyphens. A word followed
+    by an apostrophe is an elision ("m'avait", "d'Anvers"), never the value.
     """
     words = fold(value).split()
     if not words:
         return []
     needle = " +".join(re.escape(w) for w in words)
-    return [m.span() for m in re.finditer(rf"(?<!\w){needle}(?!\w)", folded_text)]
+    return [m.span() for m in re.finditer(rf"(?<!\w){needle}(?![\w'’ʼ])", folded_text)]
 
 
 # --- the review table ---------------------------------------------------------------

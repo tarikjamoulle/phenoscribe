@@ -115,6 +115,14 @@ def test_overlapping_and_repeated_spans():
     assert mapping == {"PERSON_1": "Jean Dupont", "PERSON_2": "Dupont"}
 
 
+def test_an_elision_is_not_the_value():
+    text = "Parce qu'on m'avait dit que M. Dupont m'a vu. Le M est là."
+    review = Review.from_spans("a.txt", "A", text, [Span(text.index("M est"), text.index("M est") + 1, "M", "PERSON")])
+    clean, _ = clean_text(review)
+    assert "m'avait" in clean and "m'a vu" in clean
+    assert "Le PERSON_1 est" in clean
+
+
 def test_regex_only_spans():
     text = "Appelez le 0472 12 34 56 ou le 0472 12 34 56."
     start = text.index("0472")

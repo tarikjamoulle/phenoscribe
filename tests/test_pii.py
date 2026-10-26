@@ -203,6 +203,15 @@ def test_timestamps_are_hidden_from_the_model_and_stay_in_the_text(monkeypatch):
     assert out.startswith("[27:25] docteur:") and "[27:32]" in out
 
 
+def test_a_single_letter_is_never_a_name(monkeypatch):
+    text = "Parce qu'on m'avait parlé de M. Dupont."
+    _install_fake_ner(monkeypatch, lambda t: [
+        {"entity_group": "NOM_PERSONNE", "word": "m", "start": 12, "end": 13, "score": 0.9},
+        _span(t, "Dupont", "NOM_PERSONNE"),
+    ])
+    assert [s.value for s in pii.find_personal_details(text)] == ["Dupont"]
+
+
 def test_a_long_number_is_still_an_id(monkeypatch):
     text = "Mon numéro de dossier est 4471209."
     _install_fake_ner(monkeypatch, lambda t: [_span(t, "4471209", "NUM_DOSSIER")])
