@@ -147,7 +147,7 @@ def test_default_process_run_emits_ancestor_closure(tmp_path, monkeypatch):
     assert cfg.output.propagate_ancestors is True
 
     # Seed a cached transcript so we exercise the real pipeline body without
-    # transcription, PII, or any network call.
+    # transcription, the NER model, or any network call.
     tdir = tmp_path / "transcripts"
     tdir.mkdir(parents=True, exist_ok=True)
     (tdir / "P1.txt").write_text("seizure", encoding="utf-8")
@@ -169,12 +169,14 @@ def test_default_process_run_emits_ancestor_closure(tmp_path, monkeypatch):
         ],
     )
 
+    # No NER model in this test: the text holds no personal details.
+    monkeypatch.setattr("phenoscribe.pipeline.find_personal_details", lambda *a, **k: [])
     matches = process_recording(
         input_path="unused",
         patient_id="P1",
         config=cfg,
         skip_transcription=True,
-        skip_pii=True,
+        no_review=True,
     )
     assert matches  # the pipeline produced a coded term
 

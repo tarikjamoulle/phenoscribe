@@ -84,17 +84,59 @@ your browser profile. The app writes no key to disk. Click **Change key** to use
 ## 4. Add your files and click Start
 
 1. Drag your files onto the box, or click **Choose a folder** to add a whole folder.
-   - Audio files (`.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`) are transcribed, then coded.
-   - Transcripts (`.txt`) are coded as they are. A `467.txt` next to `467.mp3` is used in
-     place of the audio.
+   - Audio files (`.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`) are transcribed first.
+   - Transcripts (`.txt` or Word `.docx`) are read as they are. A `467.txt` next to
+     `467.mp3` is used in place of the audio. Old Word files (`.doc`) are skipped: save
+     them as `.docx` in Word.
    - A recording that the app already transcribed is not transcribed again. To make a new
      transcript, tick the file under **Transcribe again**.
    - Other files are skipped. The list under the box says what happens to each file.
 2. Check the language. French is the default.
-3. Click **Start coding**. The progress bar shows the file and the step.
-4. When the run ends, the page shows the number of codes, one line for each file, and the
-   coded findings. Click **Download Excel**, or click **To review** to see only the codes
-   to check.
+3. Choose what to do:
+   - **Remove personal details, then find HPO codes**: this needs the API key.
+   - **Remove personal details only**: this needs no key. No text leaves the computer.
+4. Under **Also remove**, untick a type to keep it in the text: dates, ages, gender or job
+   titles. Names, places, organizations, phones, emails and ID numbers are always removed.
+5. Click **Start**. Transcription takes about as long as the recording, longer without a
+   GPU. The progress bar shows the file and the step.
+
+## 5. Check the doubtful files
+
+The app approves each file with no warning sign. You check only the doubtful files. A file
+is doubtful when:
+
+- a word after a title stays in the text, for example "docteur Vandermeulen";
+- the app is unsure about a value that it removed;
+- the app removed nothing, which is rare for an interview.
+
+The list shows the files to check first, each with its reasons. For each file, the page
+shows:
+
+- a count line, for example "6 removed: 3 phones · 2 names · 1 date";
+- the text, with each removed value colored by type;
+- a table with one row for each value and the number of times it appears.
+
+Check the file, then click **Approve**:
+
+- **Untick** a value that is not a personal detail, for example a drug name. It goes back
+  at every place in the text.
+- Under **Possibly missed**, tick a word after a title to remove it everywhere.
+- Type any other missed word under **Remove a word the app missed**, then click
+  **Remove it**.
+
+To skip the checks, click **Approve the N waiting files with no check**, then confirm. You can
+open any approved file from the **File** list and change it. A change needs a new approval.
+
+The app can miss details, also in a file with no warning. A name that it missed goes to the
+AI provider. Each change is saved: you can close the page and continue later.
+
+When the files are approved:
+
+- **Find HPO codes in N approved files** sends only the approved clean text to the AI
+  provider. The page then shows the number of codes, one line for each file, and the coded
+  findings. Click **Download Excel**, or click **To review** to see only the codes to check.
+- **Save N clean texts** makes a ZIP with the clean texts and a counts report. A Word file
+  gets a clean Word copy too. The copy keeps the text and loses the layout.
 
 Each run makes a new Excel file, for example `results_2026-10-22_1405.xlsx`, in the
 folder `Documents/Phenoscribe results`. A file named only with a number (`467.mp3`) gets the patient
@@ -102,6 +144,13 @@ ID `MGA.467`. Any other file name gets a code such as `pt-7a4b3c8e`, because fil
 hold patient names. The file `filename_mapping.json` in the same folder links each code to
 its file name. Two files that give the same patient ID in one run (for example `467.mp3`
 from two folders) are both skipped. Rename one of them.
+
+The clean texts go to the `clean` folder. The Excel file has a **Personal details** sheet
+with the counts for each patient. No real name goes in the Excel file or the ZIP.
+
+The real names stay on this computer, in the `review` and `transcripts` folders and in
+`filename_mapping.json`. The Excel sheet and the report say how each file was approved:
+`checked`, `auto: no warning` or `approved in bulk`.
 
 If a file fails, the page shows one short line for it ("Key rejected", "No internet",
 "Audio format not supported"). The full details go to `phenoscribe.log` in the same folder.
@@ -137,8 +186,8 @@ Copy the key when you create it. You cannot see it again later.
 |---|---|
 | The window closes or says "Phenoscribe stopped with an error" | Copy the last 20 lines of the window and send them to Tarik. |
 | "Key rejected" | Paste the key again, or make a new key. With OpenAI, check that you have credit. |
-| "No internet" | Check the connection, then click **Start coding** again. |
-| "The AI account has no credit left, or hit its limit" | Add credit on the provider's billing page (OpenAI needs prepaid credit), wait a few minutes, then click **Start coding** again. |
+| "No internet" | Check the connection, then click **Find HPO codes** again. |
+| "The AI account has no credit left, or hit its limit" | Add credit on the provider's billing page (OpenAI needs prepaid credit), wait a few minutes, then click **Find HPO codes** again. |
 | A line that starts with "Failed" | Send `phenoscribe.log` from `Documents/Phenoscribe results` to Tarik. |
 | The browser does not open | Open <http://127.0.0.1:7860> yourself. |
 | "Cannot find empty port" | Phenoscribe already runs in another window. Use that window, or close it first. |

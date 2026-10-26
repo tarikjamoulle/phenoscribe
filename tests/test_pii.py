@@ -176,6 +176,17 @@ def test_subword_spans_replace_full_entity_no_leftover(monkeypatch):
 
 # --- no-drift guard: config vs code vs docs ----------------------------------
 
+def test_find_personal_details_gives_value_type_score_and_origin(monkeypatch):
+    text = "Mme Dupont, née le 15/03/1970."
+    _install_fake_ner(monkeypatch, lambda t: [_span(t, "Dupont", "NOM_PERSONNE", score=0.91)])
+    spans = pii.find_personal_details(text)
+    assert [(s.value, s.category, s.origin) for s in spans] == [
+        ("Dupont", "PERSON", "model"), ("15/03/1970", "DATE", "regex"),
+    ]
+    assert spans[0].score == pytest.approx(0.91)
+    assert all(text[s.start:s.end] == s.value for s in spans)
+
+
 def test_config_default_matches_pii_module_default():
     """config.py PIIConfig default must equal the pii.py module default."""
     assert PIIConfig().model == pii.DEFAULT_MODEL

@@ -1,10 +1,13 @@
 """Gradio web UI for Phenoscribe.
 
-Three steps on one calm page: a key, the files, Start. The app decides the work
-for each file (plan_batch): audio is transcribed, a .txt is coded as it is, and a
-saved transcript of the same audio is reused. Results go to a new dated Excel in
-`PHENOSCRIBE_OUTPUT_DIR` (default `/app/output`; the start scripts set
-`Documents/Phenoscribe results`).
+Two tools on one calm page: remove the personal details, or remove them and
+then find the HPO codes. The steps: a key (only for the codes), the files,
+Start, a review of the personal details for each file, then the codes or the
+clean texts. The app decides the work for each file (plan_batch): audio is
+transcribed, a .txt or .docx is read as it is, and a saved transcript of the
+same audio is reused. Only an approved review goes to the AI provider.
+Results go to `PHENOSCRIBE_OUTPUT_DIR` (default `/app/output`; the start
+scripts set `Documents/Phenoscribe results`).
 """
 
 import html
@@ -21,7 +24,39 @@ import requests
 from phenoscribe.config import load_config
 from phenoscribe.llm import use_api_key
 from phenoscribe.output import dedup_by_code
-from phenoscribe.pipeline import BatchResult, FilePlan, plan_batch, run_batch
+from phenoscribe.pipeline import (
+    BatchResult,
+    FilePlan,
+    approve_clear_files,
+    approve_the_rest,
+    code_batch,
+    finish_clean,
+    plan_batch,
+    prepare_batch,
+    write_clean_files,
+)
+from phenoscribe.review import (
+    APPROVED,
+    AUTO,
+    NEEDS_REVIEW,
+    OPTIONAL_TYPES,
+    TYPE_NAMES,
+    ReviewError,
+    add_value,
+    approve,
+    entries,
+    highlighted,
+    leaks,
+    load_review,
+    open_reviews,
+    possibly_missed,
+    save_review,
+    set_keep_types,
+    set_removed,
+    summary_line,
+    type_name,
+    warnings,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -66,10 +101,36 @@ RESULT_HEADERS = ["Patient", "Symptom (patient words)", "HPO term", "Code", "Sta
 KEY_STORAGE = {"storage_key": "phenoscribe_api_key", "secret": "phenoscribe-local"}
 
 ACTION_TEXT = {
-    "transcribe": ("Audio", "Transcribe, then code"),
-    "reuse": ("Audio", "Saved transcript found, code only"),
-    "transcript": ("Transcript", "Code only"),
+    "transcribe": ("Audio", "Transcribe, then remove personal details"),
+    "reuse": ("Audio", "Saved transcript found"),
+    "transcript": ("Transcript", "Remove personal details"),
 }
+
+# The two tools.
+MODE_CODE, MODE_CLEAN = "code", "clean"
+MODE_CHOICES = [
+    ("Remove personal details, then find HPO codes", MODE_CODE),
+    ("Remove personal details only", MODE_CLEAN),
+]
+REMOVE_CHOICES = [(label, key) for key, label in OPTIONAL_TYPES.items()]
+ALWAYS_REMOVED = "names, places, organizations, phones, emails and ID numbers"
+REMOVE_STORAGE = {"storage_key": "phenoscribe_remove_types", "secret": "phenoscribe-local"}
+
+# Colors of the highlighted types in the review text (light and dark both read).
+TYPE_COLORS = {
+    "name": "#E8A87C", "place": "#85C1B9", "organization": "#A9B8E0", "phone": "#D4A5D9",
+    "email": "#D4A5D9", "ID number": "#D4A5D9", "web address": "#D4A5D9", "date": "#E6D38A",
+    "age": "#B5D99C", "gender": "#B5D99C", "job title": "#B5D99C", "other": "#C9C9C9",
+}
+ADD_TYPES = [(TYPE_NAMES[t][0].capitalize(), t) for t in TYPE_NAMES]
+
+APPROVE_REST_QUESTION = (
+    "Approve every file that still waits, with no check? A name that the app missed in "
+    "these files goes to the AI provider."
+)
+
+REVIEW_HEADERS = ["Remove", "Found in the text", "Type", "Times"]
+MISSED_HEADERS = ["Remove", "Word after a title", "Where"]
 
 
 # --- look -----------------------------------------------------------------------
@@ -190,6 +251,13 @@ footer { display: none !important; }
 .ps-tile b { display: block; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400;
              font-size: 36px; line-height: 1.1; }
 .ps-tile b.warn { color: #8A5A0B; }
+.ps-queue .ps-row { cursor: default; }
+.ps-row.done { color: var(--ps-ok); }
+.ps-row.here { box-shadow: inset 4px 0 0 var(--ps-accent); font-weight: 600; }
+.ps-line { font-size: 15px; font-weight: 600; }
+.ps-leak-ok { color: var(--ps-ok); font-size: 13px; }
+.ps-leak-bad { color: var(--ps-bad); font-size: 13px; font-weight: 600; }
+.ps-text { max-height: 420px; overflow-y: auto; }
 .dark .ps-tile b.warn { color: #E9C98B; }
 """
 
@@ -331,22 +399,25 @@ def plan_html(plans: list[FilePlan], fresh: list[str] = ()) -> str:
     return f'{count_line(plans)}<div class="ps-list">{"".join(rows)}</div>'
 
 
-def selection_view(files: list[str], fresh: list[str], language: str, api_key: str):
+def selection_view(files: list[str], fresh: list[str], language: str, api_key: str, mode: str = MODE_CODE):
     """Everything that follows the file selection: list, language, reuse, Start,
-    and the drop box, which shrinks to a slim bar once files are in the list."""
+    and the drop box, which shrinks to a slim bar once files are in the list.
+
+    Start needs a key only for the HPO codes: the removal runs on this computer."""
     plans = file_plan(files, language)
     runnable = [p for p in plans if p.action != "skip"]
     has_audio = any(p.action in ("transcribe", "reuse") for p in plans)
     reusable = [p.name for p in plans if p.action == "reuse"]
     have_key = bool(api_key.strip()) or any(env_key_for(p) for p in PROVIDER_ENV_VAR)
     n = len(runnable)
-    label = f"Start coding {n} file{'s' if n != 1 else ''}" if n else "Start coding"
+    label = f"Start with {n} file{'s' if n != 1 else ''}" if n else "Start"
+    can_start = bool(n) and (have_key or mode == MODE_CLEAN)
     drop_classes = ["ps-drop", "ps-slim"] if files else ["ps-drop"]
     return (
         plan_html(plans, fresh),
         gr.update(visible=has_audio),
         gr.update(choices=reusable, value=[], visible=bool(reusable)),
-        gr.update(value=label, interactive=bool(n) and have_key),
+        gr.update(value=label, interactive=can_start),
         gr.update(visible=bool(files)),
         gr.update(height=56 if files else 150, elem_classes=drop_classes),
         gr.update(visible=not files),
@@ -413,20 +484,19 @@ def status_html(batch: BatchResult) -> str:
 
 
 def working_html(plans: list[FilePlan]) -> str:
-    """What the page shows while a run works, above Gradio's progress bar."""
+    """What the page shows while the files are read, above Gradio's progress bar."""
     runnable = [p for p in plans if p.action != "skip"]
     audio = sum(1 for p in runnable if p.action == "transcribe")
     n = len(runnable)
-    lines = [f'<div class="ps-step">Coding {n} file{"s" if n != 1 else ""}…</div>']
+    lines = [f'<div class="ps-step">Reading {n} file{"s" if n != 1 else ""} and finding the personal details…</div>']
     if audio:
         lines.append(
             f'<div class="ps-note">{audio} recording{"s" if audio != 1 else ""} to transcribe. '
-            "Transcription takes about 10 minutes for each 20 minutes of audio, "
-            "longer without a GPU.</div>"
+            "Transcription takes about as long as the recording, longer without a GPU.</div>"
         )
     lines.append(
-        '<div class="ps-note">Keep this page and the Phenoscribe window open. '
-        "The results appear here when the run ends.</div>"
+        '<div class="ps-note">No text leaves this computer in this step. Keep this page and '
+        "the Phenoscribe window open. The review of each file appears here when the step ends.</div>"
     )
     return "".join(lines)
 
@@ -435,41 +505,241 @@ def begin_run(files: list[str], language: str):
     """Before the run: lock Start and show the working panel (the progress bar goes there)."""
     plans = file_plan(files, language)
     return (
-        gr.update(interactive=False, value="Coding…"),
+        gr.update(interactive=False, value="Working…"),
         gr.update(value=working_html(plans), visible=True),
+        gr.update(visible=False),
         gr.update(visible=False),
     )
 
 
-def run_pipeline(
-    files: list[str],
-    language: str,
-    provider: str,
-    api_key: str,
-    retranscribe: list[str] | None,
-    progress=gr.Progress(),
-):
+def keep_types_for(remove: list[str]) -> list[str]:
+    """The optional types the user left unticked under "Also remove"."""
+    return [t for t in OPTIONAL_TYPES if t not in (remove or [])]
+
+
+def prepare_run(files, language, remove, retranscribe, progress=gr.Progress()):
+    """Stage 1: transcribe and find the personal details. Then show the review."""
+    config = load_config(CONFIG_PATH)
+    config.transcription.language = language
+    results = prepare_batch(
+        files, config, OUTPUT_DIR,
+        on_progress=lambda fraction, message: progress(fraction, desc=message),
+        retranscribe=frozenset(retranscribe or []),
+        keep_types=keep_types_for(remove),
+    )
+    approve_clear_files([r.review for r in results if r.review], OUTPUT_DIR)
+    queue = [r.patient_id for r in results if r.review]
+    failed = [[r.filename, plain_error(r.error)] for r in results if r.error]
+    first = _next_to_review(queue) or next(iter(queue), None)
+    return (gr.update(visible=False), gr.update(visible=True), queue, failed,
+            *review_view(first, queue, failed))
+
+
+def resume_reviews():
+    """On page load: open the reviews that a closed page left (Continue later)."""
+    queue = [r.patient_id for r in open_reviews(OUTPUT_DIR)]
+    first = _next_to_review(queue) or next(iter(queue), None)
+    return (gr.update(visible=bool(queue)), queue, [], *review_view(first, queue, []))
+
+
+def _load(patient_id):
+    try:
+        return load_review(OUTPUT_DIR, patient_id) if patient_id else None
+    except ReviewError as e:
+        logger.warning("%s", e)
+        return None
+
+
+def _next_to_review(queue, after=None):
+    """The next file that needs a review, after ``after`` (wraps around)."""
+    if not queue:
+        return None
+    start = queue.index(after) + 1 if after in queue else 0
+    for patient_id in queue[start:] + queue[:start]:
+        review = _load(patient_id)
+        if review and review.status == NEEDS_REVIEW:
+            return patient_id
+    return None
+
+
+def queue_html(queue, failed, current) -> str:
+    """The files to check first, each with its reasons, then the approved files."""
+    doubtful, clear = [], []
+    for patient_id in queue:
+        review = _load(patient_id)
+        if review is None:
+            continue
+        name = html.escape(review.source)
+        here = " here" if patient_id == current else ""
+        if review.status == NEEDS_REVIEW:
+            why = " · ".join(warnings(review)) or summary_line(review)
+            doubtful.append(f'<div class="ps-row skip{here}"><span class="ps-file">{name}</span>'
+                            f'<span class="ps-tag skip">Check</span>'
+                            f'<span class="ps-what">{html.escape(why)}</span></div>')
+        else:
+            how = "No warning" if review.approved_how == AUTO else "Approved"
+            clear.append(f'<div class="ps-row done{here}"><span class="ps-file"><span class="ps-ok">✓</span> {name}</span>'
+                         f'<span class="ps-tag">{how}</span>'
+                         f'<span class="ps-what">{html.escape(summary_line(review))}</span></div>')
+    bad = [f'<div class="ps-row bad"><span class="ps-file">✗ {html.escape(name)}</span>'
+           f'<span class="ps-what">{html.escape(problem)}</span></div>' for name, problem in failed]
+    rows = doubtful + bad + clear
+    if not rows:
+        return ""
+    n = len(doubtful)
+    head = (f'<div class="ps-count">{n} file{"s" if n != 1 else ""} to check · '
+            f'{len(clear)} approved</div>' if n else
+            f'<div class="ps-count"><span class="ps-ok">✓</span> All {len(clear)} files approved</div>')
+    return f'{head}<div class="ps-list ps-queue">{"".join(rows)}</div>'
+
+
+def review_rows(review) -> list[list]:
+    return [[e.removed, e.value, type_name(e.category), e.count] for e in entries(review)]
+
+
+def missed_rows(review) -> list[list]:
+    return [[False, word, sample] for word, sample in possibly_missed(review)]
+
+
+def leak_html(review) -> str:
+    found = leaks(review)
+    if found:
+        return ('<span class="ps-leak-bad">✗ Still in the clean text: '
+                f'{html.escape(", ".join(found))}. Approve stays off.</span>')
+    return ('<span class="ps-leak-ok">✓ No removed value is left in the clean text. '
+            "The check covers only the values in the table: read the text for names it missed.</span>")
+
+
+def review_view(patient_id, queue, failed):
+    """Everything in the review panel for one file."""
+    review = _load(patient_id)
+    choices = []
+    for p in queue:
+        r = _load(p)
+        if r:
+            choices.append((f"{r.source} · {'approved' if r.status != NEEDS_REVIEW else 'to check'}", p))
+    approved = [p for p in queue if (r := _load(p)) and r.status != NEEDS_REVIEW]
+    n = len(approved)
+    plural = "s" if n != 1 else ""
+    if review is None:
+        return (queue_html(queue, failed, None), gr.update(choices=choices, value=None), "",
+                [], gr.update(value=[]), [], [], gr.update(interactive=False, value="Approve"),
+                gr.update(value=f"Find HPO codes in {n} approved file{plural}", interactive=bool(n)),
+                gr.update(value=f"Save {n} clean text{plural}", interactive=bool(n)),
+                _rest_button(queue))
+    is_approved = review.status != NEEDS_REVIEW
+    reasons = warnings(review) if not is_approved else []
+    line = (f'<div class="ps-line">{html.escape(review.source)} · {html.escape(summary_line(review))}</div>'
+            + "".join(f'<div class="ps-leak-bad">⚠ {html.escape(r)}</div>' for r in reasons)
+            + leak_html(review))
+    remove = [t for t in OPTIONAL_TYPES if t not in review.keep_types]
+    return (
+        queue_html(queue, failed, patient_id),
+        gr.update(choices=choices, value=patient_id),
+        line,
+        highlighted(review),
+        gr.update(value=remove),
+        review_rows(review),
+        missed_rows(review),
+        gr.update(interactive=not is_approved and not leaks(review),
+                  value="✓ Approved" if is_approved else f"Approve {review.source}"),
+        gr.update(value=f"Find HPO codes in {n} approved file{plural}", interactive=bool(n)),
+        gr.update(value=f"Save {n} clean text{plural}", interactive=bool(n)),
+        _rest_button(queue),
+    )
+
+
+def _rest_button(queue):
+    waiting = sum(1 for p in queue if (r := _load(p)) and r.status == NEEDS_REVIEW)
+    return gr.update(value=f"Approve the {waiting} waiting files with no check", visible=waiting > 1)
+
+
+def _edit(patient_id, queue, failed, change):
+    review = _load(patient_id)
+    if review is not None:
+        change(review)
+        save_review(review, OUTPUT_DIR)
+    return review_view(patient_id, queue, failed)
+
+
+def on_removed_edit(table, patient_id, queue, failed):
+    """A tick changed in the table: put the value back, or remove it again."""
+    def change(review):
+        now = {e.value: e.removed for e in entries(review)}
+        for row in table or []:
+            value, removed = row[1], bool(row[0])
+            if value in now and now[value] != removed:
+                set_removed(review, value, removed)
+    return _edit(patient_id, queue, failed, change)
+
+
+def on_missed_edit(table, patient_id, queue, failed):
+    """A ticked word after a title: remove it as a name, at every position."""
+    def change(review):
+        for row in table or []:
+            if row[0]:
+                add_value(review, row[1], "PERSON")
+    return _edit(patient_id, queue, failed, change)
+
+
+def on_add(value, category, patient_id, queue, failed):
+    view = _edit(patient_id, queue, failed, lambda review: add_value(review, value or "", category))
+    return ("", *view)
+
+
+def on_types(remove, patient_id, queue, failed):
+    return _edit(patient_id, queue, failed, lambda review: set_keep_types(review, keep_types_for(remove)))
+
+
+def on_approve(patient_id, queue, failed):
+    """Approve this file, write its clean text, and open the next file to review."""
+    review = _load(patient_id)
+    if review is not None and review.status == NEEDS_REVIEW:
+        try:
+            approve(review)
+        except ReviewError as e:
+            logger.warning("%s", e)
+        else:
+            save_review(review, OUTPUT_DIR)
+            write_clean_files(review, OUTPUT_DIR)
+    following = _next_to_review(queue, after=patient_id) or patient_id
+    return review_view(following, queue, failed)
+
+
+def _approved(queue) -> list[str]:
+    return [p for p in queue if (r := _load(p)) and r.status == APPROVED]
+
+
+def begin_coding(queue):
+    """Lock the button and show the working panel for stage 2."""
+    n = len(_approved(queue))
+    panel = (f'<div class="ps-step">Finding the HPO codes in {n} file{"s" if n != 1 else ""}…</div>'
+             '<div class="ps-note">About 1 minute for each file. Only the approved clean text '
+             "goes to the AI provider.</div>")
+    return gr.update(interactive=False, value="Working…"), gr.update(value=panel, visible=True)
+
+
+def code_run(queue, provider, api_key, progress=gr.Progress()):
+    """Stage 2 of the HPO tool: code the approved files into a new Excel."""
     config = load_config(CONFIG_PATH)
     config.llm.provider = provider
     config.llm.model = model_for(provider, config)
-    config.transcription.language = language
-
     with use_api_key(provider, api_key.strip()):
-        batch = run_batch(
-            files,
-            config,
-            OUTPUT_DIR,
+        batch = code_batch(
+            _approved(queue), config, OUTPUT_DIR,
             on_progress=lambda fraction, message: progress(fraction, desc=message),
-            retranscribe=frozenset(retranscribe or []),
         )
-
     rows = result_rows(batch)
     if batch.excel_path:
-        saved = f"Saved in {OUTPUT_DIR} as {batch.excel_path.name}. Error details go to {LOG_PATH.name} in the same folder."
+        saved = (f"Saved in {OUTPUT_DIR} as {batch.excel_path.name}, with a \"Personal details\" sheet. "
+                 f"The clean texts are in the clean folder. Error details go to {LOG_PATH.name}.")
     else:
         saved = f"No Excel file: every file failed. Details are in {LOG_PATH}."
+    left = [p for p in queue if p not in _approved(queue) and (r := _load(p)) and r.status == NEEDS_REVIEW]
     return (
         gr.update(visible=False),
+        gr.update(visible=bool(left)),
+        left,
         gr.update(visible=True),
         summary_html(batch, rows, datetime.now()),
         status_html(batch),
@@ -479,6 +749,25 @@ def run_pipeline(
         gr.update(value=str(batch.excel_path) if batch.excel_path else None, visible=bool(batch.excel_path)),
         saved,
     )
+
+
+def clean_run(queue):
+    """The removal-only tool: one ZIP of the approved clean texts and the counts report."""
+    archive = finish_clean(_approved(queue), OUTPUT_DIR)
+    if archive is None:
+        return gr.update(visible=False), "No approved file yet."
+    left = sum(1 for p in queue if (r := _load(p)) and r.status == NEEDS_REVIEW)
+    note = f"Saved in {OUTPUT_DIR}: {archive.name} and the clean folder."
+    if left:
+        note += f" {left} file{'s' if left != 1 else ''} still need{'s' if left == 1 else ''} a review."
+    return gr.update(value=str(archive), visible=True), note
+
+
+def on_approve_rest(confirmed, patient_id, queue, failed):
+    """"Approve all the rest", after the browser confirm."""
+    if confirmed:
+        approve_the_rest(queue, OUTPUT_DIR)
+    return review_view(patient_id, queue, failed)
 
 
 # --- page -------------------------------------------------------------------------
@@ -502,7 +791,11 @@ def build_app() -> gr.Blocks:
         files = gr.State([])
         fresh = gr.State([])
         rows = gr.State([])
+        queue = gr.State([])
+        failed = gr.State([])
+        confirm_box = gr.Checkbox(visible=False)
         saved_key = gr.BrowserState("", **KEY_STORAGE)
+        saved_remove = gr.BrowserState([], **REMOVE_STORAGE)
 
         # 1 · key
         with gr.Column(elem_classes="ps-card"):
@@ -534,8 +827,9 @@ def build_app() -> gr.Blocks:
                 folder = gr.UploadButton("Choose a folder", file_count="directory", size="sm", scale=0, min_width=160)
                 clear = gr.Button("Clear the list", size="sm", scale=0, min_width=140, visible=False)
             hint = gr.HTML(
-                '<div class="ps-note">Audio: .mp3 .wav .m4a .ogg .flac · Transcripts: .txt · '
-                "A saved transcript of the same audio is reused.</div>"
+                '<div class="ps-note">Audio: .mp3 .wav .m4a .ogg .flac · Transcripts: .txt .docx · '
+                "A saved transcript of the same audio is reused. A clean Word copy keeps the text "
+                "and loses the layout.</div>"
             )
             plan = gr.HTML()
             retranscribe = gr.CheckboxGroup(label="Transcribe again", visible=False)
@@ -543,17 +837,64 @@ def build_app() -> gr.Blocks:
                 choices=LANGUAGE_CHOICES, value="fr", label="Language of the recordings",
                 visible=False,
             )
+            mode = gr.Radio(choices=MODE_CHOICES, value=MODE_CODE, label="What to do")
+            remove = gr.CheckboxGroup(
+                choices=REMOVE_CHOICES, value=list(OPTIONAL_TYPES), label="Also remove",
+                info=f"Always removed: {ALWAYS_REMOVED}.",
+            )
+            gr.HTML(
+                '<div class="ps-note">You check only the doubtful files: a word after a title, '
+                "a removal the app is unsure about, or no removal at all. The app approves the "
+                "other files. A name that it missed with no warning goes to the AI provider.</div>"
+            )
 
         # 3 · start
-        start = gr.Button("Start coding", variant="primary", interactive=False, elem_classes="ps-start")
+        start = gr.Button("Start", variant="primary", interactive=False, elem_classes="ps-start")
         gr.HTML(
-            f'<div class="ps-note">Results go to {html.escape(str(OUTPUT_DIR))}. Each run makes a new Excel file. '
-            "Names and other personal details are removed on this computer before the text "
-            "goes to the AI provider. The removal can miss details.</div>"
+            f'<div class="ps-note">Results go to {html.escape(str(OUTPUT_DIR))}. '
+            "The personal details are removed on this computer. You check the doubtful files "
+            "before any text goes to the AI provider. The removal can miss details.</div>"
         )
 
-        # while a run works: Gradio draws the progress bar on this panel
+        # while the files are read: Gradio draws the progress bar on this panel
         working = gr.HTML(visible=False, elem_classes=["ps-card", "ps-working"], min_height=140)
+
+        # 4 · review
+        with gr.Column(visible=False, elem_classes="ps-card") as review_panel:
+            gr.HTML(_step(3, "Check the doubtful files"))
+            queue_list = gr.HTML()
+            pick = gr.Dropdown(label="File", choices=[])
+            line = gr.HTML()
+            text = gr.HighlightedText(
+                show_label=False, combine_adjacent=False, show_legend=True,
+                color_map=TYPE_COLORS, elem_classes="ps-text",
+            )
+            file_remove = gr.CheckboxGroup(choices=REMOVE_CHOICES, label="Also remove in this file")
+            gr.HTML('<div class="ps-note">Untick a value that is not a personal detail, '
+                    "for example a drug name. It goes back at every place in the text.</div>")
+            found = gr.Dataframe(
+                headers=REVIEW_HEADERS, datatype=["bool", "str", "str", "number"], type="array",
+                interactive=True, static_columns=[1, 2, 3], wrap=True, elem_classes="ps-table",
+                column_widths=["12%", "48%", "24%", "16%"],
+            )
+            missed = gr.Dataframe(
+                headers=MISSED_HEADERS, datatype=["bool", "str", "str"], type="array",
+                interactive=True, static_columns=[1, 2], wrap=True, elem_classes="ps-table",
+                label="Possibly missed", column_widths=["12%", "24%", "64%"],
+            )
+            with gr.Row(equal_height=True):
+                add_text = gr.Textbox(label="Remove a word the app missed", scale=3)
+                add_type = gr.Dropdown(choices=ADD_TYPES, value="PERSON", label="Type", scale=1)
+                add = gr.Button("Remove it", size="sm", scale=0, min_width=120)
+            approve_btn = gr.Button("Approve", variant="primary", interactive=False)
+            rest_btn = gr.Button("Approve the rest", size="sm", visible=False)
+            with gr.Row():
+                code_btn = gr.Button("Find HPO codes", variant="primary", interactive=False)
+                clean_btn = gr.Button("Save the clean texts", interactive=False, visible=False)
+            clean_file = gr.DownloadButton("Download the clean texts (.zip)", visible=False)
+            clean_note = gr.Markdown(elem_classes="ps-note")
+            gr.HTML('<div class="ps-note">Each change is saved. You can close the page and '
+                    "continue later: the files that need a review open again.</div>")
 
         # results
         with gr.Column(visible=False) as results:
@@ -576,6 +917,7 @@ def build_app() -> gr.Blocks:
         # events
         key_outputs = [api_key, provider, key_text, key_entry, key_line]
         app.load(fn=load_saved_key, inputs=saved_key, outputs=key_outputs)
+        app.load(fn=lambda saved: saved if saved else list(OPTIONAL_TYPES), inputs=saved_remove, outputs=remove)
         api_key.blur(
             fn=on_key_entered,
             inputs=[api_key, remember],
@@ -585,8 +927,9 @@ def build_app() -> gr.Blocks:
             fn=lambda: ("", "", *_key_view(False)),
             outputs=[api_key, saved_key, key_entry, key_line],
         )
+        remove.change(fn=lambda chosen: chosen, inputs=remove, outputs=saved_remove)
 
-        view_inputs = [files, fresh, language, api_key]
+        view_inputs = [files, fresh, language, api_key, mode]
         view_outputs = [plan, language, retranscribe, start, clear, drop, hint, fresh]
         drop.upload(fn=add_files, inputs=[drop, files], outputs=[drop, files, fresh]).then(
             fn=selection_view, inputs=view_inputs, outputs=view_outputs
@@ -597,18 +940,50 @@ def build_app() -> gr.Blocks:
         clear.click(fn=lambda: [], outputs=files).then(
             fn=selection_view, inputs=view_inputs, outputs=view_outputs
         )
-        for trigger in (language.change, key_text.change):
+        for trigger in (language.change, key_text.change, mode.change):
             trigger(fn=selection_view, inputs=view_inputs, outputs=view_outputs)
 
+        review_outputs = [queue_list, pick, line, text, file_remove, found, missed,
+                          approve_btn, code_btn, clean_btn, rest_btn]
+        review_inputs = [pick, queue, failed]
+        app.load(fn=resume_reviews, outputs=[review_panel, queue, failed, *review_outputs])
         start.click(
-            fn=begin_run, inputs=[files, language], outputs=[start, working, results],
+            fn=begin_run, inputs=[files, language], outputs=[start, working, review_panel, results],
         ).then(
-            fn=run_pipeline,
-            inputs=[files, language, provider, api_key, retranscribe],
-            outputs=[working, results, summary, status, rows, table, show, excel, saved],
+            fn=prepare_run,
+            inputs=[files, language, remove, retranscribe],
+            outputs=[working, review_panel, queue, failed, *review_outputs],
             show_progress_on=[working],
         ).then(fn=selection_view, inputs=view_inputs, outputs=view_outputs)
+
+        pick.input(fn=review_view, inputs=review_inputs, outputs=review_outputs)
+        found.input(fn=on_removed_edit, inputs=[found, *review_inputs], outputs=review_outputs)
+        missed.input(fn=on_missed_edit, inputs=[missed, *review_inputs], outputs=review_outputs)
+        add.click(fn=on_add, inputs=[add_text, add_type, *review_inputs], outputs=[add_text, *review_outputs])
+        add_text.submit(fn=on_add, inputs=[add_text, add_type, *review_inputs], outputs=[add_text, *review_outputs])
+        file_remove.input(fn=on_types, inputs=[file_remove, *review_inputs], outputs=review_outputs)
+        approve_btn.click(fn=on_approve, inputs=review_inputs, outputs=review_outputs)
+        mode.change(
+            fn=lambda m: (gr.update(visible=m == MODE_CODE), gr.update(visible=m == MODE_CLEAN)),
+            inputs=mode, outputs=[code_btn, clean_btn],
+        )
+
+        code_btn.click(
+            fn=begin_coding, inputs=queue, outputs=[code_btn, working],
+        ).then(
+            fn=code_run,
+            inputs=[queue, provider, api_key],
+            outputs=[working, review_panel, queue, results, summary, status, rows, table, show, excel, saved],
+            show_progress_on=[working],
+        ).then(fn=review_view, inputs=review_inputs, outputs=review_outputs)
+        clean_btn.click(fn=clean_run, inputs=queue, outputs=[clean_file, clean_note]).then(
+            fn=review_view, inputs=review_inputs, outputs=review_outputs
+        )
         show.change(fn=filter_rows, inputs=[rows, show], outputs=table)
+        rest_btn.click(
+            fn=on_approve_rest, inputs=[confirm_box, *review_inputs], outputs=review_outputs,
+            js=f"(c, p, q, f) => [confirm({APPROVE_REST_QUESTION!r}), p, q, f]",
+        )
 
     return app
 

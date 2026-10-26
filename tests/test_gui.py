@@ -120,11 +120,12 @@ def test_plan_html_has_one_row_per_file_and_escapes_names():
     ]
     page = gui.plan_html(plans)
     assert page.count('class="ps-row') == 3
-    assert "Transcribe, then code" in page and "Saved transcript found" in page
+    assert "Transcribe, then remove personal details" in page and "Saved transcript found" in page
     assert "&lt;x&gt;.pdf" in page and "<x>" not in page
 
 
 def test_selection_view_enables_start_only_with_files_and_a_key(monkeypatch, tmp_path):
+    """The HPO tool needs a key. The removal-only tool runs without one."""
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr(
@@ -134,8 +135,9 @@ def test_selection_view_enables_start_only_with_files_and_a_key(monkeypatch, tmp
     files = ["101.mp3", "102.mp3"]
     start = gui.selection_view(files, [], "fr", "")[3]
     assert start["interactive"] is False
+    assert gui.selection_view(files, [], "fr", "", gui.MODE_CLEAN)[3]["interactive"] is True
     _, language, reuse, start, clear, drop, hint, fresh = gui.selection_view(files, files, "fr", "sk-x")
-    assert start["interactive"] is True and start["value"] == "Start coding 2 files"
+    assert start["interactive"] is True and start["value"] == "Start with 2 files"
     assert language["visible"] is True and reuse["visible"] is False and clear["visible"] is True
     # With files in the list, the drop box shrinks to a slim bar and the hint goes.
     assert drop["height"] == 56 and "ps-slim" in drop["elem_classes"]
@@ -205,8 +207,10 @@ def test_working_panel_names_the_files_and_the_wait():
         FilePlan("/t/x.pdf", "x.pdf", "pt-1", "skip", "Not an audio file or transcript"),
     ]
     page = gui.working_html(plans)
-    assert "Coding 2 files…" in page
+    assert "Reading 2 files and finding the personal details…" in page
     assert "1 recording to transcribe" in page
+    assert "about as long as the recording" in page
+    assert "No text leaves this computer" in page
     assert "Keep this page and the Phenoscribe window open" in page
     assert "to transcribe" not in gui.working_html(plans[1:2])
 
@@ -215,7 +219,100 @@ def test_begin_run_locks_start_and_shows_the_panel(monkeypatch):
     monkeypatch.setattr(
         gui, "file_plan", lambda files, language: [FilePlan(f, f, "MGA.1", "transcribe") for f in files]
     )
-    start, working, results = gui.begin_run(["1.mp3"], "fr")
-    assert start["interactive"] is False and start["value"] == "Coding…"
-    assert working["visible"] is True and "Coding 1 file…" in working["value"]
-    assert results["visible"] is False
+    start, working, review, results = gui.begin_run(["1.mp3"], "fr")
+    assert start["interactive"] is False and start["value"] == "Working…"
+    assert working["visible"] is True and "Reading 1 file" in working["value"]
+    assert review["visible"] is False and results["visible"] is False
+
+
+# --- the review panel ----------------------------------------------------------------
+
+
+@pytest.fixture
+def review_on_disk(tmp_path, monkeypatch):
+    """One review saved in a temp results folder: Dupont (a name) and 54 ans (an age)."""
+    from phenoscribe.pii import Span
+    from phenoscribe.review import Review, save_review
+
+    monkeypatch.setattr(gui, "OUTPUT_DIR", tmp_path)
+    text = "Madame Dupont a 54 ans. Le docteur Vandermeulen la suit. Dupont va mieux."
+    review = Review.from_spans("412.docx", "MGA.412", text, [
+        Span(7, 13, "Dupont", "PERSON", 0.98), Span(16, 22, "54 ans", "AGE", 0.7),
+    ])
+    save_review(review, tmp_path)
+    return ["MGA.412"]
+
+
+def _view(view):
+    names = ["queue", "pick", "line", "text", "remove", "found", "missed", "approve", "code", "clean",
+             "rest"]
+    return dict(zip(names, view))
+
+
+def test_review_view_shows_counts_rows_and_the_missed_name(review_on_disk):
+    view = _view(gui.review_view("MGA.412", review_on_disk, []))
+    assert "2 removed: 1 name · 1 age" in view["line"]
+    assert "No removed value is left" in view["line"]
+    assert view["found"] == [[True, "54 ans", "age", 1], [True, "Dupont", "name", 2]]
+    assert view["missed"][0][:2] == [False, "Vandermeulen"]
+    assert ("Dupont", "name") in view["text"]
+    assert view["approve"]["interactive"] is True and view["code"]["interactive"] is False
+
+
+def test_unticking_puts_the_value_back(review_on_disk):
+    view = _view(gui.on_removed_edit([[False, "54 ans", "age", 1], [True, "Dupont", "name", 2]],
+                                     "MGA.412", review_on_disk, []))
+    assert view["found"][0][0] is False
+    assert "1 removed: 1 name" in view["line"]
+
+
+def test_a_ticked_missed_word_is_removed_everywhere(review_on_disk):
+    view = _view(gui.on_missed_edit([[True, "Vandermeulen", "…"]], "MGA.412", review_on_disk, []))
+    assert view["missed"] == []
+    assert "2 names" in view["line"]
+
+
+def test_approve_writes_the_clean_text_and_enables_the_next_step(review_on_disk, tmp_path):
+    view = _view(gui.on_approve("MGA.412", review_on_disk, []))
+    assert view["approve"]["value"] == "✓ Approved" and view["approve"]["interactive"] is False
+    assert view["code"]["interactive"] is True
+    clean = (tmp_path / "clean" / "MGA.412.txt").read_text(encoding="utf-8")
+    assert "Dupont" not in clean and "PERSON_1" in clean
+    assert (tmp_path / "clean" / "MGA.412.docx").exists()  # a Word source gets a Word copy
+
+
+def test_an_edit_after_approval_needs_a_new_approval(review_on_disk):
+    gui.on_approve("MGA.412", review_on_disk, [])
+    view = _view(gui.on_add("Vandermeulen", "PERSON", "MGA.412", review_on_disk, [])[1:])
+    assert view["approve"]["interactive"] is True
+    assert view["code"]["interactive"] is False
+
+
+def test_resume_opens_the_left_reviews(review_on_disk):
+    panel, queue, failed, *_ = gui.resume_reviews()
+    assert panel["visible"] is True and queue == review_on_disk
+
+
+def test_clean_run_gives_a_zip_of_the_approved_texts(review_on_disk, tmp_path):
+    assert gui.clean_run(review_on_disk)[1] == "No approved file yet."
+    gui.on_approve("MGA.412", review_on_disk, [])
+    download, note = gui.clean_run(review_on_disk)
+    assert download["visible"] is True and download["value"].endswith(".zip")
+    assert "clean_texts_" in note
+
+
+def test_the_line_names_the_warnings(review_on_disk):
+    view = _view(gui.review_view("MGA.412", review_on_disk, []))
+    assert "⚠ Possibly missed: Vandermeulen" in view["line"]
+    assert "⚠ Unsure about: 54 ans" in view["line"]
+    assert "Check" in view["queue"] and "1 file to check" in view["queue"]
+
+
+def test_approve_the_rest_needs_the_confirm(review_on_disk, tmp_path):
+    from phenoscribe.review import BULK, load_review
+
+    gui.on_approve_rest(False, "MGA.412", review_on_disk, [])
+    assert load_review(tmp_path, "MGA.412").status == "needs review"
+    view = _view(gui.on_approve_rest(True, "MGA.412", review_on_disk, []))
+    assert load_review(tmp_path, "MGA.412").approved_how == BULK
+    assert "All 1 files approved" in view["queue"] and view["rest"]["visible"] is False

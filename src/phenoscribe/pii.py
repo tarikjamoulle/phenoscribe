@@ -24,6 +24,7 @@ on the NER head and should be spot-checked on the first batch.
 import logging
 import re
 from collections import defaultdict
+from dataclasses import dataclass
 
 from transformers import pipeline
 
@@ -154,6 +155,71 @@ def resolve_model(model: str = DEFAULT_MODEL, fallback_model: str = FALLBACK_MOD
     return resolved
 
 
+@dataclass
+class Span:
+    """One personal detail found in the text.
+
+    origin is "model" (the NER head, with its score) or "regex" (score 1.0).
+    """
+
+    start: int
+    end: int
+    value: str
+    category: str
+    score: float = 1.0
+    origin: str = "model"
+
+
+def find_personal_details(
+    text: str,
+    model: str = DEFAULT_MODEL,
+    fallback_model: str = FALLBACK_MODEL,
+    min_score: float = 0.6,
+) -> list[Span]:
+    """Find every personal detail in ``text``, sorted by position.
+
+    Uses a French NER head for named entities and regex for dates, phones,
+    emails and national IDs. Overlapping spans keep the longest one. Each
+    span is trimmed of surrounding spaces, so ``value`` is the exact text.
+    """
+    ner, _ = _get_ner(model, fallback_model)
+
+    raw = []
+    for e in _detect_entities(ner, text, min_score=min_score):
+        label = e["entity_group"]
+        # Unknown label: keep it as its own category rather than drop PII.
+        category = LABEL_TO_CATEGORY.get(label, label)
+        # NER subword tokenisation (esp. for accented or multi-subword names)
+        # often reports a span that covers only part of a word. Snap the span
+        # out to whole-word boundaries so we never leave a leaked fragment such
+        # as "PERSON_1loïse" or "JOB_1ynéco".
+        start, end = _snap_to_word_boundaries(text, e["start"], e["end"])
+        raw.append({"start": start, "end": end, "category": category,
+                    "score": float(e.get("score", 1.0)), "origin": "model"})
+
+    # Regex-detected entities (deterministic, model-independent)
+    for pattern, category in (
+        (DATE_PATTERN, "DATE"),
+        (PHONE_PATTERN, "PHONE"),
+        (EMAIL_PATTERN, "EMAIL"),
+        (NISS_PATTERN, "ID"),
+    ):
+        for match in pattern.finditer(text):
+            raw.append({"start": match.start(), "end": match.end(), "category": category,
+                        "score": 1.0, "origin": "regex"})
+
+    spans = []
+    for span in _remove_overlaps(raw):
+        chunk = text[span["start"]:span["end"]]
+        value = chunk.strip()
+        if not value:
+            continue
+        start = span["start"] + len(chunk) - len(chunk.lstrip())
+        spans.append(Span(start, start + len(value), value, span["category"],
+                          span["score"], span["origin"]))
+    return sorted(spans, key=lambda s: s.start)
+
+
 def pseudonymize(
     text: str,
     model: str = DEFAULT_MODEL,
@@ -161,9 +227,6 @@ def pseudonymize(
     min_score: float = 0.6,
 ) -> tuple[str, dict]:
     """Detect PII and replace it with consistent numbered pseudonyms.
-
-    Uses a French NER head for named entities and regex for dates, phones,
-    emails and national IDs.
 
     Args:
         text: Raw French text potentially containing PII.
@@ -175,69 +238,23 @@ def pseudonymize(
         Tuple of (pseudonymized_text, mapping_table).
         mapping_table maps pseudonym -> original value.
     """
-    ner, _ = _get_ner(model, fallback_model)
-
-    # Collect entities from the NER model
-    entities = _detect_entities(ner, text, min_score=min_score)
-
-    # Map NER labels to our pseudonym categories
-    spans = []
-    for e in entities:
-        label = e["entity_group"]
-        category = LABEL_TO_CATEGORY.get(label)
-        if category is None:
-            # Unknown label: keep it as its own category rather than drop PII.
-            category = label
-        # NER subword tokenisation (esp. for accented or multi-subword names)
-        # often reports a span that covers only part of a word. Snap the span
-        # out to whole-word boundaries so we never leave a leaked fragment such
-        # as "PERSON_1loïse" or "JOB_1ynéco".
-        start, end = _snap_to_word_boundaries(text, e["start"], e["end"])
-        spans.append({"start": start, "end": end, "category": category})
-
-    # Add regex-detected entities (deterministic, model-independent)
-    for match in DATE_PATTERN.finditer(text):
-        spans.append({"start": match.start(), "end": match.end(), "category": "DATE"})
-    for match in PHONE_PATTERN.finditer(text):
-        spans.append({"start": match.start(), "end": match.end(), "category": "PHONE"})
-    for match in EMAIL_PATTERN.finditer(text):
-        spans.append({"start": match.start(), "end": match.end(), "category": "EMAIL"})
-    for match in NISS_PATTERN.finditer(text):
-        spans.append({"start": match.start(), "end": match.end(), "category": "ID"})
-
-    # Remove overlapping spans (prefer longer spans)
-    spans = _remove_overlaps(spans)
+    spans = find_personal_details(text, model, fallback_model, min_score)
 
     # Build consistent pseudonym mapping
     value_to_pseudonym: dict[str, str] = {}
     category_counters: dict[str, int] = defaultdict(int)
     mapping: dict[str, str] = {}
+    for span in spans:
+        if span.value not in value_to_pseudonym:
+            category_counters[span.category] += 1
+            pseudonym = f"{span.category}_{category_counters[span.category]}"
+            value_to_pseudonym[span.value] = pseudonym
+            mapping[pseudonym] = span.value
 
-    # First pass: assign pseudonyms and adjust spans to trim whitespace
-    adjusted_spans = []
-    for span in sorted(spans, key=lambda s: s["start"]):
-        raw = text[span["start"]:span["end"]]
-        stripped = raw.strip()
-        if not stripped:
-            continue
-        # Adjust offsets to match the stripped content
-        leading = len(raw) - len(raw.lstrip())
-        trailing = len(raw) - len(raw.rstrip())
-        adj_start = span["start"] + leading
-        adj_end = span["end"] - trailing
-        adjusted_spans.append({"start": adj_start, "end": adj_end, "category": span["category"]})
-        if stripped not in value_to_pseudonym:
-            category_counters[span["category"]] += 1
-            pseudonym = f"{span['category']}_{category_counters[span['category']]}"
-            value_to_pseudonym[stripped] = pseudonym
-            mapping[pseudonym] = stripped
-
-    # Second pass: replace in text (reverse order to preserve offsets)
+    # Replace in reverse order to preserve offsets
     result = text
-    for span in sorted(adjusted_spans, key=lambda s: s["start"], reverse=True):
-        original = text[span["start"]:span["end"]]
-        if original and original in value_to_pseudonym:
-            result = result[:span["start"]] + value_to_pseudonym[original] + result[span["end"]:]
+    for span in reversed(spans):
+        result = result[:span.start] + value_to_pseudonym[span.value] + result[span.end:]
 
     return result, mapping
 

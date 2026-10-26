@@ -376,3 +376,70 @@ def _hpo_id_to_purl(hpo_id: str) -> str:
     """Convert HP:0002027 to PURL format."""
     obo_id = hpo_id.replace(":", "_")
     return f"http://purl.obolibrary.org/obo/{obo_id}"
+
+
+PERSONAL_DETAILS_SHEET = "Personal details"
+
+
+def write_personal_details(path, reviews) -> None:
+    """One row for each patient: how many values of each type were removed.
+
+    No original value goes in this sheet. The sheet is added to the workbook
+    at ``path``, or the workbook is made with only this sheet. A patient
+    already in the sheet gets its row replaced.
+    """
+    from phenoscribe.review import TYPE_NAMES, entries, summary
+
+    path = Path(path)
+    types = list(TYPE_NAMES)
+    headers = (
+        ["Patient_ID"]
+        + [TYPE_NAMES[t][1].capitalize() for t in types]
+        + ["Other", "Types kept", "Put back", "Added", "Approved how", "Approved"]
+    )
+    if path.exists():
+        wb = load_workbook(path)
+        ws = wb[PERSONAL_DETAILS_SHEET] if PERSONAL_DETAILS_SHEET in wb.sheetnames else None
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = PERSONAL_DETAILS_SHEET
+        ws.append(headers)
+        _style_header_row(ws, len(headers))
+    if ws is None:
+        ws = wb.create_sheet(PERSONAL_DETAILS_SHEET)
+        ws.append(headers)
+        _style_header_row(ws, len(headers))
+
+    ids = {r.patient_id for r in reviews}
+    for row in range(ws.max_row, 1, -1):
+        if ws.cell(row, 1).value in ids:
+            ws.delete_rows(row)
+    for review in reviews:
+        counts = summary(review)
+        rows = entries(review)
+        ws.append(
+            [review.patient_id]
+            + [counts.get(t, 0) for t in types]
+            + [
+                sum(n for t, n in counts.items() if t not in TYPE_NAMES),
+                ", ".join(review.keep_types),
+                sum(1 for e in rows if e.origin == "found" and not e.removed
+                    and e.category not in review.keep_types),
+                sum(1 for e in rows if e.origin == "added"),
+                review.approved_how,
+                review.approved_at or "",
+            ]
+        )
+    _auto_fit_columns(ws)
+    wb.save(path)
+
+
+def write_docx(text: str, path) -> None:
+    """A plain Word file: one paragraph for each line of ``text``."""
+    from docx import Document
+
+    doc = Document()
+    for line in text.split("\n"):
+        doc.add_paragraph(line)
+    doc.save(str(path))

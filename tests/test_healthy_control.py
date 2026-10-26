@@ -62,12 +62,14 @@ def test_healthy_control_emits_zero_codes(tmp_path, monkeypatch):
         ),
     )
 
+    # No NER model in this test: the text holds no personal details.
+    monkeypatch.setattr("phenoscribe.pipeline.find_personal_details", lambda *a, **k: [])
     matches = process_recording(
         input_path="unused",
         patient_id="HEALTHY",
         config=cfg,
         skip_transcription=True,
-        skip_pii=True,
+        no_review=True,
     )
 
     assert matches == []
