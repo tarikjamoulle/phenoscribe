@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -13,8 +14,25 @@ from phenoscribe.config import Config
 from phenoscribe.extract_symptoms import extract_symptoms
 from phenoscribe.hpo_index import check_obo_version
 from phenoscribe.match_hpo import match_hpo
-from phenoscribe.output import write_excel
-from phenoscribe.pii import pseudonymize
+from phenoscribe.output import write_docx, write_excel, write_personal_details
+from phenoscribe.pii import find_personal_details
+from phenoscribe.review import (
+    APPROVED,
+    AUTO,
+    BULK,
+    DONE,
+    NEEDS_REVIEW,
+    NO_REVIEW,
+    Review,
+    ReviewError,
+    approve,
+    clean_text,
+    leaks,
+    load_review,
+    removed_values,
+    save_review,
+    warnings,
+)
 from phenoscribe.transcribe import (
     AUDIO_EXTENSIONS,
     TEXT_EXTENSIONS,
@@ -32,19 +50,24 @@ def process_recording(
     config: Config,
     output_path: str | None = None,
     skip_transcription: bool = False,
-    skip_pii: bool = False,
     transcript_stem: str | None = None,
     on_step: Callable[[str], None] | None = None,
     reuse_transcript: bool = False,
+    no_review: bool = False,
 ) -> list[dict]:
     """Process a single recording through the full pipeline.
 
     Steps:
     1. Transcribe audio (or read text)
-    2. Pseudonymize PII
-    3. Extract symptoms (LLM Call 1)
+    2. Find the personal details (review)
+    3. Extract symptoms (LLM Call 1) from the approved clean text
     4. Match HPO codes (ChromaDB + LLM Call 2)
     5. Write Excel output
+
+    The LLM calls read only an approved review. A review approved in the page
+    for the same transcript is used as it is. Otherwise the review is saved
+    for the page and NeedsReview is raised, unless ``no_review`` approves the
+    detector output without a person (CLI --no-review).
 
     Args:
         input_path: Path to audio or text file.
@@ -59,20 +82,58 @@ def process_recording(
         reuse_transcript: For audio, read the transcript saved for the same
             audio bytes, backend, model and language (see transcript_cache_path)
             instead of running Whisper again, when one exists.
+        no_review: Approve the detector output without a person.
 
     Returns:
         List of HPO matches.
     """
     step = on_step or (lambda label: None)
-
-    # Startup guard: the obo on disk, the ChromaDB index and config must all
-    # agree on the HPO release before we produce any codes.
-    version = check_obo_version(config.paths.hpo_obo, config.hpo.release)
-    logger.info("[%s] HPO release verified: %s", patient_id, version)
-
     out = output_path or config.output.path
     out_dir = os.path.dirname(out) or "output"
-    transcript_dir = os.path.join(out_dir, "transcripts")
+
+    raw_text = read_transcript(
+        input_path, patient_id, config, out_dir, step,
+        skip_transcription=skip_transcription,
+        transcript_stem=transcript_stem,
+        reuse_transcript=reuse_transcript,
+    )
+    review = find_details(raw_text, Path(input_path).name, patient_id, config, out_dir, step)
+    if no_review and review.status == NEEDS_REVIEW:
+        approve(review, how=NO_REVIEW)
+        save_review(review, out_dir)
+        logger.warning(
+            "[%s] Personal details approved without review (--no-review): %s",
+            patient_id, ", ".join(e.value for e in removed_values(review)) or "none",
+        )
+    elif review.status == NEEDS_REVIEW or (review.approved_how == NO_REVIEW and not no_review):
+        review.status = NEEDS_REVIEW
+        save_review(review, out_dir)
+        raise NeedsReview(
+            f"{patient_id}: review the personal details in the page first, "
+            "or run again with --no-review"
+        )
+    matches = code_review(review, config, out, step)
+    review.status = DONE
+    save_review(review, out_dir)
+    return matches
+
+
+class NeedsReview(Exception):
+    """The personal details of a file wait for a person to approve them."""
+
+
+def read_transcript(
+    input_path: str,
+    patient_id: str,
+    config: Config,
+    out_dir: str | Path,
+    step: Callable[[str], None],
+    skip_transcription: bool = False,
+    transcript_stem: str | None = None,
+    reuse_transcript: bool = False,
+) -> str:
+    """Step 1: the raw transcript of one file (Whisper, a saved transcript, or the text file)."""
+    transcript_dir = os.path.join(str(out_dir), "transcripts")
 
     if skip_transcription:
         # Read from previously saved transcript. Prefer the explicit stem;
@@ -167,34 +228,79 @@ def process_recording(
         logger.info("[%s] Transcript saved: %s", patient_id, transcript_path)
 
     logger.info("[%s] Transcript: %d chars", patient_id, len(raw_text))
+    return raw_text
 
-    # Step 2: Pseudonymize (optional)
-    if skip_pii:
-        logger.warning(
-            "[%s] Step 2: SKIPPED — PII pseudonymization disabled. "
-            "Raw text (may contain patient identifiers) will be sent to the LLM.",
-            patient_id,
-        )
-        safe_text = raw_text
-        pii_mapping: dict = {}
-    else:
-        step("removing personal details")
-        logger.info("[%s] Step 2: Pseudonymizing PII...", patient_id)
-        safe_text, pii_mapping = pseudonymize(
-            raw_text,
-            model=config.pii.model,
-            fallback_model=config.pii.fallback_model,
-            min_score=config.pii.min_score,
-        )
-        logger.info("[%s] PII entities replaced: %d", patient_id, len(pii_mapping))
 
-        # Save pseudonymized transcript
-        pseudo_dir = os.path.join(out_dir, "pseudo")
-        os.makedirs(pseudo_dir, exist_ok=True)
-        pseudo_path = os.path.join(pseudo_dir, f"{patient_id}.txt")
-        with open(pseudo_path, "w", encoding="utf-8") as f:
-            f.write(safe_text)
-        logger.info("[%s] Pseudonymized transcript saved: %s", patient_id, pseudo_path)
+def find_details(
+    raw_text: str,
+    source: str,
+    patient_id: str,
+    config: Config,
+    out_dir: str | Path,
+    step: Callable[[str], None] = lambda label: None,
+    keep_types=None,
+) -> Review:
+    """Step 2: find the personal details and save the review for the page.
+
+    An approved review of the same raw text is kept as it is, so the
+    decisions of the person who approved it stay.
+    """
+    try:
+        old = load_review(out_dir, patient_id)
+        if old.status in (APPROVED, DONE) and old.raw_text == raw_text:
+            logger.info("[%s] Step 2: using the approved review", patient_id)
+            return old
+    except ReviewError:
+        pass
+    step("removing personal details")
+    logger.info("[%s] Step 2: Finding personal details...", patient_id)
+    spans = find_personal_details(
+        raw_text,
+        model=config.pii.model,
+        fallback_model=config.pii.fallback_model,
+        min_score=config.pii.min_score,
+    )
+    keep = config.pii.keep_types if keep_types is None else keep_types
+    review = Review.from_spans(source, patient_id, raw_text, spans, keep_types=keep)
+    save_review(review, out_dir)
+    logger.info("[%s] Personal details found: %d", patient_id, len(spans))
+    return review
+
+
+def write_clean_files(review: Review, out_dir: str | Path) -> Path:
+    """clean/<patient_id>.txt, plus a .docx for a Word source. Returns the .txt path."""
+    text, _ = clean_text(review)
+    folder = Path(out_dir) / "clean"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{review.patient_id}.txt"
+    path.write_text(text, encoding="utf-8")
+    if Path(review.source).suffix.lower() == ".docx":
+        write_docx(text, folder / f"{review.patient_id}.docx")
+    return path
+
+
+def code_review(
+    review: Review,
+    config: Config,
+    excel_path: str | Path,
+    step: Callable[[str], None] = lambda label: None,
+) -> list[dict]:
+    """Steps 3 to 5 on an approved review: symptoms, HPO codes, Excel rows."""
+    patient_id = review.patient_id
+    if review.status not in (APPROVED, DONE):
+        raise ReviewError(f"{patient_id}: the personal details are not approved")
+    if leaks(review):
+        raise ReviewError(f"{patient_id}: a removed value is still in the clean text")
+
+    # Startup guard: the obo on disk, the ChromaDB index and config must all
+    # agree on the HPO release before we produce any codes.
+    version = check_obo_version(config.paths.hpo_obo, config.hpo.release)
+    logger.info("[%s] HPO release verified: %s", patient_id, version)
+
+    excel_path = str(excel_path)
+    out_dir = os.path.dirname(excel_path) or "output"
+    write_clean_files(review, out_dir)
+    safe_text, _ = clean_text(review)
 
     # Step 3: Extract symptoms
     step("finding symptoms")
@@ -227,7 +333,7 @@ def process_recording(
     write_excel(
         patient_id,
         matches,
-        out,
+        excel_path,
         fmt=config.output.format,
         hpo_release=version,
         propagate_ancestors=config.output.propagate_ancestors,
@@ -287,7 +393,7 @@ class FilePlan:
     """What run_batch does with one selected file.
 
     action: "transcribe", "reuse" (saved transcript of the same audio),
-    "transcript" (a .txt, no Whisper) or "skip" (note says why).
+    "transcript" (a .txt or .docx, no Whisper) or "skip" (note says why).
     """
 
     path: str
@@ -300,11 +406,12 @@ class FilePlan:
 def plan_batch(files: list[str], config: Config, out_dir: str | Path) -> list[FilePlan]:
     """Decide the work for each file, so the user ticks nothing.
 
-    - Hidden files and our own *_pseudo.txt outputs are left out.
+    - Hidden files, Word lock files (~$x.docx) and our own *_pseudo.txt
+      outputs are left out.
     - Other unsupported files are skipped.
     - Two audio files (or two transcripts) for one patient ID are both
       skipped: they would overwrite each other's transcript.
-    - Audio plus a .txt for one patient: the .txt is used, the audio skipped.
+    - Audio plus a .txt or .docx for one patient: the text is used, the audio skipped.
     - Audio with a saved transcript of the same bytes: reuse it.
     """
     transcript_dir = os.path.join(str(out_dir), "transcripts")
@@ -312,11 +419,14 @@ def plan_batch(files: list[str], config: Config, out_dir: str | Path) -> list[Fi
     by_patient: dict[str, list[FilePlan]] = {}
     for path in files:
         name = Path(path).name
-        if name.startswith(".") or Path(name).stem.endswith("_pseudo"):
+        if name.startswith((".", "~$")) or Path(name).stem.endswith("_pseudo"):
             continue
         plan = FilePlan(str(path), name, batch_patient_id(name, config.patient.id_prefix), "")
         plans.append(plan)
-        if Path(name).suffix.lower() not in AUDIO_EXTENSIONS | TEXT_EXTENSIONS:
+        suffix = Path(name).suffix.lower()
+        if suffix == ".doc":
+            plan.action, plan.note = "skip", "Old Word file. Save it as .docx in Word, then add it again"
+        elif suffix not in AUDIO_EXTENSIONS | TEXT_EXTENSIONS:
             plan.action, plan.note = "skip", "Not an audio file or transcript"
         else:
             by_patient.setdefault(plan.patient_id, []).append(plan)
@@ -388,6 +498,17 @@ STEP_PROGRESS = {
 }
 
 
+# The same for the two stages of the page: transcribe and find the personal
+# details, then (after the review) code.
+PREPARE_PROGRESS = {
+    "transcribing": 0.0,
+    "reading the transcript": 0.0,
+    "reading the saved transcript": 0.0,
+    "removing personal details": 0.85,
+}
+CODE_PROGRESS = {"finding symptoms": 0.0, "matching HPO codes": 0.4, "writing the Excel file": 0.9}
+
+
 @dataclass
 class FileResult:
     filename: str
@@ -395,6 +516,7 @@ class FileResult:
     n_codes: int = 0
     matches: list[dict] = field(default_factory=list)
     error: Exception | None = None
+    review: Review | None = None
 
 
 @dataclass
@@ -409,8 +531,13 @@ def run_batch(
     out_dir: str | Path,
     on_progress: Callable[[float, str], None] | None = None,
     retranscribe: frozenset[str] = frozenset(),
+    no_review: bool = False,
 ) -> BatchResult:
     """Process a list of files into one new Excel file in ``out_dir``.
+
+    Used by the CLI-style smoke run and tests. Without ``no_review``, a file
+    whose personal details wait for a review fails with NeedsReview. The page
+    uses prepare_batch and code_batch instead, with a review in between.
 
     plan_batch decides the work for each file; skipped files are not run.
     A saved transcript of the same audio is reused, except for the file
@@ -446,6 +573,7 @@ def run_batch(
                 transcript_stem=Path(name).stem,
                 on_step=on_step,
                 reuse_transcript=name not in retranscribe,
+                no_review=no_review,
             )
             result.matches = matches
             result.n_codes = len(matches)
@@ -458,3 +586,159 @@ def run_batch(
     progress(1.0, "Finished")
     return BatchResult(excel_path if excel_path.exists() else None, results)
 
+
+
+def _stepper(progress, fractions, i, total, name):
+    def on_step(label: str) -> None:
+        progress((i + fractions.get(label, 0.0)) / total, f"{i + 1}/{total} · {name} · {label}")
+    return on_step
+
+
+def prepare_batch(
+    files: list[str],
+    config: Config,
+    out_dir: str | Path,
+    on_progress: Callable[[float, str], None] | None = None,
+    retranscribe: frozenset[str] = frozenset(),
+    keep_types=None,
+) -> list[FileResult]:
+    """Stage 1 of the page: transcribe each file and find its personal details.
+
+    Each file gets a review in <out_dir>/review/ for the page. No text leaves
+    the computer in this stage. A file that fails keeps its error.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    progress = on_progress or (lambda fraction, message: None)
+    runnable = [p for p in plan_batch(files, config, out_dir) if p.action != "skip"]
+    results: list[FileResult] = []
+    for i, plan in enumerate(runnable):
+        result = FileResult(plan.name, plan.patient_id)
+        results.append(result)
+        step = _stepper(progress, PREPARE_PROGRESS, i, len(runnable), plan.name)
+        try:
+            raw_text = read_transcript(
+                plan.path, plan.patient_id, config, out_dir, step,
+                transcript_stem=Path(plan.name).stem,
+                reuse_transcript=plan.name not in retranscribe,
+            )
+            review = find_details(raw_text, plan.name, plan.patient_id, config, out_dir, step,
+                                  keep_types=keep_types)
+            if review.status == DONE:  # coded before: back in the queue, still approved
+                review.status = APPROVED
+                save_review(review, out_dir)
+            result.review = review
+        except Exception as e:  # noqa: BLE001 — one bad file must not stop the batch
+            logger.exception("Failed processing %s", plan.name)
+            result.error = e
+    if results:
+        record_filename_mapping(out_dir, {r.patient_id: r.filename for r in results})
+    progress(1.0, "Finished")
+    return results
+
+
+def approve_clear_files(reviews: list[Review], out_dir: str | Path) -> int:
+    """Approve each review with no warning sign (review.warnings). Returns the count.
+
+    The page checks only the doubtful files. A clear file still has its clean
+    text written, and the report records it as approved with no check.
+    """
+    count = 0
+    for review in reviews:
+        if review.status == NEEDS_REVIEW and not warnings(review) and not leaks(review):
+            approve(review, how=AUTO)
+            save_review(review, out_dir)
+            write_clean_files(review, out_dir)
+            count += 1
+    return count
+
+
+def approve_the_rest(patient_ids: list[str], out_dir: str | Path) -> int:
+    """"Approve all the rest": approve every review that still waits. Returns the count."""
+    count = 0
+    for patient_id in patient_ids:
+        try:
+            review = load_review(out_dir, patient_id)
+        except ReviewError:
+            continue
+        if review.status == NEEDS_REVIEW and not leaks(review):
+            approve(review, how=BULK)
+            save_review(review, out_dir)
+            write_clean_files(review, out_dir)
+            count += 1
+    return count
+
+
+def code_batch(
+    patient_ids: list[str],
+    config: Config,
+    out_dir: str | Path,
+    on_progress: Callable[[float, str], None] | None = None,
+) -> BatchResult:
+    """Stage 2 of the page: code the approved reviews into one new Excel file.
+
+    A review that is not approved is not coded. The Excel gets a "Personal
+    details" sheet with the counts for each patient (no original values).
+    """
+    out_dir = Path(out_dir)
+    excel_path = new_results_path(out_dir)
+    progress = on_progress or (lambda fraction, message: None)
+    results: list[FileResult] = []
+    coded: list[Review] = []
+    for i, patient_id in enumerate(patient_ids):
+        result = FileResult(patient_id, patient_id)
+        results.append(result)
+        try:
+            review = load_review(out_dir, patient_id)
+            result.filename, result.review = review.source, review
+            step = _stepper(progress, CODE_PROGRESS, i, len(patient_ids), review.source)
+            result.matches = code_review(review, config, excel_path, step)
+            result.n_codes = len(result.matches)
+            coded.append(review)
+        except Exception as e:  # noqa: BLE001 — one bad file must not stop the batch
+            logger.exception("Failed coding %s", patient_id)
+            result.error = e
+    if excel_path.exists():
+        write_personal_details(excel_path, coded)
+        for review in coded:
+            review.status = DONE
+            save_review(review, out_dir)
+    progress(1.0, "Finished")
+    return BatchResult(excel_path if excel_path.exists() else None, results)
+
+
+def finish_clean(patient_ids: list[str], out_dir: str | Path, now: datetime | None = None) -> Path | None:
+    """The first tool: one ZIP of the approved clean texts plus the counts report.
+
+    Returns the ZIP path, or None when no review is approved.
+    """
+    out_dir = Path(out_dir)
+    reviews = []
+    for patient_id in patient_ids:
+        try:
+            review = load_review(out_dir, patient_id)
+        except ReviewError:
+            continue
+        if review.status in (APPROVED, DONE):
+            reviews.append(review)
+    if not reviews:
+        return None
+    stamp = f"{(now or datetime.now()):%Y-%m-%d_%H%M}"
+    report = out_dir / f"personal_details_{stamp}.xlsx"
+    n = 2
+    while report.exists():
+        report = out_dir / f"personal_details_{stamp}_{n}.xlsx"
+        n += 1
+    write_personal_details(report, reviews)
+    archive = report.with_name(report.stem.replace("personal_details", "clean_texts") + ".zip")
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
+        for review in reviews:
+            txt = write_clean_files(review, out_dir)
+            z.write(txt, f"clean/{txt.name}")
+            docx_path = txt.with_suffix(".docx")
+            if docx_path.exists() and Path(review.source).suffix.lower() == ".docx":
+                z.write(docx_path, f"clean/{docx_path.name}")
+            review.status = DONE
+            save_review(review, out_dir)
+        z.write(report, report.name)
+    return archive

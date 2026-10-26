@@ -8,8 +8,8 @@ Automated HPO phenotype coding from patient interviews. Built for a GP doing lon
 
 A recorded GP–patient conversation in, an Excel of standardized HPO codes out. Six steps:
 
-1. **Transcribe** the recording with Whisper large-v3, on the laptop: mlx on the GPU of an Apple Silicon Mac, faster-whisper on the CPU elsewhere (`transcription.backend: auto`). The audio file never leaves the machine. A `.txt` transcript skips this step.
-2. **Pseudonymise PII** locally with a French NER model plus regex. Names, places, dates, phones, emails and national IDs get stable placeholders: "Dr. Martin" → "PERSON_1", "Bruxelles" → "LOCATION_1". The mapping stays on the machine. Default model: [`Anonym-IA/V2-camembert-ner-pii-french`](https://huggingface.co/Anonym-IA/V2-camembert-ner-pii-french) (CamemBERT-base, MIT, validation micro-F1 0.9327). See [Privacy](#privacy) for what it catches and what it misses.
+1. **Transcribe** the recording with Whisper large-v3, on the laptop: mlx on the GPU of an Apple Silicon Mac, faster-whisper on the CPU elsewhere (`transcription.backend: auto`). The audio file never leaves the machine. A `.txt` or `.docx` transcript skips this step.
+2. **Remove personal details** locally with a French NER model plus regex, then let a person check them. Names, places, dates, phones, emails and national IDs get stable placeholders: "Dr. Martin" → "PERSON_1", "Bruxelles" → "LOCATION_1", at every place the value appears. In the web app, the app approves each file with no warning sign (`review.warnings`: a word after a title, a low-score removal, or no removal). The user checks the doubtful files: untick wrong removals, add missed names, keep dates, ages, gender or job titles, approve (`review.py`). Only approved text goes to the LLM. This step is also a tool on its own: clean texts plus a counts report, with no LLM. Default model: [`Anonym-IA/V2-camembert-ner-pii-french`](https://huggingface.co/Anonym-IA/V2-camembert-ner-pii-french) (CamemBERT-base, MIT, validation micro-F1 0.9327). See [Privacy](#privacy) for what it catches and what it misses.
 3. **Extract symptoms** with an LLM: each complaint becomes a clinical English label plus the patient's own French verbatim.
 4. **Shortlist five HPO candidates** per symptom from a local ChromaDB index of ~19,400 HPO terms.
 5. **Pick the best code** from that shortlist with an LLM. The term name is re-read from the official ontology so the AI can't mis-label a valid code (Peter Robinson's caveat).
@@ -20,7 +20,8 @@ Cohort summaries with `phenoscribe aggregate` — counts per HPO term plus a hor
 ## Privacy
 
 - Audio and the mapping table never leave the machine.
-- Only pseudonymised text is sent to the LLM provider. The pseudonymisation can miss details (see below).
+- Only approved pseudonymised text is sent to the LLM provider: checked by a person, or approved by the page because it shows no warning sign. The report records which. The CLI sends unreviewed text only with `--no-review`. The pseudonymisation can miss details (see below).
+- The raw transcripts and the review files (`review/`, with the real names) stay on the machine.
 - Designed under GDPR + Belgian health-data law.
 
 ### PII model: what it catches, what it misses
@@ -62,14 +63,20 @@ Neither model is a complete de-identifier. Spot-check the first batch.
 
 Double-click `Start Phenoscribe.bat` (Windows) or `Start Phenoscribe.command` (Mac; `sh` on Linux).
 The script installs `uv` if it is missing, runs `phenoscribe setup`, and opens the page on
-<http://127.0.0.1:7860>. Drop files or choose a folder, then click **Start coding**. The app
-decides the work for each file (`plan_batch` in `pipeline.py`): audio is transcribed, a `.txt`
-is coded as it is, and a saved transcript of the same audio bytes is reused
+<http://127.0.0.1:7860>. Drop files or choose a folder, choose a tool, then click **Start**. The
+app decides the work for each file (`plan_batch` in `pipeline.py`): audio is transcribed, a
+`.txt` or `.docx` is read as it is, and a saved transcript of the same audio bytes is reused
 (`transcripts/by-audio/<sha256>.txt`, keyed by the bytes, backend, model and language).
 
-Each run writes a new `results_YYYY-MM-DD_HHMM.xlsx` to `Documents/Phenoscribe results`
-(`PHENOSCRIBE_OUTPUT_DIR`), with `transcripts/`, `pseudo/`, `phenoscribe.log`, and
-`filename_mapping.json` (each hashed `pt-…` ID back to its filename). A file named only by a
+The run has two stages with a review between them. `prepare_batch` transcribes and finds the
+personal details, and saves `review/<patient_id>.json`. The user checks and approves each file.
+Then `code_batch` codes the approved files, or `finish_clean` makes a ZIP of the clean texts
+and a `personal_details_*.xlsx` report.
+
+Each coding run writes a new `results_YYYY-MM-DD_HHMM.xlsx` with a "Personal details" sheet
+(counts only) to `Documents/Phenoscribe results` (`PHENOSCRIBE_OUTPUT_DIR`), with
+`transcripts/`, `review/`, `clean/`, `phenoscribe.log`, and `filename_mapping.json` (each
+hashed `pt-…` ID back to its filename). A file named only by a
 number (`467.mp3`) gets the ID `MGA.467`.
 
 `phenoscribe setup` downloads the pinned `hp.obo`, builds the ChromaDB index, and
@@ -99,8 +106,13 @@ The `127.0.0.1:` prefix on `-p` keeps the published port reachable only from thi
 ```bash
 uv sync --frozen && uv run phenoscribe setup
 
-# Process every audio file in data/recordings/, write to output/results.xlsx
-uv run phenoscribe process data/recordings/ --output output/results.xlsx
+# Process every audio file in data/recordings/, write to output/results.xlsx.
+# Each file waits for a review in the page first; --no-review sends the detector
+# output to the LLM with no person to check it.
+uv run phenoscribe process data/recordings/ --output output/results.xlsx --no-review
+
+# Remove personal details only (no LLM): clean texts, a report and a ZIP in output/
+uv run phenoscribe clean data/recordings/ --output output
 
 # Build a cohort summary (CSV + bar chart) from an existing results file
 uv run phenoscribe aggregate output/results.xlsx --top 30
@@ -163,14 +175,15 @@ match.
 ```
 src/phenoscribe/        Pipeline source
   transcribe.py         Step 1: Whisper (mlx or faster-whisper, backend auto)
-  pii.py                Step 2: local French NER + regex pseudonymisation
+  pii.py                Step 2: local French NER + regex detection of personal details
+  review.py             Step 2: the review (untick, add, keep types, approve) and clean text
   extract_symptoms.py   Step 3: LLM symptom extraction
   hpo_index.py          Step 4: ChromaDB vector search
   match_hpo.py          Step 5: LLM judging + canonical name resolution
   output.py             Step 6: Excel writer (three formats)
   aggregate.py          Cohort-level prevalence + bar chart
-  pipeline.py           Orchestrator: process_recording, plan_batch, run_batch
-  cli.py                argparse CLI (process, setup, status, aggregate, validate)
+  pipeline.py           Orchestrator: process_recording, plan_batch, prepare_batch, code_batch
+  cli.py                argparse CLI (process, clean, setup, status, aggregate, validate)
   gui.py                Gradio web app
   diarize.py            Optional: pyannote speaker diarization (needs HF_TOKEN)
 
@@ -178,7 +191,7 @@ Start Phenoscribe.bat   Double-click start file (Windows)
 Start Phenoscribe.command  Double-click start file (Mac; `sh` on Linux)
 scripts/                Seeding, benchmarks, CI smoke run
 data/                   HPO ontology, ChromaDB, recordings (gitignored)
-output/                 CLI output: Excel, transcripts, pseudonymised text
+output/                 CLI output: Excel, transcripts, reviews, clean text
                         (the web app writes to Documents/Phenoscribe results)
 context/                Architecture notes, plans, shipped docs, exports
 tests/                  Unit + integration tests

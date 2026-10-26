@@ -8,7 +8,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac"}
-TEXT_EXTENSIONS = {".txt"}
+TEXT_EXTENSIONS = {".txt", ".docx"}
 
 # Default HF repo when caller passes a bare faster-whisper model name to the mlx backend.
 # NOTE: distil-* variants are English-only — do not use them on non-English audio
@@ -60,6 +60,46 @@ def download_speech_model(
     return download_model(model_name, local_files_only=local_files_only)
 
 
+def read_docx(path) -> str:
+    """The text of a Word file: headers and footers first, then the body in order.
+
+    Headers and footers often hold the patient name, so they go through the
+    personal-detail removal too. A table row becomes one line, cells joined
+    by " | ". Formatting and images are dropped.
+    """
+    from docx import Document
+    from docx.table import Table
+
+    def table_lines(table) -> list[str]:
+        rows = []
+        for row in table.rows:
+            cells = []
+            for cell in row.cells:
+                if cell.text not in cells:  # a merged cell repeats
+                    cells.append(cell.text)
+            rows.append(" | ".join(cells))
+        return rows
+
+    def block_lines(container) -> list[str]:
+        """Paragraphs and tables of a body, header or footer, in document order."""
+        out = []
+        for block in container.iter_inner_content():
+            out += table_lines(block) if isinstance(block, Table) else [block.text]
+        return out
+
+    doc = Document(str(path))
+    lines: list[str] = []
+    seen_parts = set()
+    for section in doc.sections:
+        for part in (section.header, section.footer):
+            if part.is_linked_to_previous or id(part.part) in seen_parts:
+                continue
+            seen_parts.add(id(part.part))
+            lines += [line for line in block_lines(part) if line.strip()]
+    lines += block_lines(doc)
+    return "\n".join(lines).strip()
+
+
 def transcribe(
     input_path: str,
     *,
@@ -71,7 +111,7 @@ def transcribe(
     """Transcribe an audio file or read a text file.
 
     Args:
-        input_path: Path to audio file (.wav, .mp3, .m4a, .ogg, .flac) or text file (.txt).
+        input_path: Path to audio file (.wav, .mp3, .m4a, .ogg, .flac) or text file (.txt, .docx).
         backend: "faster-whisper" (CPU/CUDA), "mlx" (Apple Silicon Metal), or
             "auto" (see resolve_backend).
         model_name: Whisper model name. For mlx, also accepts an HF repo path directly;
@@ -85,6 +125,9 @@ def transcribe(
     path = Path(input_path)
     suffix = path.suffix.lower()
 
+    if suffix == ".docx":
+        logger.info("Reading Word file: %s", path.name)
+        return read_docx(path)
     if suffix in TEXT_EXTENSIONS:
         logger.info("Reading text file: %s", path.name)
         return path.read_text(encoding="utf-8").strip()

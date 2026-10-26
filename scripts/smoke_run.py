@@ -40,7 +40,7 @@ def main() -> int:
     match_hpo.llm_call = fake_llm_call
 
     config = load_config()
-    batch = run_batch([str(SAMPLE)], config, tempfile.mkdtemp())
+    batch = run_batch([str(SAMPLE)], config, tempfile.mkdtemp(), no_review=True)
     if batch.excel_path is None:
         print(f"Smoke run failed: {batch.files[0].error!r}")
         return 1

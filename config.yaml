@@ -21,6 +21,9 @@ pii:
   # a general 4-label French NER (PER/LOC/ORG/MISC).
   fallback_model: "Jean-Baptiste/camembert-ner"
   min_score: 0.6              # drop NER detections below this confidence
+  # Optional types to keep in the text: DATE, AGE, GENDER, JOB. Empty = remove
+  # them all. Names, places, phones, emails and ID numbers are always removed.
+  keep_types: []
 
 output:
   format: "detailed"          # detailed | semicolon | purl

@@ -186,7 +186,7 @@ def test_process_recording_reuses_and_saves_the_audio_transcript(tmp_path, monke
     """The real process_recording, with every step after transcription stubbed."""
     (audio,) = _files(tmp_path / "in", "467.mp3")
     monkeypatch.setattr(pipeline, "check_obo_version", lambda *a: "hp/releases/2026-02-16")
-    monkeypatch.setattr(pipeline, "pseudonymize", lambda text, **k: (text, {}))
+    monkeypatch.setattr(pipeline, "find_personal_details", lambda text, **k: [])
     monkeypatch.setattr(pipeline, "extract_symptoms", lambda text, **k: [])
     monkeypatch.setattr(pipeline, "match_hpo", lambda symptoms, **k: [])
     monkeypatch.setattr(pipeline, "write_excel", lambda *a, **k: None)
@@ -194,9 +194,10 @@ def test_process_recording_reuses_and_saves_the_audio_transcript(tmp_path, monke
     monkeypatch.setattr(pipeline, "transcribe", lambda path, **k: whisper.append(path) or "bonjour")
     out = str(tmp_path / "out" / "results.xlsx")
 
-    pipeline.process_recording(audio, "MGA.467", CONFIG, output_path=out, reuse_transcript=True)
-    pipeline.process_recording(audio, "MGA.467", CONFIG, output_path=out, reuse_transcript=True)
-    pipeline.process_recording(audio, "MGA.467", CONFIG, output_path=out, reuse_transcript=False)
+    for reuse in (True, True, False):
+        pipeline.process_recording(
+            audio, "MGA.467", CONFIG, output_path=out, reuse_transcript=reuse, no_review=True
+        )
 
     assert len(whisper) == 2  # the second run reused the saved transcript
     cache = transcript_cache_path(audio, CONFIG, str(tmp_path / "out" / "transcripts"))

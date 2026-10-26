@@ -7,7 +7,16 @@ from pathlib import Path
 
 from phenoscribe.config import load_config
 from phenoscribe.jobs import create_job, get_failed_jobs, update_job
-from phenoscribe.pipeline import derive_patient_id, process_recording
+from phenoscribe.pipeline import (
+    NeedsReview,
+    batch_patient_id,
+    derive_patient_id,
+    finish_clean,
+    find_details,
+    process_recording,
+    read_transcript,
+)
+from phenoscribe.review import NO_REVIEW, approve, removed_values, save_review, summary_line
 from phenoscribe.transcribe import AUDIO_EXTENSIONS, TEXT_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -67,6 +76,21 @@ def main():
     )
     proc.add_argument("--skip-transcription", action="store_true", help="Skip transcription, read from saved transcripts in output/transcripts/")
     proc.add_argument("--retry-failed", action="store_true", help="Retry previously failed jobs")
+    proc.add_argument(
+        "--no-review",
+        action="store_true",
+        help="Send the text to the LLM with the personal details the detector removed, "
+        "with no person to check them. Without it, approve each file in the page first.",
+    )
+
+    # Clean command: the personal-detail removal on its own
+    clean = subparsers.add_parser(
+        "clean",
+        help="Remove personal details from recordings or transcripts (no LLM, no review)",
+    )
+    clean.add_argument("input_dir", help="Directory containing audio/text files")
+    clean.add_argument("--output", "-o", default="output", help="Output folder (default: output)")
+    clean.add_argument("--config", "-c", default="config.yaml", help="Config file path")
 
     # Setup command
     setup = subparsers.add_parser(
@@ -119,6 +143,8 @@ def main():
 
     if args.command == "process":
         _cmd_process(args)
+    elif args.command == "clean":
+        _cmd_clean(args)
     elif args.command == "setup":
         _cmd_setup(args)
     elif args.command == "status":
@@ -172,6 +198,7 @@ def _cmd_process(args):
 
     completed = 0
     failed = 0
+    waiting = 0
 
     for filepath in files:
         # Filename stem locates the cached transcript ("467.txt"); the join key
@@ -193,10 +220,15 @@ def _cmd_process(args):
                 output_path=output_path,
                 skip_transcription=args.skip_transcription,
                 transcript_stem=stem,
+                no_review=args.no_review,
             )
             update_job(db_path, job_id, "completed")
             completed += 1
             print(f"[{patient_id}] Done — {len(matches)} HPO codes found.")
+        except NeedsReview as e:
+            update_job(db_path, job_id, "needs_review")
+            waiting += 1
+            print(f"[{patient_id}] Waiting: {e}")
         except Exception as e:
             step = _identify_failed_step(e)
             update_job(db_path, job_id, "failed", step_failed=step, error_msg=str(e))
@@ -219,6 +251,7 @@ def _cmd_process(args):
                         config,
                         output_path=output_path,
                         skip_transcription=args.skip_transcription,
+                        no_review=args.no_review,
                     )
                     update_job(db_path, job["id"], "completed")
                     completed += 1
@@ -229,8 +262,39 @@ def _cmd_process(args):
                     update_job(db_path, job["id"], "failed", step_failed=step, error_msg=str(e))
                     print(f"[{patient_id}] Retry FAILED: {e}")
 
-    print(f"\nDone. Completed: {completed}, Failed: {failed}")
+    print(f"\nDone. Completed: {completed}, Failed: {failed}, Waiting for review: {waiting}")
     print(f"Results: {output_path}")
+
+
+def _cmd_clean(args):
+    """Remove personal details from each file. Writes clean texts, a report and a ZIP."""
+    config = load_config(args.config)
+    input_dir = Path(args.input_dir)
+    if not input_dir.is_dir():
+        print(f"Error: '{input_dir}' is not a directory.")
+        sys.exit(1)
+    files = sorted(
+        f for f in input_dir.iterdir()
+        if f.suffix.lower() in SUPPORTED_EXTENSIONS and not f.name.startswith((".", "~$"))
+    )
+    done = []
+    for filepath in files:
+        # Hashed for a name-like file name, so no name goes in the ZIP or the report.
+        patient_id = batch_patient_id(filepath.name, config.patient.id_prefix)
+        try:
+            raw = read_transcript(str(filepath), patient_id, config, args.output, lambda label: None)
+            review = find_details(raw, filepath.name, patient_id, config, args.output)
+            approve(review, how=NO_REVIEW)
+            save_review(review, args.output)
+        except Exception as e:  # noqa: BLE001 — one bad file must not stop the run
+            print(f"[{patient_id}] FAILED: {e}")
+            continue
+        done.append(patient_id)
+        print(f"[{patient_id}] {summary_line(review)}")
+        for entry in removed_values(review):
+            print(f"    {entry.category:<12} ×{entry.count}  {entry.value}")
+    archive = finish_clean(done, args.output)
+    print(f"\nClean texts: {archive}" if archive else "\nNo file cleaned.")
 
 
 def _cmd_setup(args):
@@ -386,7 +450,7 @@ def _identify_failed_step(error: Exception) -> str:
     msg = str(error).lower()
     if "whisper" in msg or "transcri" in msg or "audio" in msg:
         return "transcription"
-    if "pii" in msg or "ner" in msg or "pseudonym" in msg:
+    if "pii" in msg or "ner" in msg or "pseudonym" in msg or "personal details" in msg:
         return "pii"
     if "extract" in msg or "symptom" in msg:
         return "extraction"

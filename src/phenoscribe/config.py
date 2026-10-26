@@ -32,6 +32,9 @@ class PIIConfig:
     fallback_model: str = "Jean-Baptiste/camembert-ner"
     # Drop NER detections below this confidence.
     min_score: float = 0.6
+    # Optional types to keep in the text (DATE, AGE, GENDER, JOB). Names,
+    # places, phones, emails and ID numbers are always removed.
+    keep_types: list[str] = field(default_factory=list)
 
 
 @dataclass
