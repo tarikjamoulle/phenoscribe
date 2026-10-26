@@ -187,6 +187,28 @@ def test_find_personal_details_gives_value_type_score_and_origin(monkeypatch):
     assert all(text[s.start:s.end] == s.value for s in spans)
 
 
+def test_timestamps_are_hidden_from_the_model_and_stay_in_the_text(monkeypatch):
+    text = "[27:25] docteur: Bonjour madame Dupont. [27:32] patient: j'ai 2 enfants."
+    seen = []
+
+    def ner(t):
+        seen.append(t)
+        return [_span(t, "Dupont", "NOM_PERSONNE"), _span(t, "2", "NUM_DOSSIER")]
+
+    _install_fake_ner(monkeypatch, ner)
+    spans = pii.find_personal_details(text)
+    assert "27" not in seen[0] and len(seen[0]) == len(text)
+    assert [s.value for s in spans] == ["Dupont"]  # "2" is too short for an ID
+    out, _ = pii.pseudonymize(text)
+    assert out.startswith("[27:25] docteur:") and "[27:32]" in out
+
+
+def test_a_long_number_is_still_an_id(monkeypatch):
+    text = "Mon numéro de dossier est 4471209."
+    _install_fake_ner(monkeypatch, lambda t: [_span(t, "4471209", "NUM_DOSSIER")])
+    assert [s.value for s in pii.find_personal_details(text)] == ["4471209"]
+
+
 def test_config_default_matches_pii_module_default():
     """config.py PIIConfig default must equal the pii.py module default."""
     assert PIIConfig().model == pii.DEFAULT_MODEL

@@ -102,6 +102,19 @@ PHONE_PATTERN = re.compile(
 EMAIL_PATTERN = re.compile(r"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b")
 NISS_PATTERN = re.compile(r"\b\d{2}[.\-]?\d{2}[.\-]?\d{2}[.\-]?\d{3}[.\-]?\d{2}\b")  # Belgian national number
 
+# Transcript timestamps: "[27:25]", "(01:02:03)", "[00:12.5]", or a bare
+# "01:02:03". They are hidden from the NER head, which reads them as ID
+# numbers, and no regex span may start inside one. They stay in the text.
+TIMESTAMP_PATTERN = re.compile(
+    r"[\[(]\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?[\])]"
+    r"|\b\d{1,2}:\d{2}:\d{2}(?:[.,]\d+)?\b"
+)
+
+# A phone or ID number from the NER head has at least this many digits.
+# Shorter number-only hits ("2", "36", "09") are counts, times or ages.
+MIN_NUMBER_DIGITS = 6
+_NUMBER_CATEGORIES = {"ID", "PHONE"}
+
 # Cache one pipeline per resolved model name.
 _ner_pipelines: dict[str, object] = {}
 
@@ -184,16 +197,26 @@ def find_personal_details(
     """
     ner, _ = _get_ner(model, fallback_model)
 
+    # Hide timestamps from the model: same length, so every offset stays valid.
+    stamps = [m.span() for m in TIMESTAMP_PATTERN.finditer(text)]
+    masked = text
+    for start, end in stamps:
+        masked = masked[:start] + " " * (end - start) + masked[end:]
+
     raw = []
-    for e in _detect_entities(ner, text, min_score=min_score):
+    for e in _detect_entities(ner, masked, min_score=min_score):
         label = e["entity_group"]
         # Unknown label: keep it as its own category rather than drop PII.
         category = LABEL_TO_CATEGORY.get(label, label)
+        found = masked[e["start"]:e["end"]]
+        if (category in _NUMBER_CATEGORIES and not re.search(r"[^\W\d_]", found)
+                and sum(c.isdigit() for c in found) < MIN_NUMBER_DIGITS):
+            continue
         # NER subword tokenisation (esp. for accented or multi-subword names)
         # often reports a span that covers only part of a word. Snap the span
         # out to whole-word boundaries so we never leave a leaked fragment such
         # as "PERSON_1loïse" or "JOB_1ynéco".
-        start, end = _snap_to_word_boundaries(text, e["start"], e["end"])
+        start, end = _snap_to_word_boundaries(masked, e["start"], e["end"])
         raw.append({"start": start, "end": end, "category": category,
                     "score": float(e.get("score", 1.0)), "origin": "model"})
 
@@ -204,7 +227,7 @@ def find_personal_details(
         (EMAIL_PATTERN, "EMAIL"),
         (NISS_PATTERN, "ID"),
     ):
-        for match in pattern.finditer(text):
+        for match in pattern.finditer(masked):
             raw.append({"start": match.start(), "end": match.end(), "category": category,
                         "score": 1.0, "origin": "regex"})
 
