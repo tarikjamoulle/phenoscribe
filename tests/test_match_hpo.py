@@ -150,8 +150,11 @@ def test_match_hpo_surfaces_confidence_and_review(monkeypatch):
     assert out[0]["patient_verbatim"] == "fatigué"
 
 
-def test_match_hpo_judge_exception_flags_review(monkeypatch):
-    """If the LLM call raises, the row is left uncoded and flagged for review."""
+def test_match_hpo_judge_call_error_stops_the_file(monkeypatch):
+    """An error of the call itself (no credit) raises, so the file fails and runs again.
+
+    The credit outage of 2026-10-26 once left 48 findings uncoded in files marked as done.
+    """
     import phenoscribe.match_hpo as mod
 
     monkeypatch.setattr(
@@ -159,17 +162,82 @@ def test_match_hpo_judge_exception_flags_review(monkeypatch):
     )
 
     def boom(**kw):
-        raise RuntimeError("provider down")
+        raise RuntimeError("429 insufficient_quota")
 
     monkeypatch.setattr(mod, "llm_call", boom)
 
+    with pytest.raises(RuntimeError, match="insufficient_quota"):
+        match_hpo([{"clinical_term": "tiredness"}])
+
+
+def test_an_unreadable_judge_answer_stays_uncoded(monkeypatch):
+    import phenoscribe.match_hpo as mod
+
+    monkeypatch.setattr(
+        mod, "search_hpo", lambda term, k, chroma_path, **kw: list(CANDIDATES)
+    )
+    monkeypatch.setattr(mod, "llm_call", lambda **kw: "I am not sure.")
+
     out = match_hpo([{"clinical_term": "tiredness"}])
 
-    assert out[0]["hpo_id"] is None
-    assert out[0]["hpo_term"] == NO_MATCH_TERM
-    assert out[0]["clinical_term"] == "tiredness"
+    assert out[0]["hpo_id"] is None and out[0]["hpo_term"] == NO_MATCH_TERM
     assert out[0]["needs_review"] is True
-    assert out[0]["confidence"] == 0.0
+
+
+def test_a_denied_finding_tells_the_judge_to_code_it(monkeypatch):
+    """A denied "pas de maux de tête" once made the judge refuse Headache at rank 1."""
+    import phenoscribe.match_hpo as mod
+
+    prompts: list[dict] = []
+    monkeypatch.setattr(
+        mod, "search_hpo", lambda term, k, chroma_path, **kw: list(CANDIDATES)
+    )
+
+    def capture(**kw):
+        prompts.append(kw)
+        return _json("HP:0012378", "Fatigue", confidence=0.9)
+
+    monkeypatch.setattr(mod, "llm_call", capture)
+
+    match_hpo([
+        {"clinical_term": "fatigue", "patient_verbatim": "pas fatiguée", "negated": True},
+        {"clinical_term": "fatigue", "patient_verbatim": "très fatiguée"},
+    ])
+
+    assert "Status: denied by the patient" in prompts[0]["user_prompt"]
+    assert "Status:" not in prompts[1]["user_prompt"]
+    assert "Never refuse a term because the patient" in prompts[0]["system_prompt"]
+
+
+def test_an_ambiguous_exact_name_needs_review(monkeypatch):
+    import phenoscribe.match_hpo as mod
+
+    hits = [
+        {"hpo_id": "HP:0012378", "name": "Fatigue", "distance": None, "exact": True, "ambiguous": True},
+        {"hpo_id": "HP:0003388", "name": "Easy fatigability", "distance": 0.2, "exact": True, "ambiguous": True},
+    ]
+    monkeypatch.setattr(mod, "search_hpo", lambda term, k, chroma_path, **kw: list(hits))
+    monkeypatch.setattr(mod, "llm_call", lambda **kw: _json("HP:0012378", "Fatigue", confidence=0.95))
+
+    out = match_hpo([{"clinical_term": "tiredness"}])
+
+    assert out[0]["hpo_id"] == "HP:0012378" and out[0]["needs_review"] is True
+
+
+def test_an_exact_hit_with_no_distance_uses_the_vector_distance(monkeypatch):
+    """The weak flag reads the best vector distance; an exact hit with None does not break it."""
+    import phenoscribe.match_hpo as mod
+
+    hits = [
+        {"hpo_id": "HP:0002094", "name": "Dyspnea", "distance": None, "exact": True, "ambiguous": False},
+        {"hpo_id": "HP:0025404", "name": "Rest dyspnea", "distance": 0.3},
+    ]
+    monkeypatch.setattr(mod, "search_hpo", lambda term, k, chroma_path, **kw: list(hits))
+    monkeypatch.setattr(mod, "llm_call", lambda **kw: _json("HP:0002094", "Dyspnea", confidence=0.95))
+
+    out = match_hpo([{"clinical_term": "shortness of breath"}])
+
+    assert out[0]["hpo_id"] == "HP:0002094" and out[0]["needs_review"] is False
 
 
 def test_match_hpo_weak_shortlist_flags_review(monkeypatch):

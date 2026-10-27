@@ -345,6 +345,7 @@ def code_review(
         hpo_release=version,
         propagate_ancestors=config.output.propagate_ancestors,
         obo_path=config.paths.hpo_obo,
+        interview=interview_details(review.source, config.patient.id_prefix),
     )
     write_mentions(excel_path, patient_id, timeline)
 
@@ -362,6 +363,36 @@ def derive_patient_id(stem: str, prefix: str) -> str:
     if not prefix or stem.startswith(prefix):
         return stem
     return f"{prefix}{stem}"
+
+
+_PATIENT_NUMBER = re.compile(r"^\s*(?:MGA\s*\.?\s*)?(\d{1,4})(?!\d)", re.IGNORECASE)
+_FILE_DATE = re.compile(r"(?<!\d)(20\d\d)[-_.]?(\d\d)[-_.]?(\d\d)(?!\d)")
+
+
+def interview_details(filename: str, prefix: str) -> dict:
+    """Patient, interview type and date from Marc's file names, for the Excel.
+
+    One patient can have several files ("MGA.363 interview.docx", "363 interview
+    evolution 2026-10-15_11-09-09.docx"), and each file gets its own patient ID.
+    The number at the start links the files of one patient. "evolution" marks a
+    follow-up, "mail" an email; any other file is an interview. The date comes
+    from the name (YYYYMMDD or YYYY-MM-DD), else it stays empty. No other part of
+    the name goes to the Excel, because a name can hold a patient's name.
+    """
+    stem = Path(filename).stem
+    lower = stem.lower()
+    number = _PATIENT_NUMBER.match(stem)
+    kind = "email" if "mail" in lower else "follow-up" if "evol" in lower else "interview"
+    date = ""
+    for year, month, day in _FILE_DATE.findall(stem):
+        if 1 <= int(month) <= 12 and 1 <= int(day) <= 31:
+            date = f"{year}-{month}-{day}"
+            break
+    return {
+        "patient": f"{prefix}{number.group(1)}" if number else "",
+        "interview": kind,
+        "date": date,
+    }
 
 
 def batch_patient_id(filename: str, prefix: str) -> str:

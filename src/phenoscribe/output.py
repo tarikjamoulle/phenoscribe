@@ -31,6 +31,9 @@ HEADERS = {
         "First Mention %",
         "Last Mention %",
         "Mentions",
+        "Patient",
+        "Interview",
+        "Date",
     ],
     "semicolon": ["Patient_ID", "observation_source_value", "excluded_source_value"],
     "purl": [
@@ -125,6 +128,7 @@ def write_excel(
     hpo_release: str | None = None,
     propagate_ancestors: bool = False,
     obo_path: str = "data/hpo/hp.obo",
+    interview: dict | None = None,
 ) -> None:
     """Write HPO matches to Excel file.
 
@@ -139,6 +143,9 @@ def write_excel(
             the true-path expansion (predicted terms plus all is_a ancestors).
             The primary sheet keeps the leaf-level human view unchanged.
         obo_path: HPO OBO release used to build the is_a graph for propagation.
+        interview: "patient", "interview" and "date" of the file
+            (pipeline.interview_details), for the last 3 columns of the
+            detailed format. They link the files of one patient.
     """
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -146,6 +153,13 @@ def write_excel(
     if path.exists():
         wb = load_workbook(path)
         ws = wb[wb.sheetnames[0]]
+        # A workbook of an older version has fewer columns: add the new headers.
+        headers = HEADERS.get(fmt, HEADERS["detailed"])
+        old = [c.value for c in ws[1]]
+        if old and len(old) < len(headers) and old == headers[: len(old)]:
+            for col in range(len(old) + 1, len(headers) + 1):
+                ws.cell(row=1, column=col, value=headers[col - 1])
+            _style_header_row(ws, len(headers))
     else:
         wb = Workbook()
         ws = wb.active
@@ -164,7 +178,7 @@ def write_excel(
     elif fmt == "semicolon":
         _write_semicolon_format(ws, patient_id, deduped)
     else:
-        _write_detailed_format(ws, patient_id, deduped)
+        _write_detailed_format(ws, patient_id, deduped, interview or {})
 
     _auto_fit_columns(ws)
     if hpo_release:
@@ -264,7 +278,7 @@ def _modifier_cell(m: dict, field: str) -> str:
     return m.get(field, "") or ""
 
 
-def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
+def _write_detailed_format(ws, patient_id: str, matches: list[dict], interview: dict) -> None:
     """One row per finding with present/absent and modifier columns.
 
     Negated findings stay in the sheet marked 'Absent', with their code, so
@@ -292,14 +306,18 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict]) -> None:
                 m.get("first_position"),
                 m.get("last_position"),
                 m.get("n_mentions"),
+                interview.get("patient", ""),
+                interview.get("interview", ""),
+                interview.get("date", ""),
             ]
         )
         row = ws.max_row
-        for col in range(1, 15):
+        n_cols = len(HEADERS["detailed"])
+        for col in range(1, n_cols + 1):
             ws.cell(row=row, column=col).alignment = _TOP_ALIGNMENT
         ws.cell(row=row, column=8).alignment = _WRAP_ALIGNMENT
         if m.get("needs_review"):
-            for col in range(1, 15):
+            for col in range(1, n_cols + 1):
                 ws.cell(row=row, column=col).fill = _REVIEW_FILL
 
 

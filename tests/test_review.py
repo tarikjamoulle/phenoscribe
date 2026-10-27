@@ -310,6 +310,26 @@ def test_code_batch_codes_only_approved_files_and_adds_the_counts_sheet(tmp_path
     assert "Dupont" not in str(list(sheet.values))
 
 
+def test_a_credit_error_fails_the_file_and_the_next_run_codes_it(tmp_path, stub_steps, monkeypatch):
+    """The file stays approved (not done), so "Find HPO codes" picks it up again."""
+    out_dir = tmp_path / "out"
+    pipeline.prepare_batch([_transcript(tmp_path)], Config(), out_dir)
+    save_review(approve(load_review(out_dir, "412")), out_dir)
+
+    def no_credit(symptoms, **k):
+        raise RuntimeError("Error code: 429 - insufficient_quota")
+
+    monkeypatch.setattr(pipeline, "match_hpo", no_credit)
+    first = pipeline.code_batch(["412"], Config(), out_dir)
+    assert "insufficient_quota" in str(first.files[0].error)
+    assert load_review(out_dir, "412").status == APPROVED
+
+    monkeypatch.setattr(pipeline, "match_hpo", lambda symptoms, **k: [])
+    second = pipeline.code_batch(["412"], Config(), out_dir)
+    assert second.files[0].error is None
+    assert load_review(out_dir, "412").status == DONE
+
+
 def test_finish_clean(tmp_path, stub_steps):
     out_dir = tmp_path / "out"
     pipeline.prepare_batch([_transcript(tmp_path)], Config(), out_dir)

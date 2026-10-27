@@ -1,0 +1,1114 @@
+{
+ "about": "Clinical terms (English, no patient data) and the HPO codes accepted on 2026-10-27. 'review' rows were uncoded or refused; 'control' rows were coded by the matcher with no review flag. Agreement with one review, not a gold standard.",
+ "hpo_release": "hp/releases/2026-02-16",
+ "review": [
+  {
+   "clinical_term": "loss of taste or smell",
+   "status": "Absent",
+   "expected": [
+    "HP:0000458",
+    "HP:0041051"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "oliguria",
+   "status": "Present",
+   "expected": [
+    "HP:0100520"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "hemorrhoid pain",
+   "status": "Present",
+   "expected": [
+    "HP:0032551"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "difficulty with personal hygiene",
+   "status": "Present",
+   "expected": [
+    "HP:0031059"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "neck and shoulder pain",
+   "status": "Present",
+   "expected": [
+    "HP:0030833",
+    "HP:0030834"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "decreased oxygen saturation",
+   "status": "Present",
+   "expected": [
+    "HP:0012418"
+   ],
+   "cause": "search missed",
+   "rows": 2
+  },
+  {
+   "clinical_term": "swollen feet",
+   "status": "Present",
+   "expected": [
+    "HP:0010741"
+   ],
+   "cause": "search missed",
+   "rows": 3
+  },
+  {
+   "clinical_term": "difficulty walking",
+   "status": "Present",
+   "expected": [
+    "HP:0001288"
+   ],
+   "cause": "search missed",
+   "rows": 5
+  },
+  {
+   "clinical_term": "pain",
+   "status": "Absent",
+   "expected": [
+    "HP:0012531"
+   ],
+   "cause": "judge refused",
+   "rows": 6
+  },
+  {
+   "clinical_term": "respiratory difficulties",
+   "status": "Absent",
+   "expected": [
+    "HP:0002094"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "joint and muscle pain",
+   "status": "Present",
+   "expected": [
+    "HP:0002829",
+    "HP:0003326"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "headache",
+   "status": "Absent",
+   "expected": [
+    "HP:0002315"
+   ],
+   "cause": "judge refused",
+   "rows": 3
+  },
+  {
+   "clinical_term": "psychological distress",
+   "status": "Present",
+   "expected": [
+    "HP:0100851"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "skin sensitivity",
+   "status": "Present",
+   "expected": [
+    "HP:0012533"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "anosmia",
+   "status": "Absent",
+   "expected": [
+    "HP:0000458"
+   ],
+   "cause": "search missed",
+   "rows": 4
+  },
+  {
+   "clinical_term": "hypersomnia",
+   "status": "Present",
+   "expected": [
+    "HP:0025288"
+   ],
+   "cause": "search missed",
+   "rows": 8
+  },
+  {
+   "clinical_term": "night waking",
+   "status": "Present",
+   "expected": [
+    "HP:0031355"
+   ],
+   "cause": "search missed",
+   "rows": 2
+  },
+  {
+   "clinical_term": "swelling",
+   "status": "Present",
+   "expected": [
+    "HP:0000969"
+   ],
+   "cause": "search missed",
+   "rows": 2
+  },
+  {
+   "clinical_term": "right arm pain",
+   "status": "Present",
+   "expected": [
+    "HP:0009763"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "constipation",
+   "status": "Absent",
+   "expected": [
+    "HP:0002019"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "diarrhea",
+   "status": "Absent",
+   "expected": [
+    "HP:0002014"
+   ],
+   "cause": "judge refused",
+   "rows": 2
+  },
+  {
+   "clinical_term": "visual fatigue",
+   "status": "Present",
+   "expected": [
+    "HP:0031590"
+   ],
+   "cause": "search missed",
+   "rows": 3
+  },
+  {
+   "clinical_term": "visual disturbances",
+   "status": "Present",
+   "expected": [
+    "HP:0000504"
+   ],
+   "cause": "search missed",
+   "rows": 5
+  },
+  {
+   "clinical_term": "visual problems",
+   "status": "Absent",
+   "expected": [
+    "HP:0000504"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "loss of taste and smell",
+   "status": "Present",
+   "expected": [
+    "HP:0000458",
+    "HP:0041051"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "shortness of breath",
+   "status": "Present",
+   "expected": [
+    "HP:0002094"
+   ],
+   "cause": "search missed",
+   "rows": 14
+  },
+  {
+   "clinical_term": "leg numbness",
+   "status": "Present",
+   "expected": [
+    "HP:0033748"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "sleep disturbance",
+   "status": "Absent",
+   "expected": [
+    "HP:0002360"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "increased appetite",
+   "status": "Present",
+   "expected": [
+    "HP:0002591"
+   ],
+   "cause": "search missed",
+   "rows": 2
+  },
+  {
+   "clinical_term": "reduced energy",
+   "status": "Present",
+   "expected": [
+    "HP:0012378"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "restless sleep",
+   "status": "Present",
+   "expected": [
+    "HP:0025199"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "memory impairment",
+   "status": "Absent",
+   "expected": [
+    "HP:0002354"
+   ],
+   "cause": "judge refused",
+   "rows": 3
+  },
+  {
+   "clinical_term": "tinnitus",
+   "status": "Absent",
+   "expected": [
+    "HP:0000360"
+   ],
+   "cause": "judge refused",
+   "rows": 2
+  },
+  {
+   "clinical_term": "cough",
+   "status": "Absent",
+   "expected": [
+    "HP:0012735"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "tachycardia",
+   "status": "Present",
+   "expected": [
+    "HP:0001649"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "visual disturbance",
+   "status": "Present",
+   "expected": [
+    "HP:0000504"
+   ],
+   "cause": "search missed",
+   "rows": 2
+  },
+  {
+   "clinical_term": "loss of sensation in feet",
+   "status": "Present",
+   "expected": [
+    "HP:0033748"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "speech disturbance",
+   "status": "Present",
+   "expected": [
+    "HP:0002167"
+   ],
+   "cause": "search missed",
+   "rows": 3
+  },
+  {
+   "clinical_term": "abdominal pain",
+   "status": "Absent",
+   "expected": [
+    "HP:0002027"
+   ],
+   "cause": "judge refused",
+   "rows": 4
+  },
+  {
+   "clinical_term": "anomia",
+   "status": "Present",
+   "expected": [
+    "HP:0030784"
+   ],
+   "cause": "search missed",
+   "rows": 2
+  },
+  {
+   "clinical_term": "vertigo",
+   "status": "Absent",
+   "expected": [
+    "HP:0002321"
+   ],
+   "cause": "judge refused",
+   "rows": 3
+  },
+  {
+   "clinical_term": "right iliac fossa pain",
+   "status": "Present",
+   "expected": [
+    "HP:0002027"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "sensitivity to tight clothing",
+   "status": "Present",
+   "expected": [
+    "HP:0012533"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "dysautonomia",
+   "status": "Present",
+   "expected": [
+    "HP:0012332"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "visual effort",
+   "status": "Present",
+   "expected": [
+    "HP:0031590"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "frequent nocturnal awakenings",
+   "status": "Present",
+   "expected": [
+    "HP:0031355"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "frequent urination",
+   "status": "Absent",
+   "expected": [
+    "HP:0100515"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "falls",
+   "status": "Absent",
+   "expected": [
+    "HP:0002527"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "anomia",
+   "status": "Absent",
+   "expected": [
+    "HP:0030784"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "trunk pain",
+   "status": "Present",
+   "expected": [
+    "HP:0003418"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "regurgitation",
+   "status": "Present",
+   "expected": [
+    "HP:0002020"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "muscle wasting",
+   "status": "Present",
+   "expected": [
+    "HP:0003202"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "limping",
+   "status": "Present",
+   "expected": [
+    "HP:0031955"
+   ],
+   "cause": "search missed",
+   "rows": 2
+  },
+  {
+   "clinical_term": "facial numbness",
+   "status": "Present",
+   "expected": [
+    "HP:0033748"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "increased urinary frequency",
+   "status": "Present",
+   "expected": [
+    "HP:0100515"
+   ],
+   "cause": "search missed",
+   "rows": 3
+  },
+  {
+   "clinical_term": "hearing impairment",
+   "status": "Absent",
+   "expected": [
+    "HP:0000365"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "jaw numbness",
+   "status": "Present",
+   "expected": [
+    "HP:0033748"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "urinary incontinence",
+   "status": "Absent",
+   "expected": [
+    "HP:0000020"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "vision problems",
+   "status": "Absent",
+   "expected": [
+    "HP:0000504"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "nausea and diarrhea",
+   "status": "Present",
+   "expected": [
+    "HP:0002018",
+    "HP:0002014"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "fall",
+   "status": "Absent",
+   "expected": [
+    "HP:0002527"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "anxiety and depression",
+   "status": "Present",
+   "expected": [
+    "HP:0000739",
+    "HP:0000716"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "vomiting and diarrhea",
+   "status": "Present",
+   "expected": [
+    "HP:0002013",
+    "HP:0002014"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "loss of concentration",
+   "status": "Present",
+   "expected": [
+    "HP:0031987"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "gastric pain",
+   "status": "Present",
+   "expected": [
+    "HP:0410019"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "chest pain",
+   "status": "Absent",
+   "expected": [
+    "HP:0100749"
+   ],
+   "cause": "judge refused",
+   "rows": 2
+  },
+  {
+   "clinical_term": "dysmenorrhea and menorrhagia",
+   "status": "Present",
+   "expected": [
+    "HP:0100607",
+    "HP:0000132"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "migraine",
+   "status": "Absent",
+   "expected": [
+    "HP:0002076"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "hearing problem",
+   "status": "Absent",
+   "expected": [
+    "HP:0000365"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "inability to read",
+   "status": "Present",
+   "expected": [
+    "HP:0010523"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "right leg numbness",
+   "status": "Present",
+   "expected": [
+    "HP:0033748"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "impaired concentration",
+   "status": "Present",
+   "expected": [
+    "HP:0031987"
+   ],
+   "cause": "search missed",
+   "rows": 3
+  },
+  {
+   "clinical_term": "tachycardia on exertion",
+   "status": "Present",
+   "expected": [
+    "HP:0001649"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "temperature sensitivity",
+   "status": "Present",
+   "expected": [
+    "HP:0002046"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "memory problems",
+   "status": "Absent",
+   "expected": [
+    "HP:0002354"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "lightheadedness",
+   "status": "Present",
+   "expected": [
+    "HP:0031972"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "difficulty seeing small objects",
+   "status": "Present",
+   "expected": [
+    "HP:0007663"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "diaphoresis",
+   "status": "Present",
+   "expected": [
+    "HP:0000975"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "eyelid swelling",
+   "status": "Present",
+   "expected": [
+    "HP:0100540"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  },
+  {
+   "clinical_term": "anosmia and ageusia",
+   "status": "Absent",
+   "expected": [
+    "HP:0000458",
+    "HP:0041051"
+   ],
+   "cause": "combined finding",
+   "rows": 1
+  },
+  {
+   "clinical_term": "vomiting",
+   "status": "Absent",
+   "expected": [
+    "HP:0002013"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "dysmenorrhea",
+   "status": "Absent",
+   "expected": [
+    "HP:0100607"
+   ],
+   "cause": "judge refused",
+   "rows": 1
+  },
+  {
+   "clinical_term": "urinary frequency",
+   "status": "Present",
+   "expected": [
+    "HP:0100515"
+   ],
+   "cause": "search missed",
+   "rows": 1
+  }
+ ],
+ "control": [
+  {
+   "clinical_term": "difficulty following conversations",
+   "status": "Present",
+   "expected": [
+    "HP:5200240"
+   ]
+  },
+  {
+   "clinical_term": "asthma",
+   "status": "Present",
+   "expected": [
+    "HP:0002099"
+   ]
+  },
+  {
+   "clinical_term": "decreased attention",
+   "status": "Present",
+   "expected": [
+    "HP:0031987"
+   ]
+  },
+  {
+   "clinical_term": "dust mite allergy",
+   "status": "Present",
+   "expected": [
+    "HP:0410324"
+   ]
+  },
+  {
+   "clinical_term": "sleep disturbances",
+   "status": "Present",
+   "expected": [
+    "HP:0002360"
+   ]
+  },
+  {
+   "clinical_term": "dry eyes",
+   "status": "Present",
+   "expected": [
+    "HP:0001097"
+   ]
+  },
+  {
+   "clinical_term": "loss of balance",
+   "status": "Present",
+   "expected": [
+    "HP:0002172"
+   ]
+  },
+  {
+   "clinical_term": "chronic sinusitis",
+   "status": "Present",
+   "expected": [
+    "HP:0011109"
+   ]
+  },
+  {
+   "clinical_term": "excessive mucus production",
+   "status": "Present",
+   "expected": [
+    "HP:6000686"
+   ]
+  },
+  {
+   "clinical_term": "altered mental status",
+   "status": "Present",
+   "expected": [
+    "HP:0011446"
+   ]
+  },
+  {
+   "clinical_term": "alternating diarrhea and constipation",
+   "status": "Present",
+   "expected": [
+    "HP:0033628"
+   ]
+  },
+  {
+   "clinical_term": "occipital migraine",
+   "status": "Present",
+   "expected": [
+    "HP:0002076"
+   ]
+  },
+  {
+   "clinical_term": "low blood pressure",
+   "status": "Present",
+   "expected": [
+    "HP:0002615"
+   ]
+  },
+  {
+   "clinical_term": "loss of verbal fluency",
+   "status": "Present",
+   "expected": [
+    "HP:0002371"
+   ]
+  },
+  {
+   "clinical_term": "respiratory problems",
+   "status": "Absent",
+   "expected": [
+    "HP:0002093"
+   ]
+  },
+  {
+   "clinical_term": "anxiety",
+   "status": "Present",
+   "expected": [
+    "HP:6000029"
+   ]
+  },
+  {
+   "clinical_term": "brain fog",
+   "status": "Present",
+   "expected": [
+    "HP:0033630"
+   ]
+  },
+  {
+   "clinical_term": "memory lapses",
+   "status": "Present",
+   "expected": [
+    "HP:0002354"
+   ]
+  },
+  {
+   "clinical_term": "exertional dyspnea",
+   "status": "Present",
+   "expected": [
+    "HP:0002875"
+   ]
+  },
+  {
+   "clinical_term": "oral ulcers",
+   "status": "Present",
+   "expected": [
+    "HP:0000155"
+   ]
+  },
+  {
+   "clinical_term": "ear infection",
+   "status": "Present",
+   "expected": [
+    "HP:0000388"
+   ]
+  },
+  {
+   "clinical_term": "fear of relapse",
+   "status": "Present",
+   "expected": [
+    "HP:5200233"
+   ]
+  },
+  {
+   "clinical_term": "language impairment",
+   "status": "Present",
+   "expected": [
+    "HP:0002463"
+   ]
+  },
+  {
+   "clinical_term": "difficulty with fine motor skills",
+   "status": "Present",
+   "expected": [
+    "HP:0007010"
+   ]
+  },
+  {
+   "clinical_term": "dyspnea on exertion",
+   "status": "Absent",
+   "expected": [
+    "HP:0002875"
+   ]
+  },
+  {
+   "clinical_term": "nocturnal blood sugar variation",
+   "status": "Present",
+   "expected": [
+    "HP:0011014"
+   ]
+  },
+  {
+   "clinical_term": "hypertension",
+   "status": "Absent",
+   "expected": [
+    "HP:0000822"
+   ]
+  },
+  {
+   "clinical_term": "loss of appetite",
+   "status": "Present",
+   "expected": [
+    "HP:0004396"
+   ]
+  },
+  {
+   "clinical_term": "feeling of being at the end of life",
+   "status": "Present",
+   "expected": [
+    "HP:0033845"
+   ]
+  },
+  {
+   "clinical_term": "jaw discomfort",
+   "status": "Present",
+   "expected": [
+    "HP:0040264"
+   ]
+  },
+  {
+   "clinical_term": "high blood pressure",
+   "status": "Present",
+   "expected": [
+    "HP:0032263"
+   ]
+  },
+  {
+   "clinical_term": "chest pain",
+   "status": "Absent",
+   "expected": [
+    "HP:0100749"
+   ]
+  },
+  {
+   "clinical_term": "abdominal heaviness",
+   "status": "Present",
+   "expected": [
+    "HP:0011458"
+   ]
+  },
+  {
+   "clinical_term": "constipation",
+   "status": "Absent",
+   "expected": [
+    "HP:0002019"
+   ]
+  },
+  {
+   "clinical_term": "unsteady gait",
+   "status": "Present",
+   "expected": [
+    "HP:0002317"
+   ]
+  },
+  {
+   "clinical_term": "eating disorder",
+   "status": "Present",
+   "expected": [
+    "HP:0100738"
+   ]
+  },
+  {
+   "clinical_term": "fever",
+   "status": "Absent",
+   "expected": [
+    "HP:0033104"
+   ]
+  },
+  {
+   "clinical_term": "head pressure",
+   "status": "Present",
+   "expected": [
+    "HP:0012640"
+   ]
+  },
+  {
+   "clinical_term": "runny nose",
+   "status": "Present",
+   "expected": [
+    "HP:0031417"
+   ]
+  },
+  {
+   "clinical_term": "tingling",
+   "status": "Absent",
+   "expected": [
+    "HP:0003401"
+   ]
+  },
+  {
+   "clinical_term": "reduced libido",
+   "status": "Present",
+   "expected": [
+    "HP:0046504"
+   ]
+  },
+  {
+   "clinical_term": "sugar craving",
+   "status": "Present",
+   "expected": [
+    "HP:0030221"
+   ]
+  },
+  {
+   "clinical_term": "dry mouth",
+   "status": "Present",
+   "expected": [
+    "HP:0000217"
+   ]
+  },
+  {
+   "clinical_term": "floaters",
+   "status": "Absent",
+   "expected": [
+    "HP:0100832"
+   ]
+  },
+  {
+   "clinical_term": "burning sensation",
+   "status": "Present",
+   "expected": [
+    "HP:0010833"
+   ]
+  },
+  {
+   "clinical_term": "hand tremors",
+   "status": "Present",
+   "expected": [
+    "HP:0002378"
+   ]
+  },
+  {
+   "clinical_term": "difficulty eating",
+   "status": "Present",
+   "expected": [
+    "HP:0011968"
+   ]
+  },
+  {
+   "clinical_term": "polyuria",
+   "status": "Present",
+   "expected": [
+    "HP:0000103"
+   ]
+  },
+  {
+   "clinical_term": "leg fatigue",
+   "status": "Present",
+   "expected": [
+    "HP:0012378"
+   ]
+  },
+  {
+   "clinical_term": "hyperacusis",
+   "status": "Absent",
+   "expected": [
+    "HP:0010780"
+   ]
+  }
+ ]
+}
