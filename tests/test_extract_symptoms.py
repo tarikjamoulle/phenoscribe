@@ -75,3 +75,31 @@ def test_unparseable_response_raises(response):
     """A broken response must fail the job, never pass as zero findings."""
     with pytest.raises(ExtractionParseError, match="symptom extraction"):
         _parse_response(response)
+
+
+def test_a_cut_answer_is_asked_again_with_no_mentions(monkeypatch):
+    from phenoscribe import extract_symptoms as es
+
+    prompts = []
+    answers = iter([
+        '[{"patient_verbatim": "j\'ai mal", "clinical_term": "pain", "mentions": ["j\'ai mal", "enc',
+        '[{"patient_verbatim": "j\'ai mal", "clinical_term": "pain", "mentions": []}]',
+    ])
+
+    def fake_call(system_prompt, **kwargs):
+        prompts.append(system_prompt)
+        return next(answers)
+
+    monkeypatch.setattr(es, "llm_call", fake_call)
+    found = es.extract_symptoms("[00:00] j'ai mal")
+    assert [f["clinical_term"] for f in found] == ["pain"]
+    assert found[0]["mentions"] == ["j'ai mal"]  # the verbatim stands in
+    assert es.NO_MENTIONS not in prompts[0] and prompts[1].endswith(es.NO_MENTIONS)
+
+
+def test_two_cut_answers_still_fail(monkeypatch):
+    from phenoscribe import extract_symptoms as es
+
+    monkeypatch.setattr(es, "llm_call", lambda **k: '[{"clinical_term": "pa')
+    with pytest.raises(ExtractionParseError):
+        es.extract_symptoms("texte")

@@ -231,6 +231,8 @@ footer { display: none !important; }
 .ps-tag.skip { background: var(--ps-warn-tag); }
 .ps-what { flex: 1 1 260px; }
 .ps-count { font-size: 15px; font-weight: 600; margin: 4px 2px 10px; }
+.ps-done { margin-top: 10px; }
+.ps-done summary { cursor: pointer; font-size: 15px; font-weight: 600; margin: 4px 2px 10px; }
 @keyframes ps-flash { from { background: var(--ps-new); } to { background: transparent; } }
 .ps-row.new { animation: ps-flash 1.6s ease-out; }
 .ps-working { --font-mono: 'Instrument Sans', system-ui, sans-serif; }
@@ -475,22 +477,29 @@ def summary_html(batch: BatchResult, rows: list[list], when: datetime) -> str:
 
 
 def status_html(batch: BatchResult) -> str:
-    rows = []
+    """The failed files, open. Then the coded interviews, closed under one line."""
+    bad, done = [], []
     for r in batch.files:
         who = f"{html.escape(r.filename)} → {html.escape(r.patient_id)}"
         if r.error:
-            rows.append(
+            bad.append(
                 f'<div class="ps-row bad"><span class="ps-file">✗ {who}</span>'
                 f'<span>{html.escape(plain_error(r.error))}</span></div>'
             )
         else:
             coded = dedup_by_code(r.matches, "detailed")
             review = sum(1 for m in coded if m.get("needs_review"))
-            rows.append(
+            done.append(
                 f'<div class="ps-row"><span class="ps-file"><span class="ps-ok">✓</span> {who}</span>'
                 f"<span>{len(coded)} findings · {review} to review</span></div>"
             )
-    return f'<div class="ps-list">{"".join(rows)}</div>'
+    page = f'<div class="ps-list">{"".join(bad)}</div>' if bad else ""
+    if done:
+        n = len(done)
+        page += (f'<details class="ps-done"><summary><span class="ps-ok">✓</span> '
+                 f'{n} interview{"s" if n != 1 else ""} coded</summary>'
+                 f'<div class="ps-list">{"".join(done)}</div></details>')
+    return page
 
 
 def working_html(plans: list[FilePlan]) -> str:

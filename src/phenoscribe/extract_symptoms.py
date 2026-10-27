@@ -19,9 +19,9 @@ For each finding, output:
 - onset: when it began, normalized to one of: congenital, neonatal, antenatal, childhood, juvenile, adult. Empty string if not stated.
 - severity: how bad it is, normalized to one of: borderline, mild, moderate, severe, profound. Empty string if not stated.
 - context: any remaining temporal or qualifying detail that does not fit the fields above (e.g., "since March 2021", "worse after meals")
-- mentions: every place in the transcript where this finding comes up, in transcript order. \
-Each item is a short quote (3 to 15 words) copied character for character from the transcript, \
-without the [mm:ss] time markers. Include the quote of patient_verbatim.
+- mentions: the places in the transcript where this finding comes up, in transcript order, \
+at most 5. Each item is a short quote (3 to 10 words) copied character for character from the \
+transcript, without the [mm:ss] time markers. Include the quote of patient_verbatim.
 
 Negation is critical. A denied or absent finding must have negated=true. French negation cues include:
 ne...pas, n'...pas, pas de, pas d', plus de, aucun, aucune, sans, absence de, jamais, ni...ni, \
@@ -47,12 +47,20 @@ is not "post-concussion syndrome": extract the symptoms the patient describes, n
 lié au vertige ?"), extract the symptom (vertigo), not the activity ("difficulty driving")
 - Do NOT invent findings not mentioned in the text
 
-Output ONLY a JSON array. No other text. Example:
+Output ONLY a JSON array. No other text. Put each finding on one line, with no indentation. Example:
 [
   {"patient_verbatim": "j'ai mal au ventre", "clinical_term": "abdominal pain", "negated": false, "frequency": "", "onset": "adult", "severity": "severe", "context": "worse after meals", "mentions": ["j'ai mal au ventre", "le ventre me fait encore mal après le repas"]},
   {"patient_verbatim": "je n'ai pas de fièvre", "clinical_term": "fever", "negated": true, "frequency": "", "onset": "", "severity": "", "context": "", "mentions": ["je n'ai pas de fièvre"]},
   {"patient_verbatim": "je suis fatigué", "clinical_term": "fatigue", "negated": false, "frequency": "frequent", "onset": "", "severity": "", "context": "since COVID infection, March 2021", "mentions": ["je suis fatigué", "toujours cette fatigue le soir"]}
 ]"""
+
+# A long interview can make the answer longer than the model's output limit.
+# The cut JSON does not parse (MGA.363, 383, 404 and 365 on 2026-10-27). The
+# second try asks for no mention quotes, which makes the answer much shorter.
+NO_MENTIONS = (
+    "\n\nThis transcript is long. Give an empty mentions list ([]) for every finding, "
+    "to keep the answer short."
+)
 
 
 def extract_symptoms(
@@ -73,15 +81,25 @@ def extract_symptoms(
         List of dicts with keys: patient_verbatim, clinical_term, negated,
         frequency, onset, severity, context, mentions.
     """
-    response = llm_call(
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt=transcript,
-        provider=provider,
-        model=model,
-        ollama_base_url=ollama_base_url,
-    )
+    def ask(system_prompt: str) -> str:
+        return llm_call(
+            system_prompt=system_prompt,
+            user_prompt=transcript,
+            provider=provider,
+            model=model,
+            ollama_base_url=ollama_base_url,
+        )
 
-    return _parse_response(response)
+    response = ask(SYSTEM_PROMPT)
+    try:
+        return _parse_response(response)
+    except ExtractionParseError:
+        logger.warning(
+            "Symptom answer not valid JSON (%d chars, probably cut off). "
+            "Trying again with no mention quotes.",
+            len(response),
+        )
+    return _parse_response(ask(SYSTEM_PROMPT + NO_MENTIONS))
 
 
 class ExtractionParseError(ValueError):
