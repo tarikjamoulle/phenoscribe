@@ -196,6 +196,13 @@ def test_status_has_one_plain_line_per_file():
     assert "Audio format not supported" in page
 
 
+def test_coded_interviews_close_under_one_line_and_failures_stay_open():
+    page = gui.status_html(_batch())
+    assert page.index("Audio format not supported") < page.index("<details")
+    assert "<details " in page and "<details open" not in page
+    assert "1 interview coded</summary>" in page
+
+
 def test_the_page_builds():
     assert gui.build_app() is not None
 

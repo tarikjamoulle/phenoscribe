@@ -98,7 +98,7 @@ def _call_anthropic(system_prompt: str, user_prompt: str, model: str) -> str:
     client = Anthropic(api_key=_resolve_api_key("anthropic", "ANTHROPIC_API_KEY"))
     response = client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=16000,  # a long interview gives a long symptom list
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],
         temperature=0.1,
