@@ -40,6 +40,9 @@ Rules:
 - For frequency, onset, severity: only fill them when the text states it; otherwise use an empty string
 - If the same finding is mentioned multiple times, include it once with combined detail, \
 and list each place in mentions
+- One symptom for each finding. "nausées et diarrhée" gives two findings, nausea and diarrhea, \
+with the same patient_verbatim and mentions. Keep a fixed medical phrase whole \
+("nausea and vomiting")
 - Do NOT include diagnoses (e.g., "COVID-19"), treatments, or procedures — only symptoms and findings
 - A comparison to a past event or illness is not a finding. "comme après ma commotion cérébrale" \
 is not "post-concussion syndrome": extract the symptoms the patient describes, not the comparison

@@ -27,6 +27,9 @@ Pulsatile tinnitus, unless the patient describes a pulse.
 - Match on meaning, not on shared words. In HPO, "concentration" in a term name is \
 the chemical level of a substance. A patient who cannot concentrate has a mental \
 finding, so an enzyme or blood "concentration" term is NOT a match.
+- The patient can deny the finding ("je n'ai pas de fièvre"). The status is recorded \
+separately. Code the finding itself (Fever). Never refuse a term because the patient \
+denies the finding.
 - Only choose from the candidates provided. Do NOT invent or modify HPO codes.
 - If NONE of the candidates is a defensible match, say so by setting "match" to false. \
 A row with no code is better than a wrong code.
@@ -53,7 +56,7 @@ def match_hpo(
     model: str = "gpt-4o",
     ollama_base_url: str = "http://localhost:11434",
     chroma_path: str = "data/chroma_db",
-    k: int = 5,
+    k: int = 10,
     obo_path: str | None = None,
     embedding_model: str | None = None,
     on_symptom=None,
@@ -70,7 +73,9 @@ def match_hpo(
         model: LLM model name.
         ollama_base_url: Ollama URL.
         chroma_path: Path to ChromaDB persistent storage.
-        k: Number of HPO candidates to retrieve.
+        k: Number of HPO candidates to retrieve. 10: with the per-synonym index,
+            the right term was in the top 10 for 74% of the reviewed findings and
+            98% of the control set, against 72% and 88% in the top 5 (2026-10-27).
         obo_path: If given, the final selected code is run through
             resolve_obsolete so a retired id (e.g. from a stale index) maps to
             its active replacement. Defaults to None (no resolution).
@@ -103,7 +108,11 @@ def match_hpo(
 
         # Stage 1: Vector search
         candidates = search_hpo(
-            clinical_term, k=k, chroma_path=chroma_path, embedding_model=embedding_model
+            clinical_term,
+            k=k,
+            chroma_path=chroma_path,
+            embedding_model=embedding_model,
+            obo_path=obo_path,
         )
         if not candidates:
             logger.warning("No HPO candidates found for: %s", clinical_term)
@@ -120,34 +129,43 @@ def match_hpo(
         )
         # The judge codes the finding itself; negation is carried separately,
         # so a denied symptom is judged on the same terms as a present one.
+        status = (
+            "Status: denied by the patient (recorded separately; code the finding itself)\n"
+            if negated else ""
+        )
         user_prompt = (
             f"Clinical concept: \"{clinical_term}\"\n"
             f"Patient's words: \"{symptom.get('patient_verbatim', '')}\"\n"
-            f"Context: {symptom.get('context', 'none')}\n\n"
+            f"Context: {symptom.get('context', 'none')}\n"
+            f"{status}\n"
             f"Candidate HPO terms:\n{candidates_text}\n\n"
             f"Which HPO term is the best match?"
         )
 
-        try:
-            response = llm_call(
-                system_prompt=JUDGE_SYSTEM_PROMPT,
-                user_prompt=user_prompt,
-                provider=provider,
-                model=model,
-                ollama_base_url=ollama_base_url,
-            )
-            selected = _parse_judge_response(response, candidates)
-        except Exception as e:
-            logger.warning(
-                "LLM judge failed for '%s', leaving it uncoded (needs review): %s",
-                clinical_term,
-                e,
-            )
-            selected = _no_match()
+        # An error of the call itself (no credit, no network) stops the file, so
+        # "Find HPO codes" can run it again. It once left 48 findings uncoded in
+        # files marked as done (credit outage, 2026-10-26). llm_call retries once.
+        response = llm_call(
+            system_prompt=JUDGE_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            provider=provider,
+            model=model,
+            ollama_base_url=ollama_base_url,
+        )
+        selected = _parse_judge_response(response, candidates)
+
+        # A name that several HPO terms carry: the judge picks, a person checks.
+        ambiguous = {c["hpo_id"] for c in candidates if c.get("ambiguous")}
+        if selected["hpo_id"] in ambiguous:
+            selected["needs_review"] = True
 
         # A weak vector shortlist drags confidence down even when the judge is
         # sure: it can only be sure relative to candidates that may all be wrong.
-        top_distance = candidates[0].get("distance")
+        # An exact name hit carries no distance of its own when the vector search
+        # missed it; the best vector distance decides, as before.
+        top_distance = min(
+            (c["distance"] for c in candidates if c.get("distance") is not None), default=None
+        )
         if selected["hpo_id"] and top_distance is not None and top_distance > WEAK_MATCH_DISTANCE:
             if not selected["needs_review"]:
                 logger.info(

@@ -211,3 +211,45 @@ def test_the_bar_moves_within_the_matching_step():
     assert step_fraction(CODE_PROGRESS, "matching HPO codes · symptom 1 of 10") == 0.4
     assert step_fraction(CODE_PROGRESS, "matching HPO codes · symptom 6 of 10") == pytest.approx(0.65)
     assert step_fraction(CODE_PROGRESS, "writing the Excel file") == 0.9
+
+
+@pytest.mark.parametrize("name, patient, kind, date", [
+    ("MGA.363 interview.docx", "MGA.363", "interview", ""),
+    ("363  interview evolution  2026-10-15_11-09-09.docx", "MGA.363", "follow-up", "2026-10-15"),
+    ("MGA.363 mail du 20260930.docx", "MGA.363", "email", "2026-09-30"),
+    ("006 interview evolution  20260922 sept. à 10-45.docx", "MGA.006", "follow-up", "2026-09-22"),
+    ("100 intrview evolution 20260922.docx", "MGA.100", "follow-up", "2026-09-22"),
+    ("XX_ interview 20230827_.docx", "", "interview", "2023-08-27"),
+    ("467.mp3", "MGA.467", "interview", ""),
+])
+def test_interview_details_link_the_files_of_one_patient(name, patient, kind, date):
+    from phenoscribe.pipeline import interview_details
+
+    assert interview_details(name, "MGA.") == {"patient": patient, "interview": kind, "date": date}
+
+
+def test_the_detailed_excel_has_patient_interview_and_date(tmp_path):
+    path = tmp_path / "r.xlsx"
+    matches = [{"hpo_id": "HP:0012378", "hpo_term": "Fatigue", "patient_verbatim": "épuisée"}]
+    write_excel("pt-1a2b3c4d", matches, str(path), fmt="detailed",
+                interview={"patient": "MGA.363", "interview": "follow-up", "date": "2026-10-15"})
+    ws = load_workbook(path).worksheets[0]
+    row = dict(zip([c.value for c in ws[1]], [c.value for c in ws[2]]))
+    assert (row["Patient_ID"], row["Patient"], row["Interview"], row["Date"]) == (
+        "pt-1a2b3c4d", "MGA.363", "follow-up", "2026-10-15")
+
+
+def test_rows_added_to_an_older_workbook_get_the_new_headers(tmp_path):
+    from openpyxl import Workbook
+
+    from phenoscribe.output import HEADERS
+
+    path = tmp_path / "old.xlsx"
+    wb = Workbook()
+    wb.active.append(HEADERS["detailed"][:14])  # the layout before 2026-10-27
+    wb.save(path)
+    write_excel("MGA.363", [{"hpo_id": "HP:0012378", "hpo_term": "Fatigue", "patient_verbatim": ""}],
+                str(path), fmt="detailed", interview={"patient": "MGA.363", "interview": "interview", "date": ""})
+    ws = load_workbook(path).worksheets[0]
+    assert [c.value for c in ws[1]] == HEADERS["detailed"]
+    assert ws.cell(row=2, column=15).value == "MGA.363"

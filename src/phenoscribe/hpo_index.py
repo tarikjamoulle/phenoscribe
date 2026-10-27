@@ -1,7 +1,9 @@
 """HPO ontology parser and ChromaDB index."""
 
+import functools
 import logging
 import re
+import unicodedata
 from pathlib import Path
 
 import chromadb
@@ -105,6 +107,12 @@ def obo_ready(obo_path: str, release: str) -> bool:
     return True
 
 
+# The layout of the documents in the index. 2: one document for each term (name,
+# synonyms and definition) plus one for each name and EXACT/NARROW synonym.
+# A change here makes `phenoscribe setup` build the index again.
+INDEX_SCHEMA = 2
+
+
 def index_ready(chroma_path: str, release: str, embedding_model: str = "default") -> bool:
     """True when the ChromaDB index holds terms seeded from ``release`` with ``embedding_model``."""
     if not Path(chroma_path).exists():
@@ -118,6 +126,7 @@ def index_ready(chroma_path: str, release: str, embedding_model: str = "default"
     return (
         meta.get("hpo_release") == release
         and meta.get("embedding_model", "default") == embedding_model
+        and meta.get("index_schema", 1) == INDEX_SCHEMA
         and collection.count() > 0
     )
 
@@ -359,32 +368,90 @@ def seed_chromadb(
             "hnsw:space": "cosine",
             "hpo_release": version,
             "embedding_model": embedding_model,
+            "index_schema": INDEX_SCHEMA,
         },
         embedding_function=embedding_function,
     )
 
+    docs = list(_documents(terms))
     # Batch insert (ChromaDB max batch is 41666)
     batch_size = 5000
-    for i in range(0, len(terms), batch_size):
-        batch = terms[i : i + batch_size]
+    for i in range(0, len(docs), batch_size):
+        batch = docs[i : i + batch_size]
         collection.add(
-            ids=[t["id"] for t in batch],
-            documents=[build_enriched_text(t) for t in batch],
-            metadatas=[
-                {
-                    "name": t["name"],
-                    "parents": ",".join(t["parents"]),
-                    "synonyms": "; ".join(
-                        s["text"]
-                        for s in t["synonyms"]
-                        if s["scope"] in EMBEDDED_SCOPES
-                    )[:500],
-                }
-                for t in batch
-            ],
+            ids=[d[0] for d in batch],
+            documents=[d[1] for d in batch],
+            metadatas=[d[2] for d in batch],
         )
 
     return len(terms)
+
+
+def _documents(terms: list[dict]):
+    """(id, text, metadata) for each document of the index.
+
+    The first document of a term has the HPO id as its id and the enriched text.
+    One more document holds each name and EXACT/NARROW synonym on its own, so a
+    plain synonym ("shortness of breath") is not lost in the mix of the enriched
+    text. Its id is "<HPO id>#<n>"; metadata "hpo_id" names the term.
+    """
+    for t in terms:
+        meta = {
+            "hpo_id": t["id"],
+            "name": t["name"],
+            "parents": ",".join(t["parents"]),
+            "synonyms": "; ".join(
+                s["text"] for s in t["synonyms"] if s["scope"] in EMBEDDED_SCOPES
+            )[:500],
+        }
+        yield t["id"], build_enriched_text(t), meta
+        texts = [t["name"]] + [s["text"] for s in t["synonyms"] if s["scope"] in EMBEDDED_SCOPES]
+        seen = set()
+        for text in texts:
+            key = fold_name(text)
+            if key in seen:
+                continue
+            seen.add(key)
+            yield f"{t['id']}#{len(seen)}", text, meta
+
+
+def fold_name(text: str) -> str:
+    """A term name for an exact lookup: lower case, no accents, '-' and '_' as spaces."""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c)).casefold()
+    return " ".join(re.sub(r"[-_/]", " ", text).split()).strip(" .,;:")
+
+
+@functools.lru_cache(maxsize=4)
+def exact_name_map(obo_path: str) -> dict[str, tuple[tuple[str, str], ...]]:
+    """Folded HPO name or EXACT synonym -> the (id, name) of each term that carries it.
+
+    The vector index mixes a term's name, synonyms and definition in one vector,
+    so a plain synonym can rank low ("shortness of breath" put Dyspnea at rank 15,
+    2026-10-27). An exact lookup finds it first. A name that several terms carry
+    keeps all their ids.
+    """
+    names: dict[str, list[tuple[str, str]]] = {}
+    for term in parse_obo(obo_path):
+        texts = [term["name"]] + [s["text"] for s in term["synonyms"] if s["scope"] == "EXACT"]
+        for text in texts:
+            entry = names.setdefault(fold_name(text), [])
+            if (term["id"], term["name"]) not in entry:
+                entry.append((term["id"], term["name"]))
+    return {key: tuple(value) for key, value in names.items()}
+
+
+def exact_hits(clinical_term: str, obo_path: str) -> tuple[tuple[str, str], ...]:
+    """The HPO terms whose name or EXACT synonym is the clinical term ("fall" finds "Falls")."""
+    names = exact_name_map(obo_path)
+    key = fold_name(clinical_term)
+    variants = [key, key + "s"]
+    if key.endswith("s") and len(key) > 4:
+        variants.append(key[:-1])
+    for variant in variants:
+        if variant in names:
+            return names[variant]
+    return ()
 
 
 def search_hpo(
@@ -392,8 +459,14 @@ def search_hpo(
     k: int = 5,
     chroma_path: str = "data/chroma_db",
     embedding_model: str | None = None,
+    obo_path: str | None = None,
 ) -> list[dict]:
     """Search HPO index for closest matches to a clinical term.
+
+    With ``obo_path``, an exact name hit (see :func:`exact_hits`) comes first,
+    marked ``exact=True`` (and ``ambiguous=True`` when the name belongs to more
+    than one term). Its ``distance`` is the vector distance when the vector
+    search also found it, else None. The vector hits follow, without repeats.
 
     embedding_model must match the one the collection was seeded with. If
     None, it is read back from the collection metadata, so callers normally
@@ -423,16 +496,45 @@ def search_hpo(
         embedding_function=get_embedding_function(embedding_model),
     )
 
-    results = collection.query(query_texts=[clinical_term], n_results=k)
+    # A term has several documents, so ask for more and keep the best one of
+    # each term until there are k terms.
+    total = collection.count()
+    n = min(4 * k, total)
+    while True:
+        results = collection.query(query_texts=[clinical_term], n_results=n)
+        matches, seen = [], set()
+        for i, doc_id in enumerate(results["ids"][0]):
+            meta = results["metadatas"][0][i]
+            hpo_id = meta.get("hpo_id") or doc_id.split("#")[0]
+            if hpo_id in seen:
+                continue
+            seen.add(hpo_id)
+            matches.append(
+                {
+                    "hpo_id": hpo_id,
+                    "name": meta["name"],
+                    "distance": results["distances"][0][i] if results["distances"] else None,
+                }
+            )
+        if len(matches) >= k or n >= total:
+            break
+        n = min(n * 2, total)
+    matches = matches[:k]
 
-    matches = []
-    for i in range(len(results["ids"][0])):
-        matches.append(
+    exact = exact_hits(clinical_term, obo_path) if obo_path else ()
+    if exact:
+        found = {m["hpo_id"]: m for m in matches}
+        first = [
             {
-                "hpo_id": results["ids"][0][i],
-                "name": results["metadatas"][0][i]["name"],
-                "distance": results["distances"][0][i] if results["distances"] else None,
+                "hpo_id": hpo_id,
+                "name": name,
+                "distance": found[hpo_id]["distance"] if hpo_id in found else None,
+                "exact": True,
+                "ambiguous": len(exact) > 1,
             }
-        )
+            for hpo_id, name in exact
+        ]
+        ids = {m["hpo_id"] for m in first}
+        matches = (first + [m for m in matches if m["hpo_id"] not in ids])[: max(k, len(first))]
 
     return matches

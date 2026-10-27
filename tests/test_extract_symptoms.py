@@ -103,3 +103,10 @@ def test_two_cut_answers_still_fail(monkeypatch):
     monkeypatch.setattr(es, "llm_call", lambda **k: '[{"clinical_term": "pa')
     with pytest.raises(ExtractionParseError):
         es.extract_symptoms("texte")
+
+
+def test_the_prompt_splits_combined_findings_and_keeps_fixed_phrases():
+    from phenoscribe.extract_symptoms import SYSTEM_PROMPT
+
+    assert "One symptom for each finding" in SYSTEM_PROMPT
+    assert "nausea and vomiting" in SYSTEM_PROMPT
