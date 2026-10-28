@@ -27,6 +27,7 @@ def test_zip_holds_the_app_and_both_start_scripts():
         ".python-version",
         "config.yaml",
         "src/phenoscribe/gui.py",
+        "src/phenoscribe/resources/hpo_icpc.csv",
     ):
         assert f"Phenoscribe/{name}" in names
 

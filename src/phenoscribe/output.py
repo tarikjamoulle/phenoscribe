@@ -7,6 +7,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from phenoscribe.icpc import ICPC_COLUMNS, icpc_for, table_stamp
 from phenoscribe.match_hpo import absent_codes, present_codes
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,9 @@ HEADERS = {
         "Patient",
         "Interview",
         "Date",
+        # New columns go at the end: write_excel adds missing headers to an
+        # older workbook only after its last column.
+        *ICPC_COLUMNS,
     ],
     "semicolon": ["Patient_ID", "observation_source_value", "excluded_source_value"],
     "purl": [
@@ -211,6 +215,16 @@ def _stamp_provenance(wb, hpo_release: str) -> None:
         ws.column_dimensions["A"].width = 18
         ws.column_dimensions["B"].width = 32
     ws["B2"] = hpo_release
+    set_provenance(ws, "icpc_table", table_stamp())
+
+
+def set_provenance(ws, key: str, value: str) -> None:
+    """Write `value` in the row of `key`, or in a new row at the end."""
+    for row in range(2, ws.max_row + 1):
+        if ws.cell(row=row, column=1).value == key:
+            ws.cell(row=row, column=2, value=value)
+            return
+    ws.append([key, value])
 
 
 def _write_closure_sheet(wb, patient_id: str, matches: list[dict], obo_path: str) -> None:
@@ -290,6 +304,7 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict], interview: 
         verbatim = m.get("patient_verbatim", "")
         code_cell = m.get("hpo_id") or ""
         clinical_term = m.get("clinical_term", "")
+        icpc = icpc_for(m.get("hpo_id"))
         ws.append(
             [
                 patient_id,
@@ -309,6 +324,7 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict], interview: 
                 interview.get("patient", ""),
                 interview.get("interview", ""),
                 interview.get("date", ""),
+                *(icpc[key] for key in ICPC_COLUMNS.values()),
             ]
         )
         row = ws.max_row

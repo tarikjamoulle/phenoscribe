@@ -1,0 +1,327 @@
+hpo_id,hpo_term,icpc3,icpc2,source
+HP:0000020,Urinary incontinence,US03,U04,marc
+HP:0000083,Renal insufficiency,UD99,U99,marc
+HP:0000132,Menorrhagia,GS08,X06,marc
+HP:0000217,Xerostomia,DS20,D20,marc
+HP:0000224,Hypogeusia,NS08,N16,draft
+HP:0000360,Tinnitus,HS03,H03,draft
+HP:0000365,Hearing impairment,HD69,H86,marc
+HP:0000458,Anosmia,NS08,N16,draft
+HP:0000504,Abnormality of vision,FS06,F05,draft
+HP:0000505,Visual impairment,FS05,F05,draft
+HP:0000509,Conjunctivitis,FD01,F70,marc
+HP:0000572,Visual loss,FD72,F94,marc
+HP:0000613,Photophobia,FS06,F05,marc
+HP:0000618,Blindness,FD72,F94,marc
+HP:0000622,Blurred vision,FS05,F05,marc
+HP:0000640,Gaze-evoked nystagmus,FS99,F14,draft
+HP:0000651,Diplopia,FS06,F05,marc
+HP:0000712,Emotional lability,PD99,P99,marc
+HP:0000716,Depression,PD12,P76,marc
+HP:0000718,Aggressive behavior,PS04,P04,marc
+HP:0000736,Short attention span,PS17,P20,marc
+HP:0000737,Irritability,PS04,P04,marc
+HP:0000738,Hallucinations,PS99,P29,marc
+HP:0000739,Anxiety,PS01,P01,marc
+HP:0000741,Apathy,PS03,P03,marc
+HP:0000743,Frontal release signs,NS99,N29,marc
+HP:0000746,Delusion,PS99,P29,marc
+HP:0000819,Diabetes mellitus,TD71,T89,marc
+HP:0000822,Hypertension,KD73,K86,marc
+HP:0000858,Irregular menstruation,GS07,X05,marc
+HP:0000967,Petechiae,SS99,S29,marc
+HP:0000969,Edema,AS09,A08,marc
+HP:0000975,Hyperhidrosis,AS10,A09,marc
+HP:0000988,Skin rash,SS06,S07,marc
+HP:0000989,Pruritus,SS02,S02,marc
+HP:0001097,Keratoconjunctivitis sicca,FD03,F73,marc
+HP:0001250,Seizure,ND67,N88,marc
+HP:0001251,Ataxia,NS99,N29,marc
+HP:0001252,Hypotonia,LS19,L19,marc
+HP:0001257,Spasticity,LS19,L19,marc
+HP:0001262,Excessive daytime somnolence,AS99,A29,draft
+HP:0001271,Polyneuropathy,ND77,N94,marc
+HP:0001278,Orthostatic hypotension,KD75,K88,marc
+HP:0001279,Syncope,AS07,A06,marc
+HP:0001288,Gait disturbance,NS99,N29,marc
+HP:0001289,Confusion,PS17,P20,draft
+HP:0001297,Stroke,ND69,K90,marc
+HP:0001298,Encephalopathy,ND99,N99,draft
+HP:0001300,Parkinsonism,ND66,N87,marc
+HP:0001310,Dysmetria,NS99,N29,marc
+HP:0001324,Muscle weakness,LS19,L19,marc
+HP:0001332,Dystonia,NS07,N08,marc
+HP:0001337,Tremor,NS07,N08,marc
+HP:0001350,Slurred speech,NS11,N19,draft
+HP:0001369,Arthritis,LD80,L91,marc
+HP:0001397,Hepatic steatosis,DD99,D99,marc
+HP:0001596,Alopecia,SS10,S23,marc
+HP:0001618,Dysphonia,RS13,R23,marc
+HP:0001649,Tachycardia,KS02,K04,marc
+HP:0001662,Bradycardia,KS02,K04,marc
+HP:0001681,Angina pectoris,KD66,K74,draft
+HP:0001698,Pericardial effusion,KD72,K84,marc
+HP:0001733,Pancreatitis,DD99,D99,marc
+HP:0001742,Nasal congestion,RS09,R07,marc
+HP:0001744,Splenomegaly,BD99,B99,marc
+HP:0001808,Fragile nails,SS09,S22,marc
+HP:0001824,Weight loss,TS07,T08,marc
+HP:0001873,Thrombocytopenia,BS99,B29,draft
+HP:0001888,Decreased total lymphocyte count,BS51,B84,marc
+HP:0001943,Hypoglycemia,TS99,T29,draft
+HP:0001945,Fever,AS03,A03,marc
+HP:0001954,Recurrent fever,AS03,A03,draft
+HP:0001959,Polydipsia,TS01,T01,marc
+HP:0001962,Palpitations,KS02,K04,marc
+HP:0002013,Vomiting,DS10,D10,marc
+HP:0002014,Diarrhea,DS11,D11,marc
+HP:0002015,Dysphagia,DS21,D21,marc
+HP:0002018,Nausea,DS09,D09,marc
+HP:0002019,Constipation,DS12,D12,marc
+HP:0002020,Gastroesophageal reflux,DD67,D84,marc
+HP:0002027,Abdominal pain,DS01,D01,marc
+HP:0002039,Anorexia,TS03,T03,marc
+HP:0002045,Hypothermia,AS99,A29,marc
+HP:0002046,Heat intolerance,AS99,A29,marc
+HP:0002063,Rigidity,LS19,L19,marc
+HP:0002067,Bradykinesia,NS99,N29,draft
+HP:0002076,Migraine,ND71,N89,marc
+HP:0002091,Restrictive ventilatory defect,RS99,R29,draft
+HP:0002093,Respiratory insufficiency,RD99.07,R99,draft
+HP:0002094,Dyspnea,RS02,R02,marc
+HP:0002099,Asthma,RD69,R96,draft
+HP:0002102,Pleuritis,RD99,R99,draft
+HP:0002105,Hemoptysis,RS14,R24,marc
+HP:0002110,Bronchiectasis,RD99.01,R99,marc
+HP:0002148,Hypophosphatemia,TS99,T29,draft
+HP:0002172,Postural instability,NS09,N17,draft
+HP:0002183,Phonophobia,PS99,P29,marc
+HP:0002204,Pulmonary embolism,KD77,K93,marc
+HP:0002206,Pulmonary fibrosis,RS99,R29,draft
+HP:0002240,Hepatomegaly,DS50,D23,marc
+HP:0002315,Headache,NS01,N01,marc
+HP:0002321,Vertigo,NS09,N17,marc
+HP:0002354,Memory impairment,PS17,P20,marc
+HP:0002360,Sleep disturbance,PS06,P06,marc
+HP:0002367,Visual hallucination,PS99,P29,marc
+HP:0002381,Aphasia,NS11,N19,draft
+HP:0002427,Expressive aphasia,NS11,N19,draft
+HP:0002487,Hyperkinetic movements,NS07,N08,draft
+HP:0002527,Falls,AS14,A29,draft
+HP:0002578,Gastroparesis,DD99,D99,marc
+HP:0002592,Gastric ulcer,DD70,D86,marc
+HP:0002607,Bowel incontinence,DS17,D17,marc
+HP:0002615,Hypotension,KS50,K29,marc
+HP:0002653,Bone pain,LS99,L29,marc
+HP:0002716,Lymphadenopathy,BS01,B02,marc
+HP:0002789,Tachypnea,RS04,R04,draft
+HP:0002829,Arthralgia,LS20,L20,marc
+HP:0002875,Exertional dyspnea,RS02,R02,marc
+HP:0002901,Hypocalcemia,TS99,T29,draft
+HP:0002925,Elevated circulating thyroid-stimulating hormone concentration,TS99,T29,draft
+HP:0003074,Hyperglycemia,TS99,T29,draft
+HP:0003155,Elevated circulating alkaline phosphatase concentration,DS99,D29,draft
+HP:0003202,Skeletal muscle atrophy,LS19,L19,marc
+HP:0003236,Elevated circulating creatine kinase concentration,LS99,L29,draft
+HP:0003259,Elevated circulating creatinine concentration,US99,U29,draft
+HP:0003281,Increased circulating ferritin concentration,BS99,B29,draft
+HP:0003326,Myalgia,LS17,L18,draft
+HP:0003394,Muscle spasm,LS19,L19,draft
+HP:0003401,Paresthesia,NS04,N05,marc
+HP:0003418,Back pain,LS02,L02,draft
+HP:0003470,Paralysis,NS10,N18,draft
+HP:0003474,Somatic sensory dysfunction,NS05,N06,draft
+HP:0003487,Babinski sign,NS99,N29,marc
+HP:0003493,Antinuclear antibody positivity,BS99,B29,draft
+HP:0003546,Exercise intolerance,2F85,,draft
+HP:0003565,Elevated erythrocyte sedimentation rate,BS99,B29,draft
+HP:0003690,Limb muscle weakness,NS10,N18,draft
+HP:0004324,Increased body weight,TS06,T07,draft
+HP:0004395,Malnutrition,TD74,T91,marc
+HP:0004396,Poor appetite,TS03,T03,marc
+HP:0004409,Hyposmia,NS08,N16,draft
+HP:0004936,Venous thrombosis,KD78,K94,marc
+HP:0005968,Temperature instability,AS03,A03,draft
+HP:0006536,Airway obstruction,RD68,R95,marc
+HP:0006688,Paroxysmal tachycardia,KD69,K79,draft
+HP:0007018,Attention deficit hyperactivity disorder,PD16,P81,marc
+HP:0007209,Facial paralysis,ND75,N91,marc
+HP:0007994,Peripheral visual field loss,FS06,F05,marc
+HP:0008629,Pulsatile tinnitus,HS03,H03,marc
+HP:0008765,Auditory hallucination,PS99,P29,marc
+HP:0009020,Exercise-induced muscle fatigue,LS19,L19,draft
+HP:0009088,Speech articulation difficulties,NS11,N19,draft
+HP:0009763,Limb pain,LS13,L14,marc
+HP:0010522,Dyslexia,PS20.03,P24,draft
+HP:0010524,Disturbed sensory perception,PS99,P29,draft
+HP:0010535,Sleep apnea,RS06.00,P06,draft
+HP:0010632,Total anosmia,NS08,N16,draft
+HP:0010780,Hyperacusis,HS99,H29,marc
+HP:0011134,Low-grade fever,AS03,A03,draft
+HP:0011227,Elevated circulating C-reactive protein concentration,BS99,B29,draft
+HP:0011458,Abdominal symptom,DS99,D29,draft
+HP:0011675,Arrhythmia,KD70,K80,draft
+HP:0011900,Hypofibrinogenemia,BS99,B29,draft
+HP:0011971,Dermatographic urticaria,SD78,S98,marc
+HP:0012053,Decreased circulating calcifediol concentration,TS99,T29,draft
+HP:0012115,Hepatitis,DD81,D97,marc
+HP:0012213,Decreased glomerular filtration rate,US50,U98,draft
+HP:0012378,Fatigue,AS04,A04,marc
+HP:0012384,Rhinitis,RD02,R74,marc
+HP:0012418,Hypoxemia,RS99,R29,draft
+HP:0012431,Episodic fatigue,AS04,A04,draft
+HP:0012452,Restless legs,NS03,N04,marc
+HP:0012514,Lower limb pain,LS13,L14,draft
+HP:0012531,Pain,AS01,A01,marc
+HP:0012664,Reduced left ventricular ejection fraction,KS99,K29,draft
+HP:0012735,Cough,RS07,R05,marc
+HP:0012799,Unilateral facial palsy,ND75,N91,marc
+HP:0012819,Myocarditis,KD01,K70,draft
+HP:0025031,Abnormality of the digestive system,DS99,D29,draft
+HP:0025095,Sneeze,RS09,R07,marc
+HP:0025112,Auditory sensitivity,HS02,H02,draft
+HP:0025143,Chills,AS02,A02,marc
+HP:0025144,Shivering,AS02,A02,marc
+HP:0025179,Ground-glass opacification,RS99,R29,draft
+HP:0025180,Centrilobular ground-glass opacification on pulmonary HRCT,RS99,R29,draft
+HP:0025238,Foot pain,LS16,L17,draft
+HP:0025258,Stiff neck,LS01,L01,marc
+HP:0025269,Panic attack,PD06,P74,draft
+HP:0025288,Excessive sleep,PS06,P06,draft
+HP:0025337,Red eye,FS02,F02,marc
+HP:0025379,Anti-thyroid peroxidase antibody positivity,TS99,T29,draft
+HP:0025390,Reticular pattern on pulmonary HRCT,RS99,R29,draft
+HP:0025391,Crazy paving pattern,RS99,R29,draft
+HP:0025406,Asthenia,AS04,A04,marc
+HP:0025435,Increased circulating lactate dehydrogenase concentration,AS99,A29,draft
+HP:0030014,Female sexual dysfunction,PS07,P08,draft
+HP:0030166,Night sweats,AS10,A09,marc
+HP:0030237,Hand muscle weakness,LS11,L12,marc
+HP:0030766,Ear pain,HS01,H01,marc
+HP:0030783,Increased circulating interleukin 6 concentration,BS99,B29,draft
+HP:0030784,Anomic aphasia,NS11,N19,draft
+HP:0030828,Wheezing,RS03,R03,marc
+HP:0030831,Rhonchi,RS03,R03,marc
+HP:0030833,Neck pain,LS01,L01,draft
+HP:0030834,Shoulder pain,LS07,L08,draft
+HP:0030874,Oxygen desaturation on exertion,RS99,R29,draft
+HP:0030877,Reduced FEV1/FVC ratio,RS99,R29,draft
+HP:0030879,Interlobular septal thickening,RS99,R29,draft
+HP:0030948,Elevated gamma-glutamyltransferase level,DS99,D29,draft
+HP:0030973,Postexertional symptom exacerbation,AD45,A88,marc
+HP:0031059,Impaired ability to bathe oneself,2F34,,marc
+HP:0031060,Impaired ability to dress oneself,2F37,,marc
+HP:0031185,Elevated circulating NT-proBNP concentration,KS99,K29,draft
+HP:0031217,Hot flashes,GS13.01,X11,draft
+HP:0031245,Productive cough,RS07,R05,marc
+HP:0031246,Nonproductive cough,RS07,R05,marc
+HP:0031249,Parageusia,NS08,N16,draft
+HP:0031284,Flushing,SS07,S08,marc
+HP:0031352,Chest tightness,AS12,A11,marc
+HP:0031354,Sleep onset insomnia,PS06,P06,marc
+HP:0031355,Maintenance insomnia,PS06,P06,draft
+HP:0031356,Terminal insomnia,PS06,P06,marc
+HP:0031417,Rhinorrhea,RS09,R07,marc
+HP:0031589,Suicidal ideation,PS05,P77,marc
+HP:0031590,Asthenopia,FS06,F05,draft
+HP:0031826,Abnormal reflex,NS99,N29,marc
+HP:0031843,Abnormally slow thought process,PS17,P20,marc
+HP:0031844,Euphoria,PD99,P99,marc
+HP:0031862,Increased heart rate variability,KS03,K05,marc
+HP:0031944,Pleural thickening,RS99,R29,draft
+HP:0031956,Elevated circulating aspartate aminotransferase concentration,DS99,D29,draft
+HP:0031964,Elevated circulating alanine aminotransferase concentration,DS99,D29,draft
+HP:0031983,Abnormal pulmonary thoracic imaging finding,RS99,R29,draft
+HP:0031987,Diminished ability to concentrate,PS17,P20,draft
+HP:0032069,Anti-thyroglobulin antibody positivity,TS99,T29,draft
+HP:0032177,Parenchymal consolidation,RS99,R29,draft
+HP:0032308,Increased circulating procalcitonin concentration,BS99,B29,draft
+HP:0032341,Reduced forced vital capacity,RS99,R29,draft
+HP:0032342,Reduced forced expiratory volume in one second,RS99,R29,draft
+HP:0032446,Pulmonary bulla,RS99,R29,draft
+HP:0033047,Body ache,AS01,A01,marc
+HP:0033050,Pharyngalgia,RS12,R21,marc
+HP:0033051,Impaired executive functioning,2F11,,marc
+HP:0033106,Elevated circulating D-dimer concentration,BS99,B29,draft
+HP:0033169,Reduced total lung capacity,RS99,R29,draft
+HP:0033236,Cognitive fatigue,AS04,A04,draft
+HP:0033345,Neuralgia,ND77,N94,marc
+HP:0033609,Solid pulmonary nodule,RS99,R29,draft
+HP:0033610,Subsolid pulmonary nodule,RS99,R29,draft
+HP:0033628,Bowel irritability,DS18,D18,draft
+HP:0033630,Brain fog,NS99,N29,marc
+HP:0033665,Diminished health-related quality of life,AS06,A05,marc
+HP:0033666,Diminished physical functioning,AS06,A05,marc
+HP:0033667,Diminished mental health,PS03,P03,marc
+HP:0033675,Frailty,AS08,P05,draft
+HP:0033676,Posttraumatic stress symptom,PS02,P02,marc
+HP:0033687,Short term memory impairment,PS17,P20,marc
+HP:0033688,Long term memory impairment,PS17,P20,marc
+HP:0033689,Anterograde memory impairment,PS17,P20,marc
+HP:0033691,Procedural memory loss,PS17,P20,marc
+HP:0033693,Phantosmia,NS08,N16,marc
+HP:0033694,Tactile hallucination,PS99,P29,marc
+HP:0033695,Occupational disability,ZC16,Z05,draft
+HP:0033696,Pseudo-chilblain,LS11,L12,marc
+HP:0033702,Subpleural curvilinear line,RS99,R29,draft
+HP:0033705,Tearfulness,PS03,P03,marc
+HP:0033709,Increased sputum production,RS15,R25,marc
+HP:0033710,Rest dyspnea,RS04,R04,draft
+HP:0033711,Pulmonary interstitial thickening,RS99,R29,draft
+HP:0033746,Intrascapular pain,LS02,L02,marc
+HP:0033747,Abnormal exteroceptive sensation,NS99,N29,marc
+HP:0033748,Hypoesthesia,NS05,N06,draft
+HP:0033750,Reduced functional residual capacity,RS99,R29,draft
+HP:0033753,Reduced residual volume,RS99,R29,draft
+HP:0033755,Increased left ventricular end-diastolic volume,KS99,K29,draft
+HP:0033757,Pancreatic steatosis,DD99,D99,marc
+HP:0033760,Decreased maximal oxygen uptake,RS99,R29,draft
+HP:0033771,Pleuritic chest pain,RS01,R01,marc
+HP:0033773,Decreased RV/TLC ratio,RS99,R29,draft
+HP:0033833,Elevated circulating sCD25 concentration,BS99,B29,draft
+HP:0033834,Malaise,AS06,A05,marc
+HP:0033838,Dysphoria,PS04,P04,marc
+HP:0033839,Testicular pain,GS02,Y02,marc
+HP:0033840,Postmenopausal bleeding,GS14,X12,marc
+HP:0033841,Ocular pruritus,FS07,F13,marc
+HP:0033842,Early satiety,TS03,T03,marc
+HP:0033844,Racing thoughts,PS17,P20,marc
+HP:0033845,Sense of impending doom,PD99,P99,marc
+HP:0033847,Phantageusia,NS08,N16,draft
+HP:0033848,Receptive aphasia,NS11,N19,draft
+HP:0033849,Bilingual aphasia,NS11,N19,draft
+HP:0033850,Coldness,AS02,A02,marc
+HP:0040189,Scaling skin,SS08,S21,marc
+HP:0040307,Male sexual dysfunction,PS07,P08,draft
+HP:0041051,Ageusia,NS08,N16,marc
+HP:0045051,Decreased DLCO,RS99,R29,draft
+HP:0046504,Decreased libido,PS07,P07,draft
+HP:0100022,Abnormality of movement,NS99,N29,marc
+HP:0100515,Pollakisuria,US02,U02,draft
+HP:0100543,Cognitive impairment,PS17,P20,marc
+HP:0100607,Dysmenorrhea,GS05,X02,draft
+HP:0100710,Impulsivity,PS99,P29,marc
+HP:0100749,Chest pain,AS12,A11,marc
+HP:0100750,Atelectasis,RD99,R99,draft
+HP:0100754,Mania,PD04,P73,marc
+HP:0100785,Insomnia,PS06,P06,marc
+HP:0100832,Vitreous floaters,FS04,F04,marc
+HP:0100845,Anaphylactic shock,AD46,A92,marc
+HP:0100963,Hyperesthesia,NS05,N06,draft
+HP:0200026,Ocular pain,FS01,F01,marc
+HP:0410173,Increased circulating troponin I concentration,KS99,K29,draft
+HP:0410174,Increased circulating troponin T concentration,KS99,K29,draft
+HP:4000003,Elevated myocardial native T2,KS99,K29,draft
+HP:4000004,Myocardial late gadolinium enhancement,KS99,K29,draft
+HP:4000005,Pericardial late gadolinium enhancement,KS99,K29,draft
+HP:4000006,Elevated myocardial native T1,KS99,K29,draft
+HP:5200044,Reduced attention regulation,PS17,P20,draft
+HP:5200060,Auditory hypersensitivity,HS02,H02,draft
+HP:5200110,Infrequent social engagement with peers,PS99,P29,draft
+HP:5200204,Disturbed perception with a stimulus,PS99,P29,draft
+HP:5200243,Abnormal change in social behavior,PS99,P29,draft
+HP:5200292,Non-restorative sleep,PS06,P06,draft
+HP:6000029,Social anxiety,PS01,P01,draft
+HP:6000048,Chest pain described as pressure,KS01,K02,draft
+HP:6000319,Meteorism,DS08,D08,draft
+HP:6000500,Extremities cold to touch,AS99.00,A29,draft
