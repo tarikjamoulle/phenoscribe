@@ -1,0 +1,139 @@
+hpo_id,hpo_term,icpc3,icpc2,note
+HP:0009088,Speech articulation difficulties,NS11,N19,
+HP:0046504,Decreased libido,PS07,P07,
+HP:0012514,Lower limb pain,LS13,,
+HP:0025112,Auditory sensitivity,HS02,,
+HP:0006688,Paroxysmal tachycardia,KD69,,
+HP:0010632,Total anosmia,NS08,,
+HP:0003418,Back pain,LS02,,
+HP:0025288,Excessive sleep,PS06,,
+HP:0001262,Excessive daytime somnolence,AS99,,AS04 excludes drowsiness and points to AS99
+HP:0033236,Cognitive fatigue,AS04,,
+HP:5200243,Abnormal change in social behavior,PS99,,
+HP:0100515,Pollakisuria,US02,,
+HP:0011458,Abdominal symptom,DS99,,Marc's file has DS01 (abdominal pain); DS99 fits a general abdominal symptom
+HP:0009020,Exercise-induced muscle fatigue,LS19,,
+HP:0100607,Dysmenorrhea,GS05,,
+HP:0030833,Neck pain,LS01,,
+HP:0000504,Abnormality of vision,FS06,,
+HP:6000029,Social anxiety,PS01,,
+HP:0010522,Dyslexia,PS20.03,,
+HP:0002099,Asthma,RD69,,
+HP:0004324,Increased body weight,TS06,,
+HP:0031217,Hot flashes,GS13.01,,
+HP:5200060,Auditory hypersensitivity,HS02,,
+HP:0002172,Postural instability,NS09,,
+HP:0031590,Asthenopia,FS06,,
+HP:0033628,Bowel irritability,DS18,,
+HP:5200110,Infrequent social engagement with peers,PS99,,
+HP:5200044,Reduced attention regulation,PS17,,
+HP:0030834,Shoulder pain,LS07,,
+HP:0025031,Abnormality of the digestive system,DS99,,
+HP:0003470,Paralysis,NS10,,
+HP:0011675,Arrhythmia,KD70,K80,
+HP:0003690,Limb muscle weakness,NS10,,
+HP:0025238,Foot pain,LS16,,
+HP:0002527,Falls,AS14,,
+HP:0002093,Respiratory insufficiency,RD99.07,,
+HP:6000319,Meteorism,DS08,,
+HP:5200292,Non-restorative sleep,PS06,,
+HP:0000505,Visual impairment,FS05,,
+HP:5200204,Disturbed perception with a stimulus,PS99,,
+HP:6000048,Chest pain described as pressure,KS01,K02,
+HP:6000500,Extremities cold to touch,AS99.00,,
+HP:0012431,Episodic fatigue,AS04,,
+HP:0033675,Frailty,AS08,,Marc's file has 2F; AS08 Frailty is in the 2025 browser
+HP:0031058,Impairment of activities of daily living,,,Marc's file has 2F; no single code fits
+HP:0004409,Hyposmia,NS08,,Marc's file has NS11 (speech problem); NS08 is smell and taste
+HP:0030784,Anomic aphasia,NS11,N19,
+HP:0002381,Aphasia,NS11,N19,
+HP:0033849,Bilingual aphasia,NS11,N19,
+HP:0002427,Expressive aphasia,NS11,N19,
+HP:0033848,Receptive aphasia,NS11,N19,
+HP:0001350,Slurred speech,NS11,N19,
+HP:0001298,Encephalopathy,ND99,N99,
+HP:0100750,Atelectasis,RD99,R99,
+HP:0012213,Decreased glomerular filtration rate,US50,U98,
+HP:0030014,Female sexual dysfunction,PS07,P08,
+HP:0040307,Male sexual dysfunction,PS07,P08,
+HP:0002102,Pleuritis,RD99,R99,
+HP:0001681,Angina pectoris,KD66,K74,
+HP:0025269,Panic attack,PD06,P74,
+HP:0033710,Rest dyspnea,RS04,R04,
+HP:0002789,Tachypnea,RS04,R04,
+HP:0100963,Hyperesthesia,NS05,N06,
+HP:0033748,Hypoesthesia,NS05,N06,
+HP:0003474,Somatic sensory dysfunction,NS05,N06,
+HP:0000640,Gaze-evoked nystagmus,FS99,F14,
+HP:0000224,Hypogeusia,NS08,,Marc's 2021 code NS10 has another meaning in ICPC-3 2025
+HP:0000360,Tinnitus,HS03,,Marc's 2021 code HS04 has another meaning in ICPC-3 2025
+HP:0000458,Anosmia,NS08,,Marc's 2021 code NS09 has another meaning in ICPC-3 2025
+HP:0001289,Confusion,PS17,,Marc's 2021 code PS18 has another meaning in ICPC-3 2025
+HP:0002067,Bradykinesia,NS99,,Marc's 2021 code PS17 has another meaning in ICPC-3 2025
+HP:0002487,Hyperkinetic movements,NS07,,Marc's 2021 code LS17 has another meaning in ICPC-3 2025
+HP:0010524,Disturbed sensory perception,PS99,,Marc's 2021 code PS17 has another meaning in ICPC-3 2025
+HP:0010535,Sleep apnea,RS06.00,,Marc's 2021 code PS06 has another meaning in ICPC-3 2025
+HP:0031355,Maintenance insomnia,PS06,,Marc's 2021 code PS05 has another meaning in ICPC-3 2025
+HP:0031987,Diminished ability to concentrate,PS17,,Marc's 2021 code PS19 has another meaning in ICPC-3 2025
+HP:0003326,Myalgia,LS17,,Marc's 2021 code LS19 has another meaning in ICPC-3 2025
+HP:0003394,Muscle spasm,LS19,,Marc's 2021 code LS17 has another meaning in ICPC-3 2025
+HP:0001943,Hypoglycemia,TS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0002148,Hypophosphatemia,TS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0002901,Hypocalcemia,TS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0002925,Elevated circulating thyroid-stimulating hormone concentration,TS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0003074,Hyperglycemia,TS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0012053,Decreased circulating calcifediol concentration,TS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0025379,Anti-thyroid peroxidase antibody positivity,TS99,,Test or imaging result (original code B105); coded to the abnormal-findings code of its body system
+HP:0032069,Anti-thyroglobulin antibody positivity,TS99,,Test or imaging result (original code B105); coded to the abnormal-findings code of its body system
+HP:0001873,Thrombocytopenia,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0003281,Increased circulating ferritin concentration,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0003493,Antinuclear antibody positivity,BS99,B29,Test or imaging result (original code B105); coded to the abnormal-findings code of its body system
+HP:0003565,Elevated erythrocyte sedimentation rate,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0011227,Elevated circulating C-reactive protein concentration,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0011900,Hypofibrinogenemia,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0030783,Increased circulating interleukin 6 concentration,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0032308,Increased circulating procalcitonin concentration,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0033106,Elevated circulating D-dimer concentration,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0033833,Elevated circulating sCD25 concentration,BS99,B29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0003155,Elevated circulating alkaline phosphatase concentration,DS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0030948,Elevated gamma-glutamyltransferase level,DS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0031956,Elevated circulating aspartate aminotransferase concentration,DS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0031964,Elevated circulating alanine aminotransferase concentration,DS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0003236,Elevated circulating creatine kinase concentration,LS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0003259,Elevated circulating creatinine concentration,US99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0025435,Increased circulating lactate dehydrogenase concentration,AS99,,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0012664,Reduced left ventricular ejection fraction,KS99,K29,Test or imaging result (original code K113); coded to the abnormal-findings code of its body system
+HP:0031185,Elevated circulating NT-proBNP concentration,KS99,K29,Test or imaging result (original code -105); coded to the abnormal-findings code of its body system
+HP:0033755,Increased left ventricular end-diastolic volume,KS99,K29,Test or imaging result (original code K113); coded to the abnormal-findings code of its body system
+HP:0410173,Increased circulating troponin I concentration,KS99,K29,Test or imaging result (original code K105); coded to the abnormal-findings code of its body system
+HP:0410174,Increased circulating troponin T concentration,KS99,K29,Test or imaging result (original code K105); coded to the abnormal-findings code of its body system
+HP:4000003,Elevated myocardial native T2,KS99,K29,Test or imaging result (original code K113); coded to the abnormal-findings code of its body system
+HP:4000004,Myocardial late gadolinium enhancement,KS99,K29,Test or imaging result (original code K113); coded to the abnormal-findings code of its body system
+HP:4000005,Pericardial late gadolinium enhancement,KS99,K29,Test or imaging result (original code K113); coded to the abnormal-findings code of its body system
+HP:4000006,Elevated myocardial native T1,KS99,K29,Test or imaging result (original code K113); coded to the abnormal-findings code of its body system
+HP:0002091,Restrictive ventilatory defect,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0002206,Pulmonary fibrosis,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0012418,Hypoxemia,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0025179,Ground-glass opacification,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0025180,Centrilobular ground-glass opacification on pulmonary HRCT,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0025390,Reticular pattern on pulmonary HRCT,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0025391,Crazy paving pattern,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0030874,Oxygen desaturation on exertion,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0030877,Reduced FEV1/FVC ratio,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0030879,Interlobular septal thickening,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0031944,Pleural thickening,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0031983,Abnormal pulmonary thoracic imaging finding,RS99,,Test or imaging result (original code AS50); coded to the abnormal-findings code of its body system
+HP:0032177,Parenchymal consolidation,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0032341,Reduced forced vital capacity,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0032342,Reduced forced expiratory volume in one second,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0032446,Pulmonary bulla,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0033169,Reduced total lung capacity,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0033609,Solid pulmonary nodule,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0033610,Subsolid pulmonary nodule,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0033702,Subpleural curvilinear line,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0033711,Pulmonary interstitial thickening,RS99,,Test or imaging result (original code -113); coded to the abnormal-findings code of its body system
+HP:0033750,Reduced functional residual capacity,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0033753,Reduced residual volume,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0033760,Decreased maximal oxygen uptake,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0033773,Decreased RV/TLC ratio,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
+HP:0045051,Decreased DLCO,RS99,,Test or imaging result (original code -110); coded to the abnormal-findings code of its body system
