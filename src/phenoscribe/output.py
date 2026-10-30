@@ -8,7 +8,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from phenoscribe.icpc import ICPC_COLUMNS, icpc_for, table_stamp
-from phenoscribe.match_hpo import absent_codes, present_codes
+from phenoscribe.match_hpo import absent_codes, finding_status, present_codes, runs_label
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,9 @@ HEADERS = {
         # New columns go at the end: write_excel adds missing headers to an
         # older workbook only after its last column.
         *ICPC_COLUMNS,
+        "Source",
+        "Spoken by",
+        "Runs",
     ],
     "semicolon": ["Patient_ID", "observation_source_value", "excluded_source_value"],
     "purl": [
@@ -50,6 +53,14 @@ HEADERS = {
         "Confidence",
     ],
 }
+
+# Who brings up a finding, strongest first (extract_symptoms.SOURCES). A
+# restated finding keeps the row with the strongest source.
+_SOURCE_RANK = {"patient": 0, "confirmed": 1, "": 2, "doctor": 3}
+
+
+def source_rank(match: dict) -> int:
+    return _SOURCE_RANK.get(match.get("source", ""), 2)
 
 # Light amber fill for rows the GP should double-check.
 _REVIEW_FILL = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
@@ -107,6 +118,13 @@ def dedup_by_code(matches: list[dict], fmt: str = "semicolon") -> list[dict]:
             by_key[key] = dict(m)
             order.append(key)
             verbatims[key] = []
+        elif source_rank(m) < source_rank(by_key[key]):
+            # A stronger source replaces the row: the doctor's words of a
+            # doctor-only row must not stand as the patient's words.
+            by_key[key] = dict(m)
+            verbatims[key] = []
+        elif m.get("source") == "doctor" and by_key[key].get("source") != "doctor":
+            continue
         v = m.get("patient_verbatim") or ""
         if v and v not in verbatims[key]:
             verbatims[key].append(v)
@@ -300,7 +318,7 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict], interview: 
     has an empty code cell.
     """
     for m in matches:
-        status = "Absent" if m.get("negated", False) else "Present"
+        status = finding_status(m)
         verbatim = m.get("patient_verbatim", "")
         code_cell = m.get("hpo_id") or ""
         clinical_term = m.get("clinical_term", "")
@@ -325,6 +343,9 @@ def _write_detailed_format(ws, patient_id: str, matches: list[dict], interview: 
                 interview.get("interview", ""),
                 interview.get("date", ""),
                 *(icpc[key] for key in ICPC_COLUMNS.values()),
+                m.get("source", ""),
+                m.get("spoken_by", ""),
+                runs_label(m),
             ]
         )
         row = ws.max_row
@@ -374,10 +395,11 @@ def _write_semicolon_format(ws, patient_id: str, matches: list[dict]) -> None:
 
     Present findings go in observation_source_value; denied findings go in
     excluded_source_value, each as 'Name (HP:code) [verbatim]'. A denied code
-    never appears in the observation column. Findings with no HPO match keep
+    never appears in the observation column. A doctor-only finding goes in
+    neither column. Findings with no HPO match keep
     their place in their column, marked '(no HPO match)'.
     """
-    present = [m for m in matches if not m.get("negated", False)]
+    present = [m for m in matches if finding_status(m) == "Present"]
     absent = absent_codes(matches)
 
     observation = "; ".join(_cell_entry(m) for m in present)
@@ -449,7 +471,7 @@ def write_mentions(path, patient_id: str, rows: list[dict]) -> None:
             r["hpo_id"] or "",
             r["hpo_term"] if r["hpo_id"] else "",
             r["clinical_term"],
-            "Absent" if r["negated"] else "Present",
+            r["status"],
             r["order"],
             r["mention"],
             r["position"],

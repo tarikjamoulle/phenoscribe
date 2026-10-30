@@ -193,6 +193,9 @@ def match_hpo(
             "confidence": round(selected["confidence"], 2),
             "needs_review": selected["needs_review"],
             "negated": negated,
+            "source": symptom.get("source", ""),
+            "runs_found": list(symptom.get("runs_found") or []),
+            "n_runs": symptom.get("n_runs", 0),
             "frequency": symptom.get("frequency", ""),
             "onset": symptom.get("onset", ""),
             "severity": symptom.get("severity", ""),
@@ -211,11 +214,13 @@ def match_hpo(
         )
 
     n_negated = sum(1 for r in results if r["negated"])
+    n_doctor = sum(1 for r in results if finding_status(r) == "Doctor only")
     logger.info(
-        "Matched %d findings (%d present coded, %d negated/absent).",
+        "Matched %d findings (%d present coded, %d negated/absent, %d doctor only).",
         len(results),
-        len(results) - n_negated,
+        len(results) - n_negated - n_doctor,
         n_negated,
+        n_doctor,
     )
     return results
 
@@ -234,6 +239,9 @@ def _uncoded_record(symptom: dict) -> dict:
         "confidence": None,
         "needs_review": True,
         "negated": True,
+        "source": symptom.get("source", ""),
+        "runs_found": list(symptom.get("runs_found") or []),
+        "n_runs": symptom.get("n_runs", 0),
         "frequency": symptom.get("frequency", ""),
         "onset": symptom.get("onset", ""),
         "severity": symptom.get("severity", ""),
@@ -241,16 +249,68 @@ def _uncoded_record(symptom: dict) -> dict:
     }
 
 
-def present_codes(matches: list[dict]) -> list[dict]:
-    """Return only findings the patient has. Negated findings are dropped.
+def finding_status(match: dict) -> str:
+    """The Present/Absent cell: "Absent", "Doctor only" or "Present".
 
-    Use this when emitting present phenotype codes. Negated findings stay in
+    "Doctor only" is a finding that only the doctor says and the patient does
+    not confirm. It is not a finding of the patient, so it is not counted.
+    """
+    if match.get("negated", False):
+        return "Absent"
+    if match.get("source") == "doctor":
+        return "Doctor only"
+    return "Present"
+
+
+def runs_label(match: dict) -> str:
+    """"2/2": in how many extraction runs the finding came up. "" for one run."""
+    n = match.get("n_runs") or 0
+    if n < 2:
+        return ""
+    return f"{len(match.get('runs_found') or [])}/{n}"
+
+
+def flag_unstable(matches: list[dict]) -> int:
+    """Mark the findings that are not in every extraction run. Returns the count.
+
+    Two runs can name one finding differently ("fatigue", "chronic fatigue"),
+    so the runs are joined on the Excel row key (code and negation, the same
+    as output.dedup_by_code): a code found by either name in both runs is
+    stable. Every row of a key gets the joined run list, so dedup can keep
+    any of them. A finding in fewer runs than there are runs gets
+    ``needs_review``.
+    """
+    by_key: dict[tuple, set[int]] = {}
+    for m in matches:
+        by_key.setdefault(_row_key(m), set()).update(m.get("runs_found") or [])
+    unstable = 0
+    for m in matches:
+        n = m.get("n_runs") or 0
+        if n < 2:
+            continue
+        found = sorted(by_key[_row_key(m)])
+        m["runs_found"] = found
+        if len(found) < n:
+            m["needs_review"] = True
+            unstable += 1
+    return unstable
+
+
+def _row_key(match: dict) -> tuple:
+    code = match.get("hpo_id") or ("uncoded", (match.get("clinical_term") or "").lower())
+    return code, bool(match.get("negated", False))
+
+
+def present_codes(matches: list[dict]) -> list[dict]:
+    """Return only findings the patient has. Negated and doctor-only findings are dropped.
+
+    Use this when emitting present phenotype codes. The other findings stay in
     the full ``matches`` list so they can be reported in a separate column.
-    Present rows are those that both are not negated and carry an HPO code.
+    Present rows are those with the status "Present" that carry an HPO code.
     """
     return [
         m for m in matches
-        if not m.get("negated", False) and m.get("hpo_id")
+        if finding_status(m) == "Present" and m.get("hpo_id")
     ]
 
 

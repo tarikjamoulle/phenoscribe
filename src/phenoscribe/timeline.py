@@ -13,6 +13,8 @@ not count, so a transcript with markers and one without give the same position.
 import re
 from difflib import SequenceMatcher
 
+from phenoscribe.match_hpo import finding_status
+from phenoscribe.output import source_rank
 from phenoscribe.pii import TIMESTAMP_PATTERN
 from phenoscribe.review import fold
 
@@ -125,6 +127,13 @@ def mention_rows(matches: list[dict], text: str) -> list[dict]:
     keeps an empty position, at the end of the list.
     """
     transcript = Transcript(text)
+    # One status for each finding, the same as its row in the Excel
+    # (output.dedup_by_code keeps the row with the strongest source).
+    best: dict[tuple, dict] = {}
+    for match in matches:
+        key = _key(match)
+        if key not in best or source_rank(match) < source_rank(best[key]):
+            best[key] = match
     rows: list[dict] = []
     seen: set[tuple] = set()  # quotes not found, once for each finding
     spans: dict[tuple, list[tuple[int, int]]] = {}  # places taken, for each finding
@@ -153,6 +162,7 @@ def mention_rows(matches: list[dict], text: str) -> list[dict]:
                     "hpo_term": match.get("hpo_term", ""),
                     "clinical_term": match.get("clinical_term", ""),
                     "negated": bool(match.get("negated", False)),
+                    "status": finding_status(best[key]),
                     "quote": quote.strip(),
                     "start": None, "position": None, "seconds": None, "found": "not found",
                 }

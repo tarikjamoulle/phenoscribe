@@ -11,6 +11,12 @@ class LLMConfig:
     provider: str = "openai"
     model: str = "gpt-4o"
     ollama_base_url: str = "http://localhost:11434"
+    # Label each turn of the clean text D (doctor) or P (patient) before the
+    # extraction, so the code can check who says each quote (speakers.py).
+    speaker_labels: bool = True
+    # Extract the symptoms this many times. A finding that is not in every
+    # run gets "needs review" (match_hpo.flag_unstable).
+    extraction_runs: int = 2
 
 
 @dataclass

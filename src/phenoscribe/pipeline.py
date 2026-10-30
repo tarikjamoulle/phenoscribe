@@ -14,9 +14,10 @@ from pathlib import Path
 from phenoscribe.config import Config
 from phenoscribe.extract_symptoms import extract_symptoms
 from phenoscribe.hpo_index import check_obo_version
-from phenoscribe.match_hpo import match_hpo
+from phenoscribe.match_hpo import flag_unstable, match_hpo
 from phenoscribe.output import write_docx, write_excel, write_mentions, write_personal_details
 from phenoscribe.pii import find_personal_details
+from phenoscribe.speakers import SpeakerLabelError, check_speakers, label_speakers
 from phenoscribe.timeline import add_timeline, mention_rows
 from phenoscribe.review import (
     APPROVED,
@@ -304,14 +305,22 @@ def code_review(
     write_clean_files(review, out_dir)
     safe_text, _ = clean_text(review)
 
-    # Step 3: Extract symptoms
+    # Step 3a: who speaks. The labeled text is saved next to the clean text.
+    labeled = ""
+    if config.llm.speaker_labels:
+        step("finding the speakers")
+        logger.info("[%s] Step 3a: Labeling the speakers...", patient_id)
+        labeled = find_speakers(safe_text, patient_id, config, out_dir)
+
+    # Step 3b: Extract symptoms (from the labeled text when there is one)
     step("finding symptoms")
     logger.info("[%s] Step 3: Extracting symptoms...", patient_id)
     symptoms = extract_symptoms(
-        safe_text,
+        labeled or safe_text,
         provider=config.llm.provider,
         model=config.llm.model,
         ollama_base_url=config.llm.ollama_base_url,
+        runs=config.llm.extraction_runs,
     )
     logger.info("[%s] Symptoms extracted: %d", patient_id, len(symptoms))
 
@@ -329,6 +338,18 @@ def code_review(
         on_symptom=lambda n, total: step(f"matching HPO codes · symptom {n} of {total}"),
     )
     logger.info("[%s] HPO codes matched: %d", patient_id, len(matches))
+
+    # The code's own checks: who says each quote, and which findings are in
+    # every extraction run. Both can set needs_review.
+    if labeled:
+        check_speakers(matches, labeled)
+        logger.info(
+            "[%s] Spoken by: %s", patient_id,
+            ", ".join(f"{k} {v}" for k, v in _counts(m.get("spoken_by", "") for m in matches)),
+        )
+    unstable = flag_unstable(matches)
+    if config.llm.extraction_runs > 1:
+        logger.info("[%s] Findings not in every run: %d", patient_id, unstable)
 
     # Step 6: Write output
     # Where each finding comes up in the interview (position %, time).
@@ -350,6 +371,36 @@ def code_review(
     write_mentions(excel_path, patient_id, timeline)
 
     return matches
+
+
+def find_speakers(safe_text: str, patient_id: str, config: Config, out_dir: str | Path) -> str:
+    """The clean text with D:/P: labels, saved as speakers/<patient_id>.txt.
+
+    When the model's copy loses words twice, the file is coded from the plain
+    text, with a warning: the "Spoken by" column then stays empty.
+    """
+    try:
+        labeled = label_speakers(
+            safe_text,
+            provider=config.llm.provider,
+            model=config.llm.model,
+            ollama_base_url=config.llm.ollama_base_url,
+        )
+    except SpeakerLabelError as e:
+        logger.warning("[%s] No speaker labels (%s). Coding the plain text.", patient_id, e)
+        return ""
+    folder = Path(out_dir) / "speakers"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{patient_id}.txt").write_text(labeled, encoding="utf-8")
+    logger.info("[%s] Speaker labels: %d turns", patient_id, len(labeled.splitlines()))
+    return labeled
+
+
+def _counts(values) -> list[tuple[str, int]]:
+    counts: dict[str, int] = {}
+    for v in values:
+        counts[v or "no label"] = counts.get(v or "no label", 0) + 1
+    return sorted(counts.items())
 
 
 def derive_patient_id(stem: str, prefix: str) -> str:
@@ -531,6 +582,7 @@ STEP_PROGRESS = {
     "reading the transcript": 0.0,
     "reading the saved transcript": 0.0,
     "removing personal details": 0.6,
+    "finding the speakers": 0.65,
     "finding symptoms": 0.7,
     "matching HPO codes": 0.8,
     "writing the Excel file": 0.95,
@@ -545,7 +597,12 @@ PREPARE_PROGRESS = {
     "reading the saved transcript": 0.0,
     "removing personal details": 0.85,
 }
-CODE_PROGRESS = {"finding symptoms": 0.0, "matching HPO codes": 0.4, "writing the Excel file": 0.9}
+CODE_PROGRESS = {
+    "finding the speakers": 0.0,
+    "finding symptoms": 0.1,
+    "matching HPO codes": 0.4,
+    "writing the Excel file": 0.9,
+}
 
 
 @dataclass

@@ -23,6 +23,7 @@ import requests
 
 from phenoscribe.config import load_config
 from phenoscribe.llm import use_api_key
+from phenoscribe.match_hpo import finding_status
 from phenoscribe.output import dedup_by_code
 from phenoscribe.pipeline import (
     BatchResult,
@@ -432,7 +433,7 @@ def result_rows(batch: BatchResult) -> list[list]:
     rows = []
     for r in batch.files:
         for m in dedup_by_code(r.matches, "detailed"):
-            status = "Absent" if m.get("negated") else "Present"
+            status = finding_status(m)
             if m.get("needs_review"):
                 status += " · Review"
             rows.append(
