@@ -106,8 +106,9 @@ def test_detailed_sheet_has_icpc_columns(tmp_path):
     write_excel("MGA.001", matches, str(path), fmt="detailed", hpo_release="hp/releases/2026-02-16")
     wb = openpyxl.load_workbook(path)
     rows = list(wb.active.iter_rows(values_only=True))
-    assert rows[0][-5:] == ICPC_HEADERS
-    by_code = {r[2]: r[-5:] for r in rows[1:]}
+    first = rows[0].index(ICPC_HEADERS[0])
+    assert rows[0][first:first + 5] == ICPC_HEADERS
+    by_code = {r[2]: r[first:first + 5] for r in rows[1:]}
     assert by_code["HP:0012378"] == tuple(FATIGUE.values())
     assert by_code["HP:9999999"] == (None,) * 5
     prov = {r[0]: r[1] for r in wb["Provenance"].iter_rows(values_only=True)}
@@ -124,7 +125,8 @@ def test_older_workbook_gets_icpc_headers_at_the_end(tmp_path):
                 str(path), fmt="detailed")
     ws = openpyxl.load_workbook(path).active
     assert [c.value for c in ws[1]] == HEADERS["detailed"]
-    assert [c.value for c in ws[2]][-5:] == list(FATIGUE.values())
+    first = HEADERS["detailed"].index("ICPC-3 Chapter")
+    assert [c.value for c in ws[2]][first:first + 5] == list(FATIGUE.values())
 
 
 def test_add_icpc_columns_keeps_other_cells(tmp_path):

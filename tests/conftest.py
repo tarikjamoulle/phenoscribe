@@ -31,3 +31,15 @@ def github_token_for_hpotk():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(_github, "urlopen", urlopen_with_token)
         yield
+
+
+@pytest.fixture(autouse=True)
+def no_speaker_pass(monkeypatch):
+    """The pipeline tests stub the LLM steps; the speaker pass is one of them.
+
+    Without this, every test that runs code_review would call the model to
+    label the speakers. A test of the pass itself patches find_speakers again.
+    """
+    from phenoscribe import pipeline
+
+    monkeypatch.setattr(pipeline, "find_speakers", lambda *a, **k: "")

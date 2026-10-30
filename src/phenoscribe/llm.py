@@ -46,6 +46,7 @@ def llm_call(
     provider: str = "openai",
     model: str = "gpt-4o",
     ollama_base_url: str = "http://localhost:11434",
+    temperature: float = 0.1,
 ) -> str:
     """Call an LLM with a system + user prompt. Returns the response text.
 
@@ -55,6 +56,8 @@ def llm_call(
         provider: One of "openai", "anthropic", "ollama".
         model: Model name for the provider.
         ollama_base_url: Base URL for Ollama (only used if provider is "ollama").
+        temperature: 0 gives the most repeatable answer (speaker labels,
+            symptom extraction); the HPO judge keeps the default.
 
     Returns:
         The LLM's response text.
@@ -62,11 +65,11 @@ def llm_call(
     for attempt in range(2):
         try:
             if provider == "openai":
-                return _call_openai(system_prompt, user_prompt, model)
+                return _call_openai(system_prompt, user_prompt, model, temperature)
             elif provider == "anthropic":
-                return _call_anthropic(system_prompt, user_prompt, model)
+                return _call_anthropic(system_prompt, user_prompt, model, temperature)
             elif provider == "ollama":
-                return _call_ollama(system_prompt, user_prompt, model, ollama_base_url)
+                return _call_ollama(system_prompt, user_prompt, model, ollama_base_url, temperature)
             else:
                 raise ValueError(f"Unknown LLM provider: {provider}")
         except Exception as e:
@@ -77,7 +80,7 @@ def llm_call(
                 raise
 
 
-def _call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
+def _call_openai(system_prompt: str, user_prompt: str, model: str, temperature: float) -> str:
     from openai import OpenAI
 
     client = OpenAI(api_key=_resolve_api_key("openai", "OPENAI_API_KEY"))
@@ -87,12 +90,12 @@ def _call_openai(system_prompt: str, user_prompt: str, model: str) -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        temperature=0.1,
+        temperature=temperature,
     )
     return response.choices[0].message.content
 
 
-def _call_anthropic(system_prompt: str, user_prompt: str, model: str) -> str:
+def _call_anthropic(system_prompt: str, user_prompt: str, model: str, temperature: float) -> str:
     from anthropic import Anthropic
 
     client = Anthropic(api_key=_resolve_api_key("anthropic", "ANTHROPIC_API_KEY"))
@@ -101,13 +104,13 @@ def _call_anthropic(system_prompt: str, user_prompt: str, model: str) -> str:
         max_tokens=16000,  # a long interview gives a long symptom list
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],
-        temperature=0.1,
+        temperature=temperature,
     )
     return response.content[0].text
 
 
 def _call_ollama(
-    system_prompt: str, user_prompt: str, model: str, base_url: str
+    system_prompt: str, user_prompt: str, model: str, base_url: str, temperature: float
 ) -> str:
     response = requests.post(
         f"{base_url}/api/chat",
@@ -118,7 +121,7 @@ def _call_ollama(
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
-            "options": {"temperature": 0.1},
+            "options": {"temperature": temperature},
         },
         timeout=120,
     )

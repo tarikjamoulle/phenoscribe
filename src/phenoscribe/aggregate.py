@@ -46,8 +46,8 @@ def load_patient_codes(path: str) -> dict[str, list[dict]]:
             pid, term, code = row[id_col], row[term_col], row[code_col]
             if not (pid and code and str(code).startswith("HP:")):
                 continue
-            # Prevalence counts findings the patient has. Skip absent findings.
-            if status_col is not None and str(row[status_col]).strip().lower() == "absent":
+            # Prevalence counts findings the patient has. Skip absent and doctor-only findings.
+            if status_col is not None and str(row[status_col]).strip().lower() in ("absent", "doctor only"):
                 continue
             entry = {"hpo_id": str(code), "hpo_term": str(term or "")}
             if verb_col is not None and row[verb_col]:

@@ -9,10 +9,21 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
 You are a clinical phenotyping expert. You read French medical interview transcripts \
-and extract every symptom, complaint, or clinical finding mentioned by the patient or clinician.
+and extract every symptom, complaint, or clinical finding about the patient. \
+The transcript has two speakers, the doctor and the patient. Each line starts with \
+"D:" (the doctor speaks) or "P:" (the patient speaks). When the lines have no such label, \
+tell the speakers apart by what they say: the doctor asks the questions, and the patient \
+answers them, with yes, no, or a description. A question is almost always the doctor's.
 
 For each finding, output:
-- patient_verbatim: the patient's exact words in French (or the clinician's description)
+- patient_verbatim: the patient's exact words in French, copied from a "P:" line. Never \
+copy the doctor's question here. For a "doctor" finding only, the doctor's words
+- source: who first names the finding, one of:
+  - "patient": the patient names it without a question about it ("je suis tout le temps fatiguée")
+  - "confirmed": the doctor names it in a question or a suggestion, and the patient answers \
+yes, no, or with a description
+  - "doctor": only the doctor names it, and the patient does not answer about it (a summary \
+of an earlier visit, or a question with no answer)
 - clinical_term: the standardized English medical term for this finding
 - negated: true if the finding is denied or absent, false if the patient has it
 - frequency: how often it occurs, normalized to one of: very frequent, frequent, occasional, very rare. Empty string if not stated.
@@ -21,7 +32,9 @@ For each finding, output:
 - context: any remaining temporal or qualifying detail that does not fit the fields above (e.g., "since March 2021", "worse after meals")
 - mentions: the places in the transcript where this finding comes up, in transcript order, \
 at most 5. Each item is a short quote (3 to 10 words) copied character for character from the \
-transcript, without the [mm:ss] time markers. Include the quote of patient_verbatim.
+transcript, without the [mm:ss] time markers and without the "D:" or "P:" label. Quote \
+"P:" lines (the patient's answer "Oui, le soir."), not the doctor's question. Include the \
+quote of patient_verbatim.
 
 Negation is critical. A denied or absent finding must have negated=true. French negation cues include:
 ne...pas, n'...pas, pas de, pas d', plus de, aucun, aucune, sans, absence de, jamais, ni...ni, \
@@ -49,12 +62,23 @@ is not "post-concussion syndrome": extract the symptoms the patient describes, n
 - When the patient ties a daily activity to a symptom ("me déplacer en voiture, est-ce que c'est \
 lié au vertige ?"), extract the symptom (vertigo), not the activity ("difficulty driving")
 - Do NOT invent findings not mentioned in the text
+- Source and negation of an answer to the doctor. Examples:
+  - "Des palpitations ?" "Oui, le soir." -> palpitations, source "confirmed", negated=false
+  - "Comme des fourmis dans les mains ?" "Oui, c'est ça." -> paresthesia, source "confirmed", \
+negated=false. The doctor's words name the symptom, so it is "confirmed", not "patient"
+  - "Et de la fièvre ?" "Non." -> fever, source "confirmed", negated=true
+  - "Le goût, l'odorat ?" "Normal." -> two findings, taste and smell disorder, source \
+"confirmed", negated=true
+  - "Ces vertiges, c'est fini ?" "Non, ça continue." -> vertigo, negated=false. The "non" \
+denies that the symptom stopped, so the patient still has it
+  - "La dernière fois, vous aviez aussi des nausées." and the patient does not answer about \
+them -> nausea, source "doctor"
 
 Output ONLY a JSON array. No other text. Put each finding on one line, with no indentation. Example:
 [
-  {"patient_verbatim": "j'ai mal au ventre", "clinical_term": "abdominal pain", "negated": false, "frequency": "", "onset": "adult", "severity": "severe", "context": "worse after meals", "mentions": ["j'ai mal au ventre", "le ventre me fait encore mal après le repas"]},
-  {"patient_verbatim": "je n'ai pas de fièvre", "clinical_term": "fever", "negated": true, "frequency": "", "onset": "", "severity": "", "context": "", "mentions": ["je n'ai pas de fièvre"]},
-  {"patient_verbatim": "je suis fatigué", "clinical_term": "fatigue", "negated": false, "frequency": "frequent", "onset": "", "severity": "", "context": "since COVID infection, March 2021", "mentions": ["je suis fatigué", "toujours cette fatigue le soir"]}
+  {"patient_verbatim": "j'ai mal au ventre", "clinical_term": "abdominal pain", "negated": false, "source": "patient", "frequency": "", "onset": "adult", "severity": "severe", "context": "worse after meals", "mentions": ["j'ai mal au ventre", "le ventre me fait encore mal après le repas"]},
+  {"patient_verbatim": "je n'ai pas de fièvre", "clinical_term": "fever", "negated": true, "source": "confirmed", "frequency": "", "onset": "", "severity": "", "context": "", "mentions": ["je n'ai pas de fièvre"]},
+  {"patient_verbatim": "je suis fatigué", "clinical_term": "fatigue", "negated": false, "source": "patient", "frequency": "frequent", "onset": "", "severity": "", "context": "since COVID infection, March 2021", "mentions": ["je suis fatigué", "toujours cette fatigue le soir"]}
 ]"""
 
 # A long interview can make the answer longer than the model's output limit.
@@ -71,18 +95,22 @@ def extract_symptoms(
     provider: str = "openai",
     model: str = "gpt-4o",
     ollama_base_url: str = "http://localhost:11434",
+    runs: int = 1,
 ) -> list[dict]:
     """Extract symptoms from a pseudonymized French transcript.
 
     Args:
-        transcript: Pseudonymized French transcript text.
+        transcript: Pseudonymized French transcript text, with the speaker
+            labels of speakers.label_speakers when they exist.
         provider: LLM provider.
         model: LLM model name.
         ollama_base_url: Ollama URL (if applicable).
+        runs: how many times to extract (merge_runs joins the results).
 
     Returns:
         List of dicts with keys: patient_verbatim, clinical_term, negated,
-        frequency, onset, severity, context, mentions.
+        source, frequency, onset, severity, context, mentions, runs_found,
+        n_runs.
     """
     def ask(system_prompt: str) -> str:
         return llm_call(
@@ -91,18 +119,49 @@ def extract_symptoms(
             provider=provider,
             model=model,
             ollama_base_url=ollama_base_url,
+            temperature=0.0,
         )
 
-    response = ask(SYSTEM_PROMPT)
-    try:
-        return _parse_response(response)
-    except ExtractionParseError:
-        logger.warning(
-            "Symptom answer not valid JSON (%d chars, probably cut off). "
-            "Trying again with no mention quotes.",
-            len(response),
-        )
-    return _parse_response(ask(SYSTEM_PROMPT + NO_MENTIONS))
+    def one_run() -> list[dict]:
+        response = ask(SYSTEM_PROMPT)
+        try:
+            return _parse_response(response)
+        except ExtractionParseError:
+            logger.warning(
+                "Symptom answer not valid JSON (%d chars, probably cut off). "
+                "Trying again with no mention quotes.",
+                len(response),
+            )
+        return _parse_response(ask(SYSTEM_PROMPT + NO_MENTIONS))
+
+    return merge_runs([one_run() for _ in range(max(1, runs))])
+
+
+def merge_runs(runs: list[list[dict]]) -> list[dict]:
+    """One list from several extraction runs on the same text.
+
+    Two findings are the same when they have the same clinical term (any
+    case) and the same negation. The first run's fields stay; the mentions
+    of the later runs are added. Each finding gets ``runs_found`` (the run
+    numbers, from 1) and ``n_runs``, so match_hpo.flag_unstable can mark a
+    finding that is not in every run.
+    """
+    merged: dict[tuple, dict] = {}
+    for number, findings in enumerate(runs, start=1):
+        for f in findings:
+            key = ((f.get("clinical_term") or "").strip().lower(), bool(f.get("negated", False)))
+            if key not in merged:
+                merged[key] = dict(f, runs_found=[number], n_runs=len(runs))
+                continue
+            kept = merged[key]
+            if number not in kept["runs_found"]:
+                kept["runs_found"].append(number)
+            for quote in f.get("mentions") or []:
+                if quote not in kept.setdefault("mentions", []):
+                    kept["mentions"].append(quote)
+            if not kept.get("patient_verbatim") and f.get("patient_verbatim"):
+                kept["patient_verbatim"] = f["patient_verbatim"]
+    return list(merged.values())
 
 
 class ExtractionParseError(ValueError):
@@ -156,6 +215,7 @@ def _parse_response(response: str) -> list[dict]:
                     "patient_verbatim": item.get("patient_verbatim", ""),
                     "clinical_term": item["clinical_term"],
                     "negated": _coerce_bool(item.get("negated", False)),
+                    "source": _coerce_source(item.get("source")),
                     "frequency": _coerce_str(item.get("frequency", "")),
                     "onset": _coerce_str(item.get("onset", "")),
                     "severity": _coerce_str(item.get("severity", "")),
@@ -180,6 +240,15 @@ def _coerce_bool(value) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in ("true", "yes", "1", "negated", "absent")
     return bool(value)
+
+
+SOURCES = ("patient", "confirmed", "doctor")
+
+
+def _coerce_source(value) -> str:
+    """Who brings up the finding: patient, confirmed or doctor; '' when the LLM gives no valid value."""
+    text = _coerce_str(value).lower()
+    return text if text in SOURCES else ""
 
 
 def _coerce_str(value) -> str:
