@@ -18,7 +18,7 @@ uv run ruff check
 - `live` tests call a paid LLM API. They skip without `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`.
 - `needs_hpo_data` tests skip until `phenoscribe setup --no-models` has run.
 
-CI runs the same command on Linux and macOS.
+CI runs the same command on Linux, Windows and macOS.
 
 ## Prompts and privacy rules
 

@@ -30,7 +30,7 @@ jobs:
           [ "$tag" = "$project" ] && [ "$tag" = "$citation" ]
 
       - name: Build Phenoscribe.zip
-        # git archive keeps the executable bit of the .command file and applies .gitattributes (line endings, export-ignore).
+        # git archive keeps the executable bit of the .command file and applies .gitattributes (CRLF, export-ignore).
         run: git archive --format=zip --prefix=Phenoscribe/ -o Phenoscribe.zip HEAD
 
       - name: Publish the release

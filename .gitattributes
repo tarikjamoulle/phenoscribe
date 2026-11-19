@@ -1,3 +1,4 @@
+*.bat text eol=crlf
 *.command text eol=lf
 
 # The release ZIP (git archive) holds what a user needs to install and run the app.

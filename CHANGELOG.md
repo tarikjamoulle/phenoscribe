@@ -18,7 +18,7 @@ First public release.
 - An Excel results file: one row for each finding, a "Mentions" sheet, a "Personal details" sheet with counts, and a "Provenance" sheet that names the HPO release and the models.
 - ICPC-3 and ICPC-2 codes for each HPO code that has a mapping.
 - The commands `process`, `clean`, `setup`, `status`, `aggregate` and `validate`.
-- A start file for macOS and a release ZIP.
+- Start files for Windows and macOS, and a release ZIP.
 
 ### Changed for users of a pre-release copy
 

@@ -8,11 +8,11 @@ on:
 
 jobs:
   test:
-    # Each OS gets different wheels of the same locked packages, so test on both.
+    # Each OS gets different wheels of the same locked packages, so test on all three.
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -49,7 +49,7 @@ jobs:
           key: downloads-${{ runner.os }}-${{ hashFiles('config.yaml') }}
 
       - name: First-run setup (no models)
-        # Downloads the pinned hp.obo and builds the index, as the start script does.
+        # Downloads the pinned hp.obo and builds the index, as the start scripts do.
         run: uv run phenoscribe setup --no-models
 
       - name: Fetch the HPO release and IC table for the validation tests

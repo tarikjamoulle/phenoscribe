@@ -271,8 +271,8 @@ def _cmd_clean(args):
 def _cmd_setup(args):
     """Prepare a fresh copy of the app. Safe to run at every start.
 
-    Each part is skipped when it is already present, so the start script
-    calls this every time and only the first start downloads anything.
+    Each part is skipped when it is already present, so the start scripts
+    call this every time and only the first start downloads anything.
     """
     from phenoscribe import hpo_index, pii, transcribe
 

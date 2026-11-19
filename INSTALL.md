@@ -6,8 +6,8 @@ one time. A slow laptop takes longer.
 
 ## What you need
 
-- A Mac with Apple Silicon (M1 or newer). An Intel Mac does not work: the app needs
-  packages that do not exist for it. Windows is not supported yet.
+- A laptop with Windows 10/11 (64-bit, Intel or AMD), or a Mac with Apple Silicon (M1 or
+  newer). An Intel Mac does not work: the app needs packages that do not exist for it.
   To check a Mac, open the Apple menu → **About This Mac**: the **Chip** line names M1, M2…
 - About 12 GB of free disk space.
 - An internet connection.
@@ -18,16 +18,36 @@ one time. A slow laptop takes longer.
 
 1. Go to <https://github.com/tarikjamoulle/phenoscribe/releases/latest>.
 2. Under **Assets**, click `Phenoscribe.zip`. The file goes to your **Downloads** folder.
-3. Open **Downloads** in Finder.
-4. If you see a `Phenoscribe` folder, Safari extracted the ZIP for you. If you see only
+3. Extract the ZIP. The ZIP holds one folder, `Phenoscribe`.
+
+**Windows**
+
+1. Open **Downloads** in File Explorer.
+2. Right-click `Phenoscribe.zip`, then click **Extract All…**.
+3. In the box "Files will be extracted to this folder", replace the text with `C:\`.
+   Click **Extract**. If Windows asks for permission, click **Continue**.
+   You now have the folder `C:\Phenoscribe`.
+   A short path is necessary: a long path can go past the Windows path-length limit.
+4. Open `C:\Phenoscribe`.
+
+Do not double-click the start file in the ZIP itself (File Explorer shows the ZIP like a
+folder). The start file must be in the extracted folder.
+
+**Mac**
+
+1. Open **Downloads** in Finder.
+2. If you see a `Phenoscribe` folder, Safari extracted the ZIP for you. If you see only
    `Phenoscribe.zip`, double-click it. The `Phenoscribe` folder appears next to it.
-5. Drag the `Phenoscribe` folder to your **Documents** folder, and open it.
+3. Drag the `Phenoscribe` folder to your **Documents** folder, and open it.
 
 ## 2. Double-click the start file
 
-In `Documents/Phenoscribe`, double-click `Start Phenoscribe.command`.
+- Windows: in `C:\Phenoscribe`, double-click `Start Phenoscribe.bat`.
+- Mac: in `Documents/Phenoscribe`, double-click `Start Phenoscribe.command`.
 
-Tip: make a shortcut on the desktop. Hold **Option + Cmd** and drag the file to the desktop.
+Tip: make a shortcut on the desktop. On Windows, right-click the file, then **Send to → Desktop
+(create shortcut)** (on Windows 11, click **Show more options** first). On a Mac, hold **Option + Cmd** and drag
+the file to the desktop.
 
 A window with text opens. The first time, it downloads Python, the packages, the
 speech model (3 GB), the privacy models for French, Dutch and English (2.1 GB) and the
@@ -35,15 +55,17 @@ HPO ontology, and builds the search index. Each later start
 skips this and opens the page in about 30 seconds. Keep this window open while you use the
 app. Close it to stop the app.
 
-The first time, the Mac can show a warning ("cannot be opened"), because the start file is
-not signed. Open **System Settings → Privacy & Security**, scroll down, and click
-**Open Anyway**. Then double-click the file again.
+The first time, your computer can show a warning, because the start file is not signed:
 
-The speech step runs on the Apple chip's GPU only when the free program
+- Windows SmartScreen ("Windows protected your PC"): click **More info**, then **Run anyway**.
+- Mac ("cannot be opened"): open **System Settings → Privacy & Security**, scroll down,
+  and click **Open Anyway**. Then double-click the file again.
+
+On a Mac, the speech step runs on the Apple chip's GPU only when the free program
 `ffmpeg` is installed. Without it, the app works the same but transcribes about 4 times
 slower. To get help with the install, open an issue on the GitHub repository.
 
-You own your laptop, so you can always pass this warning. An antivirus program can also
+You own your laptop, so you can always pass these warnings. An antivirus program can also
 ask about the start file or about `uv` (the tool that installs Python). Allow it.
 
 ## 3. Paste your API key
@@ -170,8 +192,8 @@ files that it doubts. Open a file in the review if you want to check it.
 ## Update
 
 1. Close the Phenoscribe window.
-2. Download the new ZIP (step 1) and delete the old app folder (`Phenoscribe` in
-   **Documents**).
+2. Download the new ZIP (step 1) and delete the old app folder (`C:\Phenoscribe`, or
+   `Phenoscribe` in **Documents** on a Mac).
 3. Extract the new ZIP at the same place, then double-click the start file.
 
 Your results and saved transcripts stay in `Documents/Phenoscribe results`, outside the app

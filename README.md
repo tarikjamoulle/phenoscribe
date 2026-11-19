@@ -110,12 +110,12 @@ No model was trained for Phenoscribe. No model has a test on Belgian interview t
 
 - An **API key** from OpenAI or Anthropic. About $0.01 per recording.
 - **About 12 GB free disk space** (the Whisper speech model, 3 GB, and the privacy models, 2.1 GB).
-- An Apple Silicon Mac, or Linux for the CLI. `uv.lock` has no torch wheel for Intel Macs. Windows is not tested yet.
+- Windows x64, Linux, or an Apple Silicon Mac. `uv.lock` has no torch wheel for Intel Macs. The Windows start file is not tested on Windows yet.
 - For the CLI: `uv`. It installs Python 3.12 (`.python-version`) and the exact versions in `uv.lock`.
 
 ### Web app (start file, recommended)
 
-On a Mac, double-click `Start Phenoscribe.command`.
+Double-click `Start Phenoscribe.bat` (Windows) or `Start Phenoscribe.command` (Mac; `sh` on Linux).
 The script installs `uv` 0.6.17 if it is missing, runs `phenoscribe setup`, and opens the page on
 <http://127.0.0.1:7860>. When port 7860 is busy, the page takes the next free port; set `GRADIO_SERVER_PORT` to choose one. Drop files or choose a folder, choose a tool, then click **Start**. The
 app decides the work for each file (`plan_batch` in `batch.py`):
@@ -131,7 +131,7 @@ Then `code_batch` codes the approved files, or `finish_clean` makes a ZIP of the
 and a `personal_details_*.xlsx` report.
 
 Each coding run writes a new `results_YYYY-MM-DD_HHMM.xlsx` with a "Personal details" sheet
-(counts only) to the folder `PHENOSCRIBE_OUTPUT_DIR`. The start file sets it to
+(counts only) to the folder `PHENOSCRIBE_OUTPUT_DIR`. The start files set it to
 `Documents/Phenoscribe results`; without it, the page uses
 `output` in the current folder. The same folder holds
 `transcripts/`, `review/`, `clean/`, `phenoscribe.log`, and `filename_mapping.json` (each
@@ -251,7 +251,8 @@ src/phenoscribe/          Pipeline source
   cli.py                  argparse CLI (process, clean, setup, status, aggregate, validate)
   gui/                    Gradio web app: theme.py, views.py (HTML), handlers.py (events), app.py (page)
 
-Start Phenoscribe.command Double-click start file (Mac)
+Start Phenoscribe.bat     Double-click start file (Windows)
+Start Phenoscribe.command Double-click start file (Mac; `sh` on Linux)
 scripts/                  Benchmarks, data builds, CI smoke run (see scripts/README.md)
 benchmarks/               Checksums and measured outputs
 data/                     HPO ontology, ChromaDB, recordings (gitignored)

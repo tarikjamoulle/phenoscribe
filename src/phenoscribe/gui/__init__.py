@@ -5,7 +5,7 @@ steps: a key (only for the codes), the files, Start, a review of the personal
 details of the doubtful files, then the codes or the clean texts. The app
 decides the work for each file (batch.plan_batch). Only an approved review
 goes to the AI provider. Results go to `PHENOSCRIBE_OUTPUT_DIR` (default
-`output` in the current folder; the start script sets `Documents/Phenoscribe
+`output` in the current folder; the start scripts set `Documents/Phenoscribe
 results`).
 
 - theme.py: the look (Gradio theme, CSS, colours).

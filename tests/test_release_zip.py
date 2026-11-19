@@ -16,6 +16,7 @@ pytestmark = pytest.mark.skipif(
 
 # What `uv run --frozen --no-dev phenoscribe setup` and the app need, plus the user docs.
 NEEDED = (
+    "Start Phenoscribe.bat",
     "Start Phenoscribe.command",
     "pyproject.toml",
     "uv.lock",
@@ -59,3 +60,8 @@ def test_zip_leaves_out_the_maintainer_folders(folder):
 def test_command_file_is_executable_in_the_zip():
     info = _release_zip().getinfo("Phenoscribe/Start Phenoscribe.command")
     assert (info.external_attr >> 16) & 0o111
+
+
+def test_bat_keeps_windows_line_endings_in_the_zip():
+    data = _release_zip().read("Phenoscribe/Start Phenoscribe.bat")
+    assert data.count(b"\r\n") == data.count(b"\n")
