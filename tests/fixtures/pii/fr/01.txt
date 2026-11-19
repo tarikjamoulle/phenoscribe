@@ -1,0 +1,16 @@
+D: Bonjour madame, installez-vous. Vous êtes bien Claire Van den Broeck ?
+P: Oui, c'est moi. Je suis née le 14 février 1967.
+D: Vous habitez toujours à Namur ?
+P: Oui, rue des Brasseurs 12, juste derrière la cathédrale.
+D: Et votre numéro de registre national, vous l'avez ?
+P: C'est le 67.02.14-208.53.
+D: Parfait. Alors, qu'est-ce qui vous embête ces temps-ci ?
+P: Depuis le début de l'automne, j'ai la peau rose et qui gratte sur les avant-bras, et je dors très mal.
+D: Ça gratte surtout la nuit ?
+P: Oui, la nuit c'est pire. Et j'ai des sueurs, je change de pyjama.
+D: Vous avez vu quelqu'un pour ça ?
+P: Le docteur Lemaire à la clinique Saint-Luc de Bouge m'a donné une crème, mais rien ne change.
+D: D'accord. Vous buvez assez ?
+P: Un litre d'eau de spa par jour, à peu près.
+D: Si le labo doit vous joindre, c'est quel numéro ?
+P: Mon portable, le 0476 18 42 90.

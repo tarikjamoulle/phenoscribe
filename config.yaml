@@ -1,0 +1,68 @@
+# Phenoscribe configuration
+
+llm:
+  provider: "openai"          # openai | anthropic | ollama
+  model: "gpt-4o"             # any chat model of the provider
+  ollama_base_url: "http://localhost:11434"  # only used if provider is ollama
+  # Label each turn of the clean text D (doctor) or P (patient) before the
+  # extraction, so the code can check who says each quote.
+  speaker_labels: true
+  # Extract the symptoms this many times. A finding that is not in every run
+  # gets "needs review".
+  extraction_runs: 2
+
+transcription:
+  # auto = mlx (Apple Silicon GPU, about 4x faster) when it is installed and ffmpeg
+  # exists, else faster-whisper on the CPU.
+  backend: "auto"             # auto | faster-whisper | mlx
+  # distil-* models are English-only: do not use them for French audio.
+  model: "large-v3"           # faster-whisper model name, or mlx HF repo
+  language: "fr"              # audio language
+  device: "cpu"               # cpu | cuda | auto (only used by faster-whisper)
+
+pii:
+  # Privacy models for each language, run locally before any text reaches an LLM.
+  # The language is transcription.language (the language menu of the page).
+  # All models of a language run, and every span they find is removed.
+  # scripts/eval_pii.py measured this map on the synthetic test set
+  # (README, "Personal details"). Licences: MIT or Apache-2.0, and GPL-3.0 for
+  # the optional DEDUCE.
+  models:
+    fr: ["Anonym-IA/V2-camembert-ner-pii-french", "urchade/gliner_multi_pii-v1"]
+    en: ["StanfordAIMI/stanford-deidentifier-base", "urchade/gliner_multi_pii-v1"]
+    # "deduce" runs only with the optional install `uv sync --extra dutch-rules`
+    # (GPL-3.0); without it Dutch gets the multilingual model only.
+    nl: ["urchade/gliner_multi_pii-v1", "deduce"]
+    default: ["urchade/gliner_multi_pii-v1"]   # de, es, it: the page offers them too
+  # Offline fallback for French only, if the first French model cannot load:
+  # a general 4-label French NER (PER/LOC/ORG/MISC).
+  fallback_model: "Jean-Baptiste/camembert-ner"
+  min_score: 0.6              # drop NER detections below this confidence
+  # Optional types to keep in the text: DATE, AGE, GENDER, JOB. Empty = remove
+  # them all. Names, places, phones, emails and ID numbers are always removed.
+  keep_types: []
+
+output:
+  format: "detailed"          # detailed | semicolon | purl
+  # True-path rule: add an "Ancestor Closure" sheet with the is_a ancestors of each
+  # code, for downstream tools (Exomiser, LIRICAL, Phen2Gene, Phenomizer).
+  propagate_ancestors: true   # false: no "Ancestor Closure" sheet
+
+hpo:
+  # Must match the data-version: header of the obo file.
+  # phenoscribe setup downloads the matching tag (v2026-02-16).
+  release: "hp/releases/2026-02-16"
+
+paths:
+  chroma_db: "data/chroma_db"
+  hpo_obo: "data/hpo/hp.obo"
+
+patient:
+  # Prepended to a numeric filename stem, e.g. prefix "P." turns 001.mp3 into P.001.
+  # Empty disables it.
+  id_prefix: ""
+
+hpo_index:
+  # default = all-MiniLM-L6-v2; sapbert = cambridgeltl/SapBERT-from-PubMedBERT-fulltext.
+  # After a change, run `phenoscribe setup` to rebuild the index.
+  embedding_model: "default"  # default | sapbert

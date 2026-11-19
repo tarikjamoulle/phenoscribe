@@ -1,0 +1,59 @@
+{
+ "details": [
+  {
+   "start": 18,
+   "end": 24,
+   "value": "Daniel",
+   "type": "first"
+  },
+  {
+   "start": 25,
+   "end": 33,
+   "value": "O'Connor",
+   "type": "last"
+  },
+  {
+   "start": 55,
+   "end": 61,
+   "value": "Dublin",
+   "type": "town"
+  },
+  {
+   "start": 130,
+   "end": 137,
+   "value": "Antwerp",
+   "type": "town"
+  },
+  {
+   "start": 420,
+   "end": 425,
+   "value": "Niamh",
+   "type": "first"
+  },
+  {
+   "start": 615,
+   "end": 630,
+   "value": "79.11.23-287.10",
+   "type": "id"
+  },
+  {
+   "start": 656,
+   "end": 666,
+   "value": "23/11/1979",
+   "type": "dob"
+  },
+  {
+   "start": 698,
+   "end": 712,
+   "value": "ZNA Middelheim",
+   "type": "hosp"
+  },
+  {
+   "start": 758,
+   "end": 769,
+   "value": "Verstraeten",
+   "type": "last"
+  }
+ ],
+ "keep": []
+}

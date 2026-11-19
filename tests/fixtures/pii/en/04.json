@@ -1,0 +1,71 @@
+{
+ "details": [
+  {
+   "start": 17,
+   "end": 21,
+   "value": "Maes",
+   "type": "last"
+  },
+  {
+   "start": 34,
+   "end": 39,
+   "value": "Grace",
+   "type": "first"
+  },
+  {
+   "start": 40,
+   "end": 46,
+   "value": "Okafor",
+   "type": "last"
+  },
+  {
+   "start": 63,
+   "end": 68,
+   "value": "Emeka",
+   "type": "first"
+  },
+  {
+   "start": 83,
+   "end": 88,
+   "value": "Ghent",
+   "type": "town"
+  },
+  {
+   "start": 450,
+   "end": 463,
+   "value": "AZ Sint-Lucas",
+   "type": "hosp"
+  },
+  {
+   "start": 633,
+   "end": 651,
+   "value": "Kortrijksesteenweg",
+   "type": "street"
+  },
+  {
+   "start": 657,
+   "end": 662,
+   "value": "Ghent",
+   "type": "town"
+  },
+  {
+   "start": 677,
+   "end": 689,
+   "value": "09 224 31 50",
+   "type": "phone"
+  },
+  {
+   "start": 709,
+   "end": 721,
+   "value": "30 June 1956",
+   "type": "dob"
+  }
+ ],
+ "keep": [
+  {
+   "start": 511,
+   "end": 518,
+   "value": "Addison"
+  }
+ ]
+}

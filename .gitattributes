@@ -1,0 +1,7 @@
+*.command text eol=lf
+
+# The release ZIP (git archive) holds what a user needs to install and run the app.
+/tests export-ignore
+/benchmarks export-ignore
+/scripts/dev export-ignore
+/.github export-ignore

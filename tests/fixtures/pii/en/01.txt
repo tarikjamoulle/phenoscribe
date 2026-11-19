@@ -1,0 +1,14 @@
+D: Good morning. Can you confirm your name for me?
+P: Sarah Peeters. I was born on 2 March 1984.
+D: Thank you. And you live in Leuven?
+P: Yes, on Naamsestraat, near the university.
+D: What brings you in today?
+P: I've had a rash on my cheeks for about six weeks. It's a rose colour, and it gets worse in the sun. My knuckles ache in the morning too.
+D: How long does the stiffness last?
+P: An hour or more. I can't open a jar before ten.
+D: Any mouth ulcers or hair loss?
+P: Some hair in the shower drain, yes. My sister Rose noticed a thin patch at the back.
+D: Who is your GP?
+P: Dr Janssens at the practice on Bondgenotenlaan. She sent bloods to UZ Leuven last week.
+D: And the best number to reach you?
+P: 0478 61 23 45, or e-mail me at sarah.peeters84@outlook.com.

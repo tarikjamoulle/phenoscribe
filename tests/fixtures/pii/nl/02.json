@@ -1,0 +1,65 @@
+{
+ "details": [
+  {
+   "start": 15,
+   "end": 23,
+   "value": "Jean-Luc",
+   "type": "first"
+  },
+  {
+   "start": 24,
+   "end": 30,
+   "value": "Dubois",
+   "type": "last"
+  },
+  {
+   "start": 43,
+   "end": 48,
+   "value": "Ronse",
+   "type": "town"
+  },
+  {
+   "start": 69,
+   "end": 76,
+   "value": "Doornik",
+   "type": "town"
+  },
+  {
+   "start": 345,
+   "end": 351,
+   "value": "Annick",
+   "type": "first"
+  },
+  {
+   "start": 649,
+   "end": 655,
+   "value": "Claeys",
+   "type": "last"
+  },
+  {
+   "start": 664,
+   "end": 675,
+   "value": "AZ Glorieux",
+   "type": "hosp"
+  },
+  {
+   "start": 705,
+   "end": 720,
+   "value": "71.08.19-145.62",
+   "type": "id"
+  },
+  {
+   "start": 775,
+   "end": 795,
+   "value": "jl.dubois@telenet.be",
+   "type": "email"
+  }
+ ],
+ "keep": [
+  {
+   "start": 585,
+   "end": 588,
+   "value": "Spa"
+  }
+ ]
+}

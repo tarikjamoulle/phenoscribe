@@ -1,0 +1,59 @@
+{
+ "details": [
+  {
+   "start": 86,
+   "end": 92,
+   "value": "Mathis",
+   "type": "first"
+  },
+  {
+   "start": 243,
+   "end": 248,
+   "value": "Sofie",
+   "type": "first"
+  },
+  {
+   "start": 249,
+   "end": 256,
+   "value": "Peeters",
+   "type": "last"
+  },
+  {
+   "start": 268,
+   "end": 276,
+   "value": "Mechelen",
+   "type": "town"
+  },
+  {
+   "start": 284,
+   "end": 297,
+   "value": "Hanswijkvaart",
+   "type": "street"
+  },
+  {
+   "start": 339,
+   "end": 354,
+   "value": "AZ Sint-Maarten",
+   "type": "hosp"
+  },
+  {
+   "start": 366,
+   "end": 373,
+   "value": "De Smet",
+   "type": "last"
+  },
+  {
+   "start": 497,
+   "end": 509,
+   "value": "015 42 18 77",
+   "type": "phone"
+  },
+  {
+   "start": 530,
+   "end": 540,
+   "value": "11/12/1991",
+   "type": "dob"
+  }
+ ],
+ "keep": []
+}

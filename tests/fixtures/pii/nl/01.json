@@ -1,0 +1,70 @@
+{
+ "details": [
+  {
+   "start": 28,
+   "end": 42,
+   "value": "Van den Broeck",
+   "type": "last"
+  },
+  {
+   "start": 51,
+   "end": 56,
+   "value": "Hilde",
+   "type": "first"
+  },
+  {
+   "start": 57,
+   "end": 71,
+   "value": "Van den Broeck",
+   "type": "last"
+  },
+  {
+   "start": 84,
+   "end": 94,
+   "value": "4 mei 1962",
+   "type": "dob"
+  },
+  {
+   "start": 113,
+   "end": 117,
+   "value": "Geel",
+   "type": "town"
+  },
+  {
+   "start": 132,
+   "end": 135,
+   "value": "Pas",
+   "type": "street"
+  },
+  {
+   "start": 557,
+   "end": 564,
+   "value": "Mertens",
+   "type": "last"
+  },
+  {
+   "start": 626,
+   "end": 638,
+   "value": "AZ Herentals",
+   "type": "hosp"
+  },
+  {
+   "start": 690,
+   "end": 703,
+   "value": "0494 37 12 08",
+   "type": "phone"
+  }
+ ],
+ "keep": [
+  {
+   "start": 220,
+   "end": 224,
+   "value": "geel"
+  },
+  {
+   "start": 497,
+   "end": 501,
+   "value": "peer"
+  }
+ ]
+}

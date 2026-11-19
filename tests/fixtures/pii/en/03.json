@@ -1,0 +1,59 @@
+{
+ "details": [
+  {
+   "start": 57,
+   "end": 61,
+   "value": "Will",
+   "type": "first"
+  },
+  {
+   "start": 62,
+   "end": 68,
+   "value": "Hughes",
+   "type": "last"
+  },
+  {
+   "start": 75,
+   "end": 82,
+   "value": "Cardiff",
+   "type": "town"
+  },
+  {
+   "start": 109,
+   "end": 117,
+   "value": "Brussels",
+   "type": "town"
+  },
+  {
+   "start": 123,
+   "end": 132,
+   "value": "Rue Haute",
+   "type": "street"
+  },
+  {
+   "start": 611,
+   "end": 620,
+   "value": "Saint-Luc",
+   "type": "hosp"
+  },
+  {
+   "start": 632,
+   "end": 639,
+   "value": "Lambert",
+   "type": "last"
+  },
+  {
+   "start": 733,
+   "end": 749,
+   "value": "+32 470 98 76 54",
+   "type": "phone"
+  }
+ ],
+ "keep": [
+  {
+   "start": 466,
+   "end": 470,
+   "value": "will"
+  }
+ ]
+}

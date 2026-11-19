@@ -1,0 +1,107 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "phenoscribe"
+version = "0.1.0"
+description = "Automated HPO phenotype coding from patient interviews"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Tarik Jamoulle" }]
+keywords = ["human phenotype ontology", "HPO", "phenotyping", "clinical NLP", "speech to text"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+# The lock has no torch wheel for Python 3.14, so cap below it (.python-version pins 3.12).
+requires-python = ">=3.10,<3.14"
+# Upper bounds are deliberate. A new release of torch or transformers can change
+# the tokenisation or the output of the privacy models, which changes what reaches
+# the LLM and so the codes. Raise a cap only after a new run of
+# scripts/eval_pii.py, and regenerate uv.lock in the same change.
+dependencies = [
+    "faster-whisper>=1.0.0,<2",
+    "transformers>=4.40.0,<4.50",
+    "torch>=2.2,<2.7",
+    "chromadb>=0.5.0,<2",
+    "openpyxl>=3.1.0,<4",
+    "openai>=1.0.0,<3",
+    "anthropic>=0.30.0,<1",
+    "pyyaml>=6.0,<7",
+    "requests>=2.31.0,<3",
+    "sentencepiece>=0.2.0,<1",
+    "hpo-toolkit>=0.5,<1.0",
+    "matplotlib>=3.7,<4",
+    "gradio>=5,<6",
+    "mlx-whisper>=0.4,<1 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "python-docx>=1.1,<2",
+    # The multilingual PII model (urchade/gliner_multi_pii-v1, Apache-2.0).
+    # gliner 0.2.23+ needs transformers>=4.51, above the cap.
+    "gliner==0.2.22",
+]
+
+[project.optional-dependencies]
+# DEDUCE, Dutch de-identification rules (UMC Utrecht). Its licence is GPL-3.0
+# (LICENSE.md on github.com/vmenger/deduce), so it never is a default
+# dependency of this MIT package. Opt in with `uv sync --extra dutch-rules`.
+dutch-rules = ["deduce>=3.0.6,<4"]
+
+[project.urls]
+Homepage = "https://github.com/tarikjamoulle/phenoscribe"
+Source = "https://github.com/tarikjamoulle/phenoscribe"
+Changelog = "https://github.com/tarikjamoulle/phenoscribe/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-cov>=5,<8", "ruff>=0.6,<1"]
+# What the scripts in scripts/ import beyond the package dependencies.
+# Install with `uv sync --group bench`. See scripts/README.md.
+bench = ["pandas>=2,<3"]
+
+[project.scripts]
+phenoscribe = "phenoscribe.cli:main"
+phenoscribe-gui = "phenoscribe.gui:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/phenoscribe"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = [
+    "E501",    # long lines: prompts and French test strings are kept whole
+    "RUF001",  # ambiguous characters in strings: the code holds French text
+    "RUF002",  # ... in docstrings
+    "RUF003",  # ... in comments
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "network: test downloads a model or the HPO release; conftest adds it while the cache is empty",
+    "live: test calls a paid LLM API; skips without ANTHROPIC_API_KEY or OPENAI_API_KEY",
+    "needs_hpo_data: test needs data/hpo/hp.obo or data/chroma_db from 'phenoscribe setup --no-models'; skips when missing",
+    "real_speaker_pass: test keeps the real pipeline.find_speakers (the autouse stub skips it)",
+]
+filterwarnings = [
+    # Gradio 5 warns about defaults that change in Gradio 6. The Gradio 6 form
+    # (padding=False, css and theme in launch()) does not exist in Gradio 5.
+    "ignore:The default value of 'padding' in gr.HTML:DeprecationWarning",
+    "ignore:The 'css' parameter in the Blocks constructor:DeprecationWarning",
+    "ignore:The 'theme' parameter in the Blocks constructor:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src/phenoscribe"]

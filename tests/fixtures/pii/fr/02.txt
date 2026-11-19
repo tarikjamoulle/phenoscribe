@@ -1,0 +1,13 @@
+Médecin : on reprend depuis le début, monsieur Pierre Dewandre, né le 03/09/1954, c'est bien ça ?
+Patient : c'est ça. J'habite maintenant chez ma fille Rose à Gembloux, chaussée de Namur 140.
+Médecin : votre fille vous accompagne aujourd'hui ?
+Patient : non, elle travaille à l'hôpital CHU Dinant Godinne, elle ne pouvait pas se libérer.
+Médecin : qu'est-ce qui vous amène ?
+Patient : mes jambes, docteur. Elles gonflent dès midi et le soir mes chaussettes laissent des marques. Et puis je m'essouffle en montant chez moi, il y a seulement dix marches.
+Médecin : vous dormez avec combien d'oreillers ?
+Patient : trois, sinon j'étouffe. Et je me lève deux fois pour uriner.
+Médecin : des douleurs dans la poitrine ?
+Patient : non, pas de douleur. Mais le cœur bat fort quand je me couche sur le côté gauche.
+Médecin : votre cardiologue, c'est toujours le docteur Hennuy ?
+Patient : oui. Ma fille a son adresse, rose.dewandre@gmail.com, si vous voulez lui écrire.
+Médecin : très bien, je note.

@@ -1,0 +1,83 @@
+{
+ "details": [
+  {
+   "start": 10,
+   "end": 18,
+   "value": "Goossens",
+   "type": "last"
+  },
+  {
+   "start": 95,
+   "end": 102,
+   "value": "Bekaert",
+   "type": "org"
+  },
+  {
+   "start": 106,
+   "end": 114,
+   "value": "Zwevegem",
+   "type": "town"
+  },
+  {
+   "start": 402,
+   "end": 411,
+   "value": "Vanhoutte",
+   "type": "last"
+  },
+  {
+   "start": 419,
+   "end": 431,
+   "value": "AZ Groeninge",
+   "type": "hosp"
+  },
+  {
+   "start": 435,
+   "end": 443,
+   "value": "Kortrijk",
+   "type": "town"
+  },
+  {
+   "start": 589,
+   "end": 592,
+   "value": "Rik",
+   "type": "first"
+  },
+  {
+   "start": 594,
+   "end": 597,
+   "value": "Rik",
+   "type": "first"
+  },
+  {
+   "start": 598,
+   "end": 606,
+   "value": "Goossens",
+   "type": "last"
+  },
+  {
+   "start": 608,
+   "end": 624,
+   "value": "29 augustus 1959",
+   "type": "dob"
+  },
+  {
+   "start": 640,
+   "end": 650,
+   "value": "Bergstraat",
+   "type": "street"
+  },
+  {
+   "start": 654,
+   "end": 663,
+   "value": "Harelbeke",
+   "type": "town"
+  }
+ ],
+ "keep": [
+  {
+   "start": 486,
+   "end": 501,
+   "value": "ziekte van Lyme"
+  }
+ ]
+}

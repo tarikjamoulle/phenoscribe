@@ -1,0 +1,53 @@
+{
+ "details": [
+  {
+   "start": 11,
+   "end": 19,
+   "value": "Leclercq",
+   "type": "last"
+  },
+  {
+   "start": 256,
+   "end": 262,
+   "value": "Jambes",
+   "type": "town"
+  },
+  {
+   "start": 263,
+   "end": 285,
+   "value": "avenue Prince de Liège",
+   "type": "street"
+  },
+  {
+   "start": 307,
+   "end": 314,
+   "value": "Martine",
+   "type": "first"
+  },
+  {
+   "start": 354,
+   "end": 373,
+   "value": "CHR Sambre et Meuse",
+   "type": "hosp"
+  },
+  {
+   "start": 520,
+   "end": 536,
+   "value": "+32 475 66 01 28",
+   "type": "phone"
+  },
+  {
+   "start": 561,
+   "end": 576,
+   "value": "9 novembre 1988",
+   "type": "dob"
+  }
+ ],
+ "keep": [
+  {
+   "start": 390,
+   "end": 406,
+   "value": "maladie de Crohn"
+  }
+ ]
+}

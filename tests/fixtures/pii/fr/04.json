@@ -1,0 +1,59 @@
+{
+ "details": [
+  {
+   "start": 45,
+   "end": 48,
+   "value": "Jos",
+   "type": "first"
+  },
+  {
+   "start": 50,
+   "end": 53,
+   "value": "Jos",
+   "type": "first"
+  },
+  {
+   "start": 54,
+   "end": 63,
+   "value": "Verhaegen",
+   "type": "last"
+  },
+  {
+   "start": 109,
+   "end": 117,
+   "value": "Turnhout",
+   "type": "town"
+  },
+  {
+   "start": 318,
+   "end": 331,
+   "value": "Saint-Jacques",
+   "type": "street"
+  },
+  {
+   "start": 421,
+   "end": 433,
+   "value": "Saint-Pierre",
+   "type": "hosp"
+  },
+  {
+   "start": 681,
+   "end": 687,
+   "value": "Thomas",
+   "type": "first"
+  },
+  {
+   "start": 784,
+   "end": 799,
+   "value": "48 11 05 117 34",
+   "type": "id"
+  }
+ ],
+ "keep": [
+  {
+   "start": 452,
+   "end": 461,
+   "value": "Parkinson"
+  }
+ ]
+}

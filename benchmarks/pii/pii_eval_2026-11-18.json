@@ -1,0 +1,449 @@
+[
+ {
+  "lang": "fr",
+  "detector": "camembert-pii-fr",
+  "planted": 42,
+  "found": 27,
+  "recall": 0.643,
+  "missed_by_type": {
+   "town": 6,
+   "street": 4,
+   "hosp": 4,
+   "first": 1
+  },
+  "missed": [
+   "town:Namur",
+   "street:rue des Brasseurs",
+   "hosp:Saint-Luc de Bouge",
+   "first:Rose",
+   "town:Gembloux",
+   "street:chaussée de Namur",
+   "hosp:CHU Dinant Godinne",
+   "town:Ciney",
+   "town:Rochefort",
+   "town:Turnhout",
+   "street:Saint-Jacques",
+   "hosp:Saint-Pierre",
+   "town:Jambes",
+   "street:avenue Prince de Liège",
+   "hosp:CHR Sambre et Meuse"
+  ],
+  "removed_by_mistake": [],
+  "keep_words_removed": [
+   "Raynaud",
+   "Crohn"
+  ],
+  "clean_files": 0,
+  "clean_files_with_warning": 0,
+  "warning_rate_clean": null,
+  "warning_reasons_clean": {},
+  "files_with_a_miss": 5,
+  "files_with_a_miss_and_warning": 5,
+  "clean_files_to_a_person": 0,
+  "files_with_a_miss_to_a_person": 5,
+  "name_recall": 0.944
+ },
+ {
+  "lang": "fr",
+  "detector": "gliner-multi-pii",
+  "planted": 42,
+  "found": 36,
+  "recall": 0.857,
+  "missed_by_type": {
+   "first": 2,
+   "town": 2,
+   "last": 1,
+   "street": 1
+  },
+  "missed": [
+   "first:Rose",
+   "town:Rochefort",
+   "last:Delhaize",
+   "first:Jos",
+   "town:Jambes",
+   "street:avenue Prince de Liège"
+  ],
+  "removed_by_mistake": [
+   "12",
+   "clinique",
+   "140",
+   "pharmacie",
+   "rue",
+   "hôpital"
+  ],
+  "keep_words_removed": [],
+  "clean_files": 1,
+  "clean_files_with_warning": 0,
+  "warning_rate_clean": 0.0,
+  "warning_reasons_clean": {},
+  "files_with_a_miss": 4,
+  "files_with_a_miss_and_warning": 4,
+  "clean_files_to_a_person": 0,
+  "files_with_a_miss_to_a_person": 4,
+  "name_recall": 0.833
+ },
+ {
+  "lang": "fr",
+  "detector": "camembert-pii-fr + gliner-multi-pii",
+  "planted": 42,
+  "found": 38,
+  "recall": 0.905,
+  "missed_by_type": {
+   "town": 2,
+   "first": 1,
+   "street": 1
+  },
+  "missed": [
+   "first:Rose",
+   "town:Rochefort",
+   "town:Jambes",
+   "street:avenue Prince de Liège"
+  ],
+  "removed_by_mistake": [
+   "12",
+   "clinique",
+   "140",
+   "pharmacie",
+   "rue",
+   "hôpital"
+  ],
+  "keep_words_removed": [
+   "Raynaud",
+   "Crohn"
+  ],
+  "clean_files": 2,
+  "clean_files_with_warning": 0,
+  "warning_rate_clean": 0.0,
+  "warning_reasons_clean": {},
+  "files_with_a_miss": 3,
+  "files_with_a_miss_and_warning": 3,
+  "clean_files_to_a_person": 0,
+  "files_with_a_miss_to_a_person": 3,
+  "name_recall": 0.944
+ },
+ {
+  "lang": "nl",
+  "detector": "openmed-nl-large",
+  "planted": 49,
+  "found": 41,
+  "recall": 0.837,
+  "missed_by_type": {
+   "hosp": 4,
+   "last": 2,
+   "town": 1,
+   "org": 1
+  },
+  "missed": [
+   "last:Mertens",
+   "hosp:AZ Herentals",
+   "town:Doornik",
+   "hosp:AZ Glorieux",
+   "hosp:Jessa Ziekenhuis",
+   "org:Bekaert",
+   "hosp:AZ Groeninge",
+   "last:De Smet"
+  ],
+  "removed_by_mistake": [
+   "op",
+   "in",
+   "de",
+   "nummer",
+   "87",
+   "ben",
+   "van",
+   "vrouw",
+   "van",
+   "ben",
+   "en",
+   "in",
+   "in",
+   "in",
+   "de",
+   "in",
+   "in",
+   "de",
+   "in",
+   "zoontje",
+   "weer",
+   "in",
+   "aan",
+   "de",
+   "in",
+   "telefoonnummer",
+   "geboortedatum"
+  ],
+  "keep_words_removed": [],
+  "clean_files": 0,
+  "clean_files_with_warning": 0,
+  "warning_rate_clean": null,
+  "warning_reasons_clean": {},
+  "files_with_a_miss": 5,
+  "files_with_a_miss_and_warning": 5,
+  "clean_files_to_a_person": 0,
+  "files_with_a_miss_to_a_person": 5,
+  "name_recall": 0.905
+ },
+ {
+  "lang": "nl",
+  "detector": "deduce",
+  "planted": 49,
+  "found": 34,
+  "recall": 0.694,
+  "missed_by_type": {
+   "hosp": 5,
+   "town": 4,
+   "street": 3,
+   "last": 2,
+   "org": 1
+  },
+  "missed": [
+   "town:Geel",
+   "hosp:AZ Herentals",
+   "town:Ronse",
+   "last:Claeys",
+   "hosp:AZ Glorieux",
+   "hosp:Jessa Ziekenhuis",
+   "street:Kloosterstraat",
+   "org:Bekaert",
+   "town:Zwevegem",
+   "last:Vanhoutte",
+   "hosp:AZ Groeninge",
+   "street:Bergstraat",
+   "town:Harelbeke",
+   "street:Hanswijkvaart",
+   "hosp:AZ Sint-Maarten"
+  ],
+  "removed_by_mistake": [
+   "de",
+   "van"
+  ],
+  "keep_words_removed": [
+   "Spa",
+   "peer"
+  ],
+  "clean_files": 0,
+  "clean_files_with_warning": 0,
+  "warning_rate_clean": null,
+  "warning_reasons_clean": {},
+  "files_with_a_miss": 5,
+  "files_with_a_miss_and_warning": 4,
+  "clean_files_to_a_person": 0,
+  "files_with_a_miss_to_a_person": 4,
+  "name_recall": 0.905
+ },
+ {
+  "lang": "nl",
+  "detector": "gliner-multi-pii + openmed-nl-large",
+  "planted": 49,
+  "found": 49,
+  "recall": 1.0,
+  "missed_by_type": {},
+  "missed": [],
+  "removed_by_mistake": [
+   "op",
+   "in",
+   "de",
+   "nummer",
+   "87",
+   "ben",
+   "van",
+   "vrouw",
+   "van",
+   "ben",
+   "en",
+   "in",
+   "in",
+   "in",
+   "de",
+   "in",
+   "in",
+   "de",
+   "in",
+   "zoontje",
+   "weer",
+   "in",
+   "aan",
+   "de",
+   "in",
+   "telefoonnummer",
+   "geboortedatum"
+  ],
+  "keep_words_removed": [],
+  "clean_files": 5,
+  "clean_files_with_warning": 2,
+  "warning_rate_clean": 0.4,
+  "warning_reasons_clean": {
+   "Possibly left": 1,
+   "Unsure about": 1
+  },
+  "files_with_a_miss": 0,
+  "files_with_a_miss_and_warning": 0,
+  "clean_files_to_a_person": 1,
+  "files_with_a_miss_to_a_person": 0,
+  "name_recall": 1.0
+ },
+ {
+  "lang": "nl",
+  "detector": "gliner-multi-pii",
+  "planted": 49,
+  "found": 46,
+  "recall": 0.939,
+  "missed_by_type": {
+   "first": 2,
+   "street": 1
+  },
+  "missed": [
+   "street:Pas",
+   "first:Annick",
+   "first:Rik"
+  ],
+  "removed_by_mistake": [
+   "in",
+   "de"
+  ],
+  "keep_words_removed": [
+   "geel"
+  ],
+  "clean_files": 2,
+  "clean_files_with_warning": 2,
+  "warning_rate_clean": 1.0,
+  "warning_reasons_clean": {
+   "Unsure about": 2
+  },
+  "files_with_a_miss": 3,
+  "files_with_a_miss_and_warning": 3,
+  "clean_files_to_a_person": 2,
+  "files_with_a_miss_to_a_person": 3,
+  "name_recall": 0.905
+ },
+ {
+  "lang": "nl",
+  "detector": "gliner-multi-pii + deduce",
+  "planted": 49,
+  "found": 49,
+  "recall": 1.0,
+  "missed_by_type": {},
+  "missed": [],
+  "removed_by_mistake": [
+   "de",
+   "van",
+   "in",
+   "de"
+  ],
+  "keep_words_removed": [
+   "geel",
+   "Spa"
+  ],
+  "clean_files": 5,
+  "clean_files_with_warning": 3,
+  "warning_rate_clean": 0.6,
+  "warning_reasons_clean": {
+   "Unsure about": 3
+  },
+  "files_with_a_miss": 0,
+  "files_with_a_miss_and_warning": 0,
+  "clean_files_to_a_person": 0,
+  "files_with_a_miss_to_a_person": 0,
+  "name_recall": 1.0
+ },
+ {
+  "lang": "en",
+  "detector": "stanford-deid",
+  "planted": 47,
+  "found": 44,
+  "recall": 0.936,
+  "missed_by_type": {
+   "last": 1,
+   "street": 1,
+   "town": 1
+  },
+  "missed": [
+   "last:Hughes",
+   "street:Kortrijksesteenweg",
+   "town:Bruges"
+  ],
+  "removed_by_mistake": [
+   "university",
+   "Marolles",
+   "Hello",
+   "Tuesday"
+  ],
+  "keep_words_removed": [
+   "rose",
+   "will"
+  ],
+  "clean_files": 2,
+  "clean_files_with_warning": 1,
+  "warning_rate_clean": 0.5,
+  "warning_reasons_clean": {
+   "Unsure about": 1
+  },
+  "files_with_a_miss": 3,
+  "files_with_a_miss_and_warning": 2,
+  "clean_files_to_a_person": 1,
+  "files_with_a_miss_to_a_person": 2,
+  "name_recall": 0.947
+ },
+ {
+  "lang": "en",
+  "detector": "gliner-multi-pii",
+  "planted": 47,
+  "found": 44,
+  "recall": 0.936,
+  "missed_by_type": {
+   "first": 1,
+   "hosp": 1,
+   "last": 1
+  },
+  "missed": [
+   "first:Rose",
+   "hosp:UZ Leuven",
+   "last:Vermeulen"
+  ],
+  "removed_by_mistake": [
+   "230"
+  ],
+  "keep_words_removed": [],
+  "clean_files": 3,
+  "clean_files_with_warning": 3,
+  "warning_rate_clean": 1.0,
+  "warning_reasons_clean": {
+   "Unsure about": 3
+  },
+  "files_with_a_miss": 2,
+  "files_with_a_miss_and_warning": 2,
+  "clean_files_to_a_person": 3,
+  "files_with_a_miss_to_a_person": 2,
+  "name_recall": 0.895
+ },
+ {
+  "lang": "en",
+  "detector": "stanford-deid + gliner-multi-pii",
+  "planted": 47,
+  "found": 47,
+  "recall": 1.0,
+  "missed_by_type": {},
+  "missed": [],
+  "removed_by_mistake": [
+   "university",
+   "Marolles",
+   "Hello",
+   "Tuesday",
+   "230"
+  ],
+  "keep_words_removed": [
+   "rose"
+  ],
+  "clean_files": 5,
+  "clean_files_with_warning": 2,
+  "warning_rate_clean": 0.4,
+  "warning_reasons_clean": {
+   "Unsure about": 2
+  },
+  "files_with_a_miss": 0,
+  "files_with_a_miss_and_warning": 0,
+  "clean_files_to_a_person": 0,
+  "files_with_a_miss_to_a_person": 0,
+  "name_recall": 1.0
+ }
+]

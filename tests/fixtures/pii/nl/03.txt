@@ -1,0 +1,14 @@
+dokter: dus u bent de mama van Lotte
+patiënt: ja ik ben Ingrid Wouters en Lotte is negen
+dokter: en wat merkt u bij haar
+patiënt: ze heeft al twee maanden buikpijn rond de navel vooral 's morgens voor school en ze wil niet meer eten ze wordt ook bleek
+dokter: diarree of verstopping
+patiënt: eerder verstopping soms vier dagen niets
+dokter: ze is geboren op
+patiënt: 17/06/2016 in het Jessa Ziekenhuis in Hasselt
+dokter: en jullie wonen nu
+patiënt: in Peer in de Kloosterstraat we zijn vorig jaar verhuisd
+dokter: eet ze fruit
+patiënt: een appel of een peer als ik aandring maar groenten wil ze echt niet
+dokter: oké en uw gsm-nummer
+patiënt: 0472 55 90 14

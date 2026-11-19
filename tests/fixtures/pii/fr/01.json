@@ -1,0 +1,70 @@
+{
+ "details": [
+  {
+   "start": 50,
+   "end": 56,
+   "value": "Claire",
+   "type": "first"
+  },
+  {
+   "start": 57,
+   "end": 71,
+   "value": "Van den Broeck",
+   "type": "last"
+  },
+  {
+   "start": 108,
+   "end": 123,
+   "value": "14 février 1967",
+   "type": "dob"
+  },
+  {
+   "start": 152,
+   "end": 157,
+   "value": "Namur",
+   "type": "town"
+  },
+  {
+   "start": 168,
+   "end": 185,
+   "value": "rue des Brasseurs",
+   "type": "street"
+  },
+  {
+   "start": 287,
+   "end": 302,
+   "value": "67.02.14-208.53",
+   "type": "id"
+  },
+  {
+   "start": 620,
+   "end": 627,
+   "value": "Lemaire",
+   "type": "last"
+  },
+  {
+   "start": 642,
+   "end": 660,
+   "value": "Saint-Luc de Bouge",
+   "type": "hosp"
+  },
+  {
+   "start": 855,
+   "end": 868,
+   "value": "0476 18 42 90",
+   "type": "phone"
+  }
+ ],
+ "keep": [
+  {
+   "start": 405,
+   "end": 414,
+   "value": "peau rose"
+  },
+  {
+   "start": 756,
+   "end": 759,
+   "value": "spa"
+  }
+ ]
+}

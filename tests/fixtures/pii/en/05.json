@@ -1,0 +1,65 @@
+{
+ "details": [
+  {
+   "start": 77,
+   "end": 85,
+   "value": "Margaret",
+   "type": "first"
+  },
+  {
+   "start": 86,
+   "end": 98,
+   "value": "Vandenberghe",
+   "type": "last"
+  },
+  {
+   "start": 119,
+   "end": 125,
+   "value": "Bruges",
+   "type": "town"
+  },
+  {
+   "start": 142,
+   "end": 153,
+   "value": "Langestraat",
+   "type": "street"
+  },
+  {
+   "start": 286,
+   "end": 292,
+   "value": "Pierre",
+   "type": "first"
+  },
+  {
+   "start": 500,
+   "end": 509,
+   "value": "Vermeulen",
+   "type": "last"
+  },
+  {
+   "start": 513,
+   "end": 524,
+   "value": "AZ Sint-Jan",
+   "type": "hosp"
+  },
+  {
+   "start": 593,
+   "end": 608,
+   "value": "12 October 1941",
+   "type": "dob"
+  },
+  {
+   "start": 624,
+   "end": 636,
+   "value": "050 33 72 19",
+   "type": "phone"
+  }
+ ],
+ "keep": [
+  {
+   "start": 533,
+   "end": 536,
+   "value": "spa"
+  }
+ ]
+}

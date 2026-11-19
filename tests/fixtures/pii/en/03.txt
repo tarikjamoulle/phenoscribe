@@ -1,0 +1,12 @@
+doctor: what's your name and where are you from
+patient: Will Hughes, from Cardiff originally, but I live in Brussels now, Rue Haute in the Marolles
+doctor: and what's going on
+patient: I get these headaches on one side, behind the right eye, like a hot needle, every night at the same time for weeks, then nothing for months
+doctor: does your eye water
+patient: yes it waters and the nose runs on that side, I can't lie still, I walk up and down the hall
+doctor: I will ask about alcohol
+patient: a pint sets it off straight away during a bad spell
+doctor: any other doctor seen this
+patient: a neurologist at Saint-Luc, Professor Lambert, he mentioned oxygen
+doctor: and a phone number in case the results come back early
+patient: +32 470 98 76 54

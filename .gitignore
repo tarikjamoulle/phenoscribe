@@ -1,0 +1,43 @@
+# Scratch folder: benchmark corpora, test indexes, script caches
+.tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+
+# Virtual environment
+.venv/
+.venv-*/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Data: recordings, transcripts and results can hold personal details. Never commit.
+*.db
+data/
+output/
+chroma_db/
+
+# Local model caches (Whisper, HF transformers, etc.) — large, machine-local
+models/
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Microsoft Office lock files
+~$*
+
+# pytest --cov
+.coverage

@@ -1,0 +1,71 @@
+{
+ "details": [
+  {
+   "start": 31,
+   "end": 36,
+   "value": "Lotte",
+   "type": "first"
+  },
+  {
+   "start": 56,
+   "end": 62,
+   "value": "Ingrid",
+   "type": "first"
+  },
+  {
+   "start": 63,
+   "end": 70,
+   "value": "Wouters",
+   "type": "last"
+  },
+  {
+   "start": 74,
+   "end": 79,
+   "value": "Lotte",
+   "type": "first"
+  },
+  {
+   "start": 367,
+   "end": 377,
+   "value": "17/06/2016",
+   "type": "dob"
+  },
+  {
+   "start": 385,
+   "end": 401,
+   "value": "Jessa Ziekenhuis",
+   "type": "hosp"
+  },
+  {
+   "start": 405,
+   "end": 412,
+   "value": "Hasselt",
+   "type": "town"
+  },
+  {
+   "start": 452,
+   "end": 456,
+   "value": "Peer",
+   "type": "town"
+  },
+  {
+   "start": 463,
+   "end": 477,
+   "value": "Kloosterstraat",
+   "type": "street"
+  },
+  {
+   "start": 643,
+   "end": 656,
+   "value": "0472 55 90 14",
+   "type": "phone"
+  }
+ ],
+ "keep": [
+  {
+   "start": 553,
+   "end": 557,
+   "value": "peer"
+  }
+ ]
+}

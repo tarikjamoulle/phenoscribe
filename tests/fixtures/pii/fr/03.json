@@ -1,0 +1,65 @@
+{
+ "details": [
+  {
+   "start": 75,
+   "end": 83,
+   "value": "Sandrine",
+   "type": "first"
+  },
+  {
+   "start": 84,
+   "end": 93,
+   "value": "Collignon",
+   "type": "last"
+  },
+  {
+   "start": 107,
+   "end": 112,
+   "value": "Ciney",
+   "type": "town"
+  },
+  {
+   "start": 144,
+   "end": 152,
+   "value": "Fraiture",
+   "type": "last"
+  },
+  {
+   "start": 668,
+   "end": 676,
+   "value": "Delhaize",
+   "type": "last"
+  },
+  {
+   "start": 680,
+   "end": 689,
+   "value": "Rochefort",
+   "type": "town"
+  },
+  {
+   "start": 723,
+   "end": 731,
+   "value": "Delhaize",
+   "type": "last"
+  },
+  {
+   "start": 794,
+   "end": 809,
+   "value": "22 juillet 1979",
+   "type": "dob"
+  },
+  {
+   "start": 830,
+   "end": 842,
+   "value": "083 21 47 65",
+   "type": "phone"
+  }
+ ],
+ "keep": [
+  {
+   "start": 579,
+   "end": 598,
+   "value": "syndrome de Raynaud"
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+{
+ "details": [
+  {
+   "start": 54,
+   "end": 59,
+   "value": "Sarah",
+   "type": "first"
+  },
+  {
+   "start": 60,
+   "end": 67,
+   "value": "Peeters",
+   "type": "last"
+  },
+  {
+   "start": 83,
+   "end": 95,
+   "value": "2 March 1984",
+   "type": "dob"
+  },
+  {
+   "start": 127,
+   "end": 133,
+   "value": "Leuven",
+   "type": "town"
+  },
+  {
+   "start": 146,
+   "end": 158,
+   "value": "Naamsestraat",
+   "type": "street"
+  },
+  {
+   "start": 521,
+   "end": 525,
+   "value": "Rose",
+   "type": "first"
+  },
+  {
+   "start": 585,
+   "end": 593,
+   "value": "Janssens",
+   "type": "last"
+  },
+  {
+   "start": 613,
+   "end": 628,
+   "value": "Bondgenotenlaan",
+   "type": "street"
+  },
+  {
+   "start": 649,
+   "end": 658,
+   "value": "UZ Leuven",
+   "type": "hosp"
+  },
+  {
+   "start": 710,
+   "end": 723,
+   "value": "0478 61 23 45",
+   "type": "phone"
+  },
+  {
+   "start": 741,
+   "end": 768,
+   "value": "sarah.peeters84@outlook.com",
+   "type": "email"
+  }
+ ],
+ "keep": [
+  {
+   "start": 270,
+   "end": 274,
+   "value": "rose"
+  }
+ ]
+}

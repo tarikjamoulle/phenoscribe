@@ -1,0 +1,59 @@
+{
+ "details": [
+  {
+   "start": 47,
+   "end": 53,
+   "value": "Pierre",
+   "type": "first"
+  },
+  {
+   "start": 54,
+   "end": 62,
+   "value": "Dewandre",
+   "type": "last"
+  },
+  {
+   "start": 70,
+   "end": 80,
+   "value": "03/09/1954",
+   "type": "dob"
+  },
+  {
+   "start": 152,
+   "end": 156,
+   "value": "Rose",
+   "type": "first"
+  },
+  {
+   "start": 159,
+   "end": 167,
+   "value": "Gembloux",
+   "type": "town"
+  },
+  {
+   "start": 169,
+   "end": 186,
+   "value": "chaussée de Namur",
+   "type": "street"
+  },
+  {
+   "start": 286,
+   "end": 304,
+   "value": "CHU Dinant Godinne",
+   "type": "hosp"
+  },
+  {
+   "start": 862,
+   "end": 868,
+   "value": "Hennuy",
+   "type": "last"
+  },
+  {
+   "start": 910,
+   "end": 933,
+   "value": "rose.dewandre@gmail.com",
+   "type": "email"
+  }
+ ],
+ "keep": []
+}
