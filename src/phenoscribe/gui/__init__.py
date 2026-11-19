@@ -6,7 +6,7 @@ details of the doubtful files, then the codes or the clean texts. The app
 decides the work for each file (batch.plan_batch). Only an approved review
 goes to the AI provider. Results go to `PHENOSCRIBE_OUTPUT_DIR` (default
 `output` in the current folder; the start script sets `Documents/Phenoscribe
-results`).
+results`, the Docker image `/app/output`).
 
 - theme.py: the look (Gradio theme, CSS, colours).
 - views.py: the HTML pieces and table rows, as pure functions.

@@ -278,7 +278,8 @@ def main():
     logging.getLogger().addHandler(log_file)
 
     build_app().launch(
-        # Only this computer can open the page, unless GRADIO_SERVER_NAME says otherwise.
+        # Only this computer can open the page. Docker sets 0.0.0.0 so the
+        # host can reach the container.
         server_name=os.environ.get("GRADIO_SERVER_NAME", "127.0.0.1"),
         # None: Gradio reads GRADIO_SERVER_PORT (default 7860) and takes the
         # next free port when that one is busy.

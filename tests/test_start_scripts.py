@@ -1,5 +1,6 @@
 """Tests for the double-click start script."""
 
+import re
 import shutil
 import subprocess
 
@@ -17,8 +18,9 @@ def test_script_runs_setup_then_the_page():
     assert "Documents" in text and "PHENOSCRIBE_OUTPUT_DIR" in text
 
 
-def test_script_installs_a_pinned_uv_version():
-    assert "https://astral.sh/uv/0." in COMMAND.read_text(encoding="utf-8")
+def test_script_installs_the_uv_version_of_the_dockerfile():
+    pin = re.search(r"astral-sh/uv:([\d.]+)", (ROOT / "Dockerfile").read_text()).group(1)
+    assert f"https://astral.sh/uv/{pin}/install." in COMMAND.read_text(encoding="utf-8")
 
 
 @pytest.mark.skipif(shutil.which("git") is None or not (ROOT / ".git").exists(), reason="needs git and a git checkout")

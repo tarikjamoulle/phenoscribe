@@ -116,7 +116,7 @@ No model was trained for Phenoscribe. No model has a test on Belgian interview t
 ### Web app (start file, recommended)
 
 On a Mac, double-click `Start Phenoscribe.command`.
-The script installs `uv` 0.6.17 if it is missing, runs `phenoscribe setup`, and opens the page on
+The script installs `uv` 0.6.17 (the version in the `Dockerfile`) if it is missing, runs `phenoscribe setup`, and opens the page on
 <http://127.0.0.1:7860>. When port 7860 is busy, the page takes the next free port; set `GRADIO_SERVER_PORT` to choose one. Drop files or choose a folder, choose a tool, then click **Start**. The
 app decides the work for each file (`plan_batch` in `batch.py`):
 
@@ -132,7 +132,7 @@ and a `personal_details_*.xlsx` report.
 
 Each coding run writes a new `results_YYYY-MM-DD_HHMM.xlsx` with a "Personal details" sheet
 (counts only) to the folder `PHENOSCRIBE_OUTPUT_DIR`. The start file sets it to
-`Documents/Phenoscribe results`; without it, the page uses
+`Documents/Phenoscribe results`, the Docker image to `/app/output`; without it, the page uses
 `output` in the current folder. The same folder holds
 `transcripts/`, `review/`, `clean/`, `phenoscribe.log`, and `filename_mapping.json` (each
 hashed `pt-…` ID back to its filename). A file named only by a
@@ -143,6 +143,20 @@ downloads the Whisper model and the privacy models. It skips each part that is p
 can run at every start. The transcription backend `auto` picks mlx on Apple Silicon when `ffmpeg`
 exists, else faster-whisper on the CPU. A new Mac has no `ffmpeg` (`brew install ffmpeg`),
 so it uses the CPU path, about 4x slower, until `ffmpeg` is installed.
+
+### Docker (Linux servers, not tested yet)
+
+The image is not built or tested yet. This branch holds it until it is.
+
+```bash
+docker build -t phenoscribe .     # runs phenoscribe setup inside the image
+mkdir -p output
+docker run --rm -p 127.0.0.1:7860:7860 -v "$(pwd)/output:/app/output" phenoscribe
+```
+
+The `127.0.0.1:` prefix on `-p` keeps the published port reachable only from this machine.
+The app in the container runs as user ID 1000 and writes to `/app/output`. On a host where
+your user ID (`id -u`) is not 1000, give that ID write access to `output` first.
 
 ### CLI
 

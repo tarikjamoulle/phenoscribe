@@ -204,3 +204,21 @@ Copy the key when you create it. You cannot see it again later.
 | The page opens on another address, for example <http://127.0.0.1:7861> | Phenoscribe already runs in another window. Use that window, or close it first. |
 
 Help: open an issue at <https://github.com/tarikjamoulle/phenoscribe/issues>.
+
+## Docker (for Linux servers)
+
+The image is not built or tested yet. For a Linux server, use Docker. The build runs `phenoscribe setup`, so the image holds the models and the index
+(about 12 GB).
+
+```bash
+docker build -t phenoscribe .
+mkdir -p output
+docker run --rm -p 127.0.0.1:7860:7860 -v "$(pwd)/output:/app/output" phenoscribe
+```
+
+The results go to the `output` folder. The app in the container runs as user ID 1000, so
+that user ID must be able to write to `output`.
+
+Open <http://localhost:7860> and drop the files on the page. The `127.0.0.1:` part of `-p`
+keeps the page closed to other computers on the network. Docker on a Mac cannot use the
+Mac GPU, so transcription is slower there than with the start file.
