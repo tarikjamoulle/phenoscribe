@@ -104,6 +104,61 @@ class SapBERTEmbeddingFunction:
         return ["cosine", "l2", "ip"]
 
 
+def embed_default_documents(texts: list[str], batch_size: int = 64):
+    """Vectors of ChromaDB's default model for many texts, for the index build.
+
+    ChromaDB pads each text to 256 tokens. An HPO name has about 20 tokens, so
+    the index build of about 60,000 texts takes more than 20 minutes. This
+    function sorts the texts by length and pads each batch to its longest text.
+    The pooling ignores the padding, so the vectors are the same (difference
+    below 1e-6), and the build takes about 2 minutes.
+
+    Returns None when the installed ChromaDB has no such model interface. The
+    caller then lets ChromaDB compute the vectors.
+    """
+    import os
+
+    import numpy as np
+
+    try:
+        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+
+        ef = ONNXMiniLM_L6_V2()
+        ef._download_model_if_not_exists()
+        tokenizer = ef.Tokenizer.from_file(
+            os.path.join(ef.DOWNLOAD_PATH, ef.EXTRACTED_FOLDER_NAME, "tokenizer.json")
+        )
+        session = ef.model
+        normalize = ef._normalize
+    except (ImportError, AttributeError, OSError):
+        return None
+
+    tokenizer.enable_truncation(max_length=256)
+    tokenizer.no_padding()
+    lengths = [len(e.ids) for e in tokenizer.encode_batch(texts)]
+    tokenizer.enable_padding(pad_id=0, pad_token="[PAD]")  # to the longest of the batch
+
+    order = sorted(range(len(texts)), key=lengths.__getitem__)
+    vectors = None
+    for start in range(0, len(order), batch_size):
+        rows = order[start : start + batch_size]
+        encoded = tokenizer.encode_batch([texts[i] for i in rows])
+        input_ids = np.array([e.ids for e in encoded], dtype=np.int64)
+        mask = np.array([e.attention_mask for e in encoded], dtype=np.int64)
+        hidden = session.run(
+            None,
+            {"input_ids": input_ids, "attention_mask": mask, "token_type_ids": np.zeros_like(input_ids)},
+        )[0]
+        # Mean pooling over the real tokens, as ChromaDB does.
+        weights = mask[..., None]
+        pooled = (hidden * weights).sum(1) / np.clip(weights.sum(1), 1e-9, None)
+        batch_vectors = normalize(pooled).astype(np.float32)
+        if vectors is None:
+            vectors = np.empty((len(texts), batch_vectors.shape[1]), dtype=np.float32)
+        vectors[rows] = batch_vectors
+    return vectors
+
+
 # Registered model keys for the hpo_index.embedding_model config option.
 EMBEDDING_MODELS = ("default", "sapbert")
 

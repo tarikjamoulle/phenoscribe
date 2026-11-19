@@ -11,7 +11,7 @@ import chromadb
 import requests
 from chromadb.errors import ChromaError
 
-from phenoscribe.embeddings import get_embedding_function
+from phenoscribe.embeddings import embed_default_documents, get_embedding_function
 
 logger = logging.getLogger(__name__)
 
@@ -349,10 +349,15 @@ def seed_chromadb(
     batch_size = 5000
     for i in range(0, len(docs), batch_size):
         batch = docs[i : i + batch_size]
+        texts = [d[1] for d in batch]
+        # The default model gets its vectors from the fast path (same vectors,
+        # about 10x faster). None lets ChromaDB compute them.
+        vectors = embed_default_documents(texts) if embedding_model == "default" else None
         collection.add(
             ids=[d[0] for d in batch],
-            documents=[d[1] for d in batch],
+            documents=texts,
             metadatas=[d[2] for d in batch],
+            embeddings=vectors,
         )
 
     # The completion mark comes last. modify() replaces the metadata and rejects

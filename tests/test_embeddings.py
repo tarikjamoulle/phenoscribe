@@ -36,3 +36,24 @@ def test_sapbert_config_roundtrip():
 
     assert rebuilt._model_name == fn._model_name
     assert rebuilt._max_length == fn._max_length
+
+
+@pytest.mark.needs_hpo_data
+def test_fast_index_vectors_equal_the_chromadb_default_vectors():
+    # The index build pads each batch to its longest text; a search query goes
+    # through ChromaDB's own function (padding to 256). Both must give one vector.
+    import numpy as np
+    from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+
+    from phenoscribe.embeddings import embed_default_documents
+
+    texts = [
+        "Fatigue",
+        "Shortness of breath",
+        "Episodic ataxia. Periodic spells of incoordination and imbalance, often with nausea and vertigo.",
+        "Pain",
+    ]
+
+    fast = embed_default_documents(texts, batch_size=2)
+
+    assert np.allclose(fast, np.array(ONNXMiniLM_L6_V2()(texts)), atol=1e-5)

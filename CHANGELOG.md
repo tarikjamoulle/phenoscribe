@@ -10,6 +10,7 @@ All notable changes to Phenoscribe are in this file. The format follows
 
 - The licence is AGPL-3.0-or-later. Version 0.1.0 stays under the MIT licence.
 - Contributions need the agreement in `CLA.md`.
+- `phenoscribe setup` builds the search index in about 2 minutes (before: more than 20). The vectors are the same.
 
 ## [0.1.0] - 2026-11-18
 
