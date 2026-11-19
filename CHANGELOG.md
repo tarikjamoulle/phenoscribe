@@ -4,6 +4,13 @@ All notable changes to Phenoscribe are in this file. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The licence is AGPL-3.0-or-later. Version 0.1.0 stays under the MIT licence.
+- Contributions need the agreement in `CLA.md`.
+
 ## [0.1.0] - 2026-11-18
 
 First public release.

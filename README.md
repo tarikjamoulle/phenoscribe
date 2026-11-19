@@ -98,7 +98,7 @@ A stopped file gets a clear message and does not go to the cloud. A file with "P
 
 No model was trained for Phenoscribe. No model has a test on Belgian interview transcripts: the synthetic test set above is the only check.
 
-**DEDUCE** (Dutch rules, UMC Utrecht) has a GPL-3.0 licence (`LICENSE.md` on GitHub; PyPI says LGPL-3.0), so it is never a default dependency of this MIT package. It is an optional install: `uv sync --extra dutch-rules`. The Dutch map names it, and it runs only when it is installed. Without it, Dutch gets GLiNER only (see the numbers above).
+**DEDUCE** (Dutch rules, UMC Utrecht) has a GPL-3.0 licence (`LICENSE.md` on GitHub; PyPI says LGPL-3.0), which is compatible with the AGPL-3.0 licence of Phenoscribe. It is an optional install: `uv sync --extra dutch-rules`. The Dutch map names it, and it runs only when it is installed. Without it, Dutch gets GLiNER only (see the numbers above).
 
 **Not used**: the OpenMed Dutch PII models are Apache-2.0, but their training data ([`ai4privacy/pii-masking-400k`](https://huggingface.co/datasets/ai4privacy/pii-masking-400k)) is for academic, non-commercial use only. On the Dutch test set, OpenMed alone gave 0.837 and GLiNER + OpenMed 1.0.
 
@@ -316,14 +316,24 @@ a prompt or privacy change.
 
 ## License
 
-The Phenoscribe code is under the MIT licence. See `LICENSE`.
+Copyright (c) 2026 Tarik Jamoulle.
+
+The Phenoscribe code is under the GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). See `LICENSE`.
+
+- You can use, change and share Phenoscribe free of charge.
+- If you share a changed version, or let other people use it across a network, publish the source of your changes under the same licence.
+- A commercial licence without this condition is available. Contact the author.
+- Version 0.1.0 was published under the MIT licence.
+- The name "Phenoscribe" is not part of the licence. Use another name for a changed version that you share.
+
+Contributions need the agreement in `CLA.md`.
 
 Third-party parts keep their own licences:
 
 - **Human Phenotype Ontology.** Phenoscribe downloads the HPO release that `config.yaml` names. Every results workbook gives that release. Use of the HPO follows the [HPO licence](https://human-phenotype-ontology.github.io/license.html). Cite: Gargano MA et al. The Human Phenotype Ontology in 2024: phenotypes around the world. *Nucleic Acids Res.* 2024;52(D1):D1333-D1346.
 - **ICPC-3.** WONCA owns the copyright of ICPC-3, which is available under CC BY-ND. Phenoscribe contains ICPC codes only, with no ICPC titles.
 - **HPO to ICPC-3 table** (`src/phenoscribe/resources/hpo_icpc.csv`). The rows marked `hand` are the hand mapping by M. Jamoulle and K. van Boven of the HPO terms of Deer et al. (2021) to ICPC-3, published here with their agreement. The rows marked `draft` are ours and wait for a clinical review. The ICPC-2 codes come from the official ICPC-3 browser.
-- **hpo-toolkit** is GPL-3. Phenoscribe imports it and does not include it. The release ZIP contains only Phenoscribe's own code; `uv` installs the libraries on the user's computer.
+- **hpo-toolkit** is GPL-3, which is compatible with AGPL-3.0. Phenoscribe imports it and does not include it. The release ZIP contains only Phenoscribe's own code; `uv` installs the libraries on the user's computer.
 
 ## Releasing
 
