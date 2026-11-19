@@ -13,7 +13,7 @@ authors:
     given-names: Tarik
 version: 0.1.0
 date-released: "2026-11-18"
-license: MIT
+license: AGPL-3.0-or-later
 repository-code: "https://github.com/tarikjamoulle/phenoscribe"
 keywords:
   - human phenotype ontology

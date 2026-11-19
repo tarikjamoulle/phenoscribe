@@ -29,6 +29,16 @@ A change to an LLM prompt or to a privacy rule changes the codes or what reaches
 - A privacy change (a model, a regex, the leak check, the review rule): run
   `scripts/eval_pii.py` again and update the numbers in `README.md`.
 
+## Licence of your contribution
+
+Phenoscribe is under AGPL-3.0-or-later. Before a pull request is merged, you must agree to
+`CLA.md`. You keep the copyright of your work. The agreement lets the maintainer publish
+your work under AGPL-3.0 and under other licences, a commercial licence included.
+
+To agree, write this sentence in your pull request:
+
+> I have read CLA.md and I agree to it for all my contributions to Phenoscribe.
+
 ## Report a privacy or security problem
 
 Do not open a public issue. Use GitHub private vulnerability reporting on this repository

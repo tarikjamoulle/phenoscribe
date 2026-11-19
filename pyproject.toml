@@ -7,7 +7,7 @@ name = "phenoscribe"
 version = "0.1.0"
 description = "Automated HPO phenotype coding from patient interviews"
 readme = "README.md"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [{ name = "Tarik Jamoulle" }]
 keywords = ["human phenotype ontology", "HPO", "phenotyping", "clinical NLP", "speech to text"]
@@ -53,8 +53,9 @@ dependencies = [
 
 [project.optional-dependencies]
 # DEDUCE, Dutch de-identification rules (UMC Utrecht). Its licence is GPL-3.0
-# (LICENSE.md on github.com/vmenger/deduce), so it never is a default
-# dependency of this MIT package. Opt in with `uv sync --extra dutch-rules`.
+# (LICENSE.md on github.com/vmenger/deduce), which is compatible with the
+# AGPL-3.0 licence of this package. It stays an optional install: opt in with
+# `uv sync --extra dutch-rules`.
 dutch-rules = ["deduce>=3.0.6,<4"]
 
 [project.urls]
